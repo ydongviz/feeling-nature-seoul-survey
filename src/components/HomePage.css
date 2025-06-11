@@ -1,0 +1,636 @@
+/* Import Attack Type font */
+
+/* Header styles */
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    width: 100%;
+    padding: 0px 0;
+    margin-bottom: 20px;
+    margin-top: 35px;
+    position: relative;
+    z-index: 2; /* Above floating dots */
+}
+
+/* Header logo on the left - Independent element */
+.header-logo {
+    flex: 0 0 auto; /* Don't grow or shrink */
+    position: absolute; /* Position it independently */
+    left: 0px;
+    top: 25px;
+    z-index: 2; /* Same level as title for animation transition */
+    cursor: pointer;
+}
+
+.header-logo-link {
+    display: inline-block;
+    transition: opacity 0.3s ease;
+}
+
+.header-logo-link:hover {
+    opacity: 0.8;
+}
+
+.main-title {
+    font-family: 'Attack Type', 'Poppins', serif;
+    font-size: 0.8em;
+    color: #699815;
+    margin: 0;
+    flex: 0;
+    text-align: left;
+    z-index: 4; /* Always on top for readability */
+    position: relative;
+    cursor: pointer;
+}
+
+/* Language navbar styles */
+ul.navbar {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 20px;
+    flex: 0 0 auto; 
+    position: relative;
+    z-index: 4; /* Same as title */
+}
+
+ul.navbar li {
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+ul.navbar li::before {
+    content: '•';
+    margin-right: 8px;
+    color: #ccc;
+    transition: color 0.3s ease;
+}
+
+ul.navbar li.nav-li-selected::before {
+    color: var(--primary-color-darker);
+}
+
+ul.navbar li a {
+    text-decoration: none;
+    color: #585858;
+    transition: all 0.3s ease;
+    position: relative;
+    font-size: 17px;
+    
+}
+
+ul.navbar li.nav-li-selected a {
+    color: var(--primary-color-darker);
+}
+
+ul.navbar li:hover::before {
+    color: var(--primary-color);
+}
+
+ul.navbar li:hover a {
+    color: var(--primary-color);
+}
+
+ul.navbar li:hover a::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--primary-color);
+}
+
+/* Content styles */
+.subtitle {
+    color: #313131;
+    font-size: 1.5rem;
+    font-weight: 600; /* semi-bold */
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.description-text {
+    color: #000000;
+    font-size: 16px;
+    font-weight: 400; /* regular */
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+/* Button styles - OVERRIDE GLOBAL STYLES */
+.homepage-button {
+    font-size: 17px;
+    border: 1px solid #262626;
+    background: transparent;
+    color: #262626;
+    padding: 12px 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 30px 0; /* Left aligned */
+    display: inline-block; /* Left aligned */
+    text-decoration: none;
+}
+
+.homepage-button:hover {
+    border: 1px solid #95C11F;
+    background: #F9FEEC;
+    color: #95C11F;
+}
+
+.homepage-button:disabled {
+    border: 1px solid #cccccc;
+    background: transparent;
+    color: #cccccc;
+    cursor: not-allowed;
+}
+
+/* Author and project info */
+.author-text {
+    color: #000000;
+    font-size: 16px;
+    font-weight: 400;
+    margin-bottom: 30px;
+}
+
+.author-text-title {
+    color: #000000;
+    font-weight: 400;
+}
+
+/* FIXED: Responsive container - Remove fixed height that prevents scrolling */
+.page-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 100vh; /* CHANGED: Use min-height instead of fixed height */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: 0 0px; 
+    position: relative;
+    /* REMOVED: overflow: hidden - this was preventing scrolling */
+}
+
+.content-wrapper {
+    flex: 0.9;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    min-height: 0;
+    position: relative;
+    z-index: 2;
+}
+
+/* Footer styles */
+.footer-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+    padding: 20px 0;
+    margin-top: auto; /* Push to bottom */
+    position: relative;
+    z-index: 2;
+}
+
+.logo-container {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    position: absolute;
+    bottom:40px;
+    margin-left: 0px;
+}
+
+.home-org-icon {
+    height: 22px;
+    width: auto;
+    transition: all 0.3s ease;
+}
+
+/* Remove old styles */
+.home-footer-section {
+    display: none; /* Remove the old author section */
+}
+
+.grid-container {
+    display: none; /* Hide the old grid layout */
+}
+
+/* IMPROVED: Mobile responsiveness - Fix logo/title positioning */
+@media (max-width: 768px) {
+    .page-container {
+        width: 95%;
+        padding: 0 15px;
+        min-height: 100vh; /* Ensure full height on mobile */
+    }
+    
+    .header-container {
+        flex-direction: row; /* KEEP: Keep horizontal layout on mobile */
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        text-align: left; /* CHANGED: Keep left alignment */
+        padding: 15px 0 0 0;
+        position: relative;
+    }
+    
+    /* FIXED: Logo positioning on mobile - keep it independent */
+    .header-logo {
+        position: absolute; /* KEEP: Maintain absolute positioning */
+        left: 20px;
+        top: 35px;
+        order: unset; /* REMOVE: Don't change order */
+    }
+    
+    .header-logo-image {
+        height: 50px; /* INCREASED: Larger on mobile for better visibility */
+    }
+    
+    /* FIXED: Title positioning on mobile */
+    .main-title {
+        font-size: 0.9em; /* INCREASED: Larger font on mobile */
+        order: unset; /* REMOVE: Don't change order */
+        text-align: left;
+        position: relative;
+        z-index: 4;
+    }
+    
+    /* FIXED: Navbar positioning */
+    .navbar {
+        order: unset; /* REMOVE: Don't change order */
+        justify-content: flex-end; /* KEEP: Right aligned */
+    }
+    
+    ul.navbar {
+        gap: 15px; /* REDUCED: Smaller gap on mobile */
+    }
+    
+    ul.navbar li {
+        font-size: 14px; /* REDUCED: Smaller font */
+    }
+    
+    ul.navbar li a {
+        font-size: 15px; /* REDUCED: Smaller font */
+    }
+    
+    .subtitle {
+        font-size: 1.2rem;
+        margin-top: 20px; /* Add space from header */
+    }
+    
+    .description-text {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    
+    .homepage-button {
+        margin: 20px 0;
+        padding: 10px 30px;
+    }
+    
+    .footer-container {
+        justify-content: center;
+        padding: 15px 0;
+    }
+    
+    .logo-container {
+        margin-left: 0;
+        position: relative; /* CHANGED: Use relative positioning on mobile */
+        bottom: auto;
+    }
+    
+    .home-org-icon {
+        height: 20px;
+    }
+    
+    /* FIXED: Content wrapper on mobile */
+    .content-wrapper {
+        margin-top: 40px; /* Add space from header */
+        padding: 0 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-title {
+        font-size: 0.8em;
+    }
+    
+    .subtitle {
+        font-size: 1.1rem;
+    }
+    
+    ul.navbar li {
+        font-size: 13px;
+    }
+    
+    ul.navbar li a {
+        font-size: 14px;
+    }
+    
+    .description-text {
+        font-size: 13px;
+    }
+    
+    .header-logo-image {
+        height: 40px;
+    }
+    
+    ul.navbar {
+        gap: 12px;
+    }
+}
+
+/* UPDATED ANIMATION KEYFRAMES - Logo dims to 0.2 for better text readability */
+@keyframes logoAnimation {
+    0%, 22.5% {
+        opacity: 1; /* Logo starts at 100% opacity */
+        transform: scale(1);
+    }
+    25% {
+        opacity: 0.2; /* Logo dims to 20% - better text readability */
+        transform: scale(1);
+    }
+    27.5%, 72.5% {
+        opacity: 0; /* Logo hidden while text is fully visible */
+        transform: scale(0.9);
+    }
+    75% {
+        opacity: 0.2; /* Logo starts coming back at 20% to avoid overlap */
+        transform: scale(0.95);
+    }
+    77.5%, 100% {
+        opacity: 1; /* Logo back to 100% opacity when text is gone */
+        transform: scale(1);
+    }
+}
+
+@keyframes titleAnimation {
+    0%, 24% {
+        opacity: 0; /* Title hidden while logo is at 100% */
+        transform: translateY(10px);
+    }
+    25% {
+        /* Text starts transitioning in when logo hits 20% */
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    27.5%, 72.5% {
+        opacity: 1; /* Title fully visible, logo at 0% */
+        transform: translateY(0);
+    }
+    75% {
+        opacity: 0.8; /* Title starts fading, logo at 20% */
+        transform: translateY(-2px);
+    }
+    77.5%, 100% {
+        opacity: 0; /* Title hidden, logo back to 100% */
+        transform: translateY(10px);
+    }
+}
+
+/* Apply animations to elements */
+.header-logo-image {
+    position: absolute;
+    left: 0px;
+    top: 10px;
+    height: 80px;
+    width: auto;
+    max-width: 200px;
+    mix-blend-mode: revert;
+    opacity: 1; /* Start at 100% opacity */
+    clip-path: circle(50%);
+    object-fit: cover;
+    z-index: 1; /* Behind text always */
+    animation: logoAnimation 20s infinite ease-in-out;
+    transition: all 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.main-title {
+    font-family: 'Attack Type', 'Poppins', serif;
+    font-size: 0.8em;
+    color: #699815;
+    margin: 0;
+    flex: 0;
+    text-align: left;
+    z-index: 4; /* Always on top for readability */
+    
+    /* Add animation - synchronized with logo */
+    animation: titleAnimation 20s infinite ease-in-out;
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    cursor: pointer;
+}
+
+/* Alternative: Add a subtle text shadow when text appears over logo */
+@keyframes titleAnimationWithShadow {
+    0%, 24% {
+        opacity: 0;
+        transform: translateY(10px);
+        text-shadow: none;
+    }
+    25% {
+        opacity: 0;
+        transform: translateY(5px);
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.8); /* Add white glow during transition */
+    }
+    27.5%, 72.5% {
+        opacity: 1;
+        transform: translateY(0);
+        text-shadow: 0 0 4px rgba(255, 255, 255, 0.4); /* Subtle glow */
+    }
+    75% {
+        opacity: 0.8;
+        transform: translateY(-2px);
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.8); /* Enhanced glow during transition */
+    }
+    77.5%, 100% {
+        opacity: 0;
+        transform: translateY(10px);
+        text-shadow: none;
+    }
+}
+
+/* Option to use text shadow version */
+.main-title.with-shadow {
+    animation: titleAnimationWithShadow 20s infinite ease-in-out;
+}
+
+/* Pause animation on hover for better UX */
+.header-container:hover .header-logo-image,
+.header-container:hover .main-title {
+    animation-play-state: paused;
+}
+
+/* Mobile responsive animations */
+@media (max-width: 768px) {
+    .header-logo-image {
+        animation-duration: 15s;
+        height: 70px; /* MATCH: Same as regular mobile styling */
+    }
+    
+    .main-title {
+        animation-duration: 15s;
+        font-size: 0.9em; /* MATCH: Same as regular mobile styling */
+    }
+}
+
+@media (max-width: 480px) {
+    .header-logo-image {
+        animation-duration: 12s;
+        height: 60px; /* MATCH: Same as regular mobile styling */
+    }
+    
+    .main-title {
+        animation-duration: 12s;
+        font-size: 0.8em; /* MATCH: Same as regular mobile styling */
+    }
+}
+
+/* UPDATED FLOATING DOTS - Mask the top area to prevent any dots from showing */
+.floating-dots-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 1; /* Behind content but visible everywhere */
+    overflow: hidden;
+    /* Add mask to hide any dots that might reach the top 5% of screen */
+    -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 5%, black 5%, black 100%);
+    mask: linear-gradient(to bottom, transparent 0%, transparent 5%, black 5%, black 100%);
+}
+
+.floating-dot {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: floatUpDown linear infinite;
+}
+
+/* Updated animation - dots fade out well before reaching top */
+@keyframes floatUpDown {
+    0% {
+        transform: translateY(110vh) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    5% {
+        opacity: 0.8;
+    }
+    40% {
+        opacity: 0.7;
+        transform: translateY(60vh) translateX(var(--drift)) rotate(120deg);
+    }
+    60% {
+        opacity: 0.5;
+        transform: translateY(40vh) translateX(calc(var(--drift) * 1.2)) rotate(200deg);
+    }
+    75% {
+        opacity: 0.3;
+        transform: translateY(25vh) translateX(calc(var(--drift) * 1.5)) rotate(270deg);
+    }
+    85% {
+        opacity: 0.1;
+        transform: translateY(15vh) translateX(calc(var(--drift) * 1.8)) rotate(310deg);
+    }
+    90% {
+        opacity: 0.05;
+        transform: translateY(10vh) translateX(calc(var(--drift) * 2)) rotate(340deg);
+    }
+    95% {
+        opacity: 0;
+        transform: translateY(5vh) translateX(calc(var(--drift) * 2.2)) rotate(360deg);
+    }
+    100% {
+        transform: translateY(-10vh) translateX(calc(var(--drift) * 2.5)) rotate(360deg);
+        opacity: 0; /* Completely invisible well before top */
+    }
+}
+
+/* Different sizes for variety */
+.floating-dot.tiny {
+    width: 2px;
+    height: 2px;
+}
+
+.floating-dot.small {
+    width: 4px;
+    height: 4px;
+}
+
+.floating-dot.medium {
+    width: 6px;
+    height: 6px;
+}
+
+.floating-dot.large {
+    width: 10px;
+    height: 10px;
+}
+
+.floating-dot.extra-large {
+    width: 14px;
+    height: 14px;
+}
+
+/* Pulse animation for some dots */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.9;
+    }
+}
+
+.floating-dot.pulse {
+    animation: floatUpDown linear infinite, pulse 3s ease-in-out infinite;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .floating-dots-container {
+        /* Hide top 10% on mobile for header area */
+        -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 10%, black 10%, black 100%);
+        mask: linear-gradient(to bottom, transparent 0%, transparent 10%, black 10%, black 100%);
+    }
+    
+    .floating-dot.tiny {
+        width: 1px;
+        height: 1px;
+    }
+    
+    .floating-dot.small {
+        width: 3px;
+        height: 3px;
+    }
+    
+    .floating-dot.medium {
+        width: 5px;
+        height: 5px;
+    }
+    
+    .floating-dot.large {
+        width: 8px;
+        height: 8px;
+    }
+    
+    .floating-dot.extra-large {
+        width: 12px;
+        height: 12px;
+    }
+}

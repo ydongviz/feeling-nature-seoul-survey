@@ -1,0 +1,1 @@
+Vercel Serverless Function Root should be in the project root.

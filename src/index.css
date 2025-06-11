@@ -1,0 +1,95 @@
+/* Import the Candara font from Google Fonts */
+
+/* Custom Font for Title */
+
+/*@font-face {
+    font-family: 'Otto Attack';
+    src: url('./assets/fonts/AttackType-Medium.ttf') format('truetype');  
+    font-weight: normal;
+    font-style: normal;
+}
+*/
+
+
+:root {
+    --primary-font-family: 'Candara', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+body {
+    margin: 0;
+    font-family: 'Poppins', serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Apply Poppins to all text elements */
+* {
+    font-family: 'Poppins', serif;
+  }
+
+/* Custom font for main titles */
+.custom-title-font {
+    font-family: 'Otto Attack', 'Poppins', serif;
+}
+  
+  /* Ensure buttons and form elements also use Poppins */
+button, input, textarea, select {
+    font-family: 'Poppins', serif;
+}
+
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+
+
+/* Ensure all text uses Poppins */
+.title-text, .description-text, .button-generic, 
+.author-text, .home-org-eu-text {
+    font-family: 'Poppins', serif !important;
+}
+
+/* Custom title font for main heading */
+.custom-title-font {
+    font-family: 'Otto Attack', 'Poppins', serif !important;
+    font-weight: normal;
+}
+
+/* Survey page text */
+.city-select-title-text-h1,
+.survey-image-title-text-h1,
+.personal-info-title-text-h1,
+.thank-you-title-text-h1 {
+    font-family: 'Poppins', serif !important;
+}
+
+/* Form elements */
+input, textarea, button, label {
+    font-family: 'Poppins', serif !important;
+}
+
+/* Navigation */
+.navbar li a {
+    font-family: 'Poppins', serif !important;
+}
+
+/* Progress text and other UI elements */
+.spinner, .progress-bar-item, .placeholder-text {
+    font-family: 'Poppins', serif !important;
+}
+
+.Theme-Background {
+    /*background-color: whitesmoke;*/
+    background-color: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: left;
+    font-size: calc(10px + 2vmin);
+    color: black;
+}

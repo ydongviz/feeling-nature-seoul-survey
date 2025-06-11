@@ -1,0 +1,253 @@
+:root {
+    --primary-color: #699815;
+    --primary-color-darker: #44610f;
+    --primary-color-selected: #43610d;
+    --primary-paragraphtext-color: #000000;
+    --primary-titletext-color: #313131;
+}
+
+.title-text {
+    color: var(--primary-titletext-color);
+    margin-bottom: 5px;
+    margin-top: 5px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.title-text-h1 {
+    font-size: 2em;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.title-text-h2 {
+    font-size: 1.2em;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.container-page-root {
+    text-align: left;
+}
+
+/* FIXED: Updated to allow scrolling for survey pages */
+.container-page-mid-root {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh; /* CHANGED: Use min-height instead of fixed height */
+    padding: 0px 0;
+    /* REMOVED: height constraints that prevented scrolling */
+}
+
+.title-text-h1-homepage {
+    font-size: 56px;
+    align-content: baseline;
+    line-height: 1;
+}
+
+.title-text-h2-homepage {
+    font-size: 25px;
+    align-content: baseline;
+}
+
+/* Global Progress Bar Styles */
+.progress-bar-container {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 40px;
+    align-items: center;
+}
+
+.progress-segment {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.progress-segment.active {
+    background-color: #A3B968;
+}
+
+.progress-segment.inactive {
+    background-color: #DEDEDE;
+}
+
+/* FIXED: Updated responsive container styles - Enable scrolling */
+@media (max-width: 919px) {
+    .App-container {
+        width: 95%;
+        min-height: 100vh; /* CHANGED: Use min-height instead of fixed height */
+        /* REMOVED: height: 95vh that was preventing scrolling */
+    }
+
+    .container-page-root {
+        width: 100%;
+        margin: auto 0;
+    }
+
+    .container-page-mid-root {
+        width: 100%;
+        margin: auto 0;
+        min-height: 100vh; /* CHANGED: Use min-height for mobile */
+        padding: 20px 0; /* REDUCED: Smaller padding on mobile */
+    }
+    
+    .progress-segment {
+        height: 6px;
+    }
+}
+
+@media (min-width: 920px) {
+    .App-container {
+        width: 90%;
+        max-width: 1200px;
+        min-height: 100vh; /* CHANGED: Use min-height instead of fixed height */
+        /* REMOVED: height: 95vh that was preventing scrolling */
+    }
+
+    .container-page-root {
+        width: 100%;
+        max-width: 800px;
+        margin: auto;
+    }
+
+    .container-page-mid-root {
+        width: 100%;
+        max-width: 900px;
+        margin: auto;
+        min-height: 100vh; /* CHANGED: Use min-height */
+    }
+}
+
+.container-after-one-digit {
+    margin-left: 33px;
+}
+
+.container-after-two-digit {
+    margin-left: 33px;
+}
+
+.description-text {
+    margin-top: 10px;
+    margin-bottom: 25px;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: #000000;
+}
+
+/* Updated button styles - applying to all buttons globally */
+.button-generic {
+    font-size: 17px;
+    border: 1px solid #262626;
+    background: transparent;
+    color: #262626;
+    padding: 12px 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 30px auto;
+    display: block;
+    text-decoration: none;
+}
+
+.button-generic:hover {
+    border: 1px solid var(--primary-color);
+    background: #F9FEEC;
+    color: var(--primary-color);
+}
+
+.button-generic:disabled {
+    border: 1px solid #cccccc;
+    background: transparent;
+    color: #cccccc;
+    cursor: not-allowed;
+}
+
+.button-generic:disabled:hover {
+    border: 1px solid #cccccc;
+    background: transparent;
+    color: #cccccc;
+}
+
+.button-generic-selected {
+    background-color: var(--primary-color-selected);
+    color: white;
+    border: 1px solid var(--primary-color-selected);
+}
+
+.button-generic-selected:hover {
+    background-color: var(--primary-color-selected);
+    color: white;
+    border: 1px solid var(--primary-color-selected);
+}
+
+.button-stick-to-right {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.button-stick-to-right-and-a-little-more {
+    margin-left: auto;
+    margin-right: 0;
+    position: relative;
+    left: 35px;
+}
+
+.button-stick-to-center {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Radio button styles with hover enhancement */
+input[type='radio'] {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    outline: none;
+    border: 2px solid var(--primary-color);
+}
+
+input[type='radio']:checked {
+    border: 8px solid var(--primary-color);
+}
+
+label {
+    font-size: 17px;
+    display: inline-block;
+    vertical-align: top;
+    margin-top: 3px;
+    margin-left: 10px;
+    transition: color 0.3s ease;
+}
+
+/* Global radio option hover styles */
+.div-option-item {
+    margin-right: 20px;
+    display: inline-block;
+    align-content: flex-end;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.div-option-item:hover {
+    background-color: #f8f9fa;
+}
+
+.div-option-item:hover label {
+    color: var(--primary-color);
+}
+
+/* Remove text decoration from links */
+a {
+    text-decoration: none;
+}

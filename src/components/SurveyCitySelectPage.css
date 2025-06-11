@@ -1,0 +1,32 @@
+
+.city-select-title-text-h1 {
+    font-size: 1em;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--primary-titletext-color);
+    margin-bottom: 5px;
+}
+
+.survey-city-select-grid-container {
+    display: grid;
+    grid-template-columns: repeat(4, 200px);
+    grid-gap: 5px;
+}
+
+
+.button-survey-select-submit {
+    margin-top: 100px;
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 768px) {
+    .city-select-title-text-h1 {
+        font-size: 0.8em;
+    }
+}
+
+@media (max-width: 480px) {
+    .city-select-title-text-h1 {
+        font-size: 0.7em;
+    }
+}

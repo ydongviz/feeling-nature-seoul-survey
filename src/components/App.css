@@ -1,0 +1,71 @@
+/* UPDATED App.css - Enhanced horizontal scroll prevention */
+.App {
+    text-align: center;
+    background-color: white;
+    overflow-y: auto;
+    overflow-x: hidden; /* ADDED: Prevent horizontal scroll */
+    min-height: 100vh;
+    width: 100%; /* ADDED: Ensure full width */
+    max-width: 100vw; /* ADDED: Prevent overflow */
+}
+
+.App-container {
+    padding: 0 40px;
+    justify-content: left;
+    min-height: 100vh;
+    width: 100%; /* ADDED: Ensure container doesn't exceed viewport */
+    max-width: 100vw; /* ADDED: Prevent overflow */
+    box-sizing: border-box; /* ADDED: Include padding in width calculation */
+    overflow-x: hidden; /* ADDED: Prevent horizontal scroll in container */
+}
+
+p {
+    text-align: justify;
+}
+
+/* ENHANCED: Global body reset to ensure scrolling works */
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overflow-y: auto; /* Enable vertical scroll */
+    width: 100%; /* ADDED: Ensure body takes full width */
+    max-width: 100vw; /* ADDED: Prevent body overflow */
+}
+
+/* ENHANCED: Ensure html and body allow scrolling */
+html {
+    height: auto;
+    overflow-y: auto;
+    overflow-x: hidden; /* ADDED: Prevent horizontal scroll */
+    width: 100%; /* ADDED: Ensure html takes full width */
+    max-width: 100vw; /* ADDED: Prevent html overflow */
+}
+
+/* ENHANCED: Mobile specific scrolling fixes */
+@media (max-width: 768px) {
+    .App-container {
+        padding: 0 15px; /* REDUCED: Smaller padding to prevent overflow */
+        width: 100%;
+        max-width: 100vw;
+    }
+    
+    /* ADDED: Fix iOS scroll bounce */
+    body {
+        -webkit-overflow-scrolling: touch;
+        position: relative; /* ADDED: Prevent iOS horizontal scroll issues */
+    }
+    
+    /* ADDED: Ensure App doesn't overflow on mobile */
+    .App {
+        position: relative;
+        overflow-x: hidden;
+    }
+}
+
+/* ADDED: Extra small mobile fixes */
+@media (max-width: 480px) {
+    .App-container {
+        padding: 0 10px; /* EVEN SMALLER: More conservative padding */
+    }
+}

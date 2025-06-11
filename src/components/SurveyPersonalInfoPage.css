@@ -1,0 +1,119 @@
+/* Remove old grid styles - use global ones */
+.grid-container {
+    display: none;
+}
+
+.grid-container-align-bottom {
+    display: none;
+}
+
+.grid-item {
+    display: none;
+}
+
+/* Section spacing */
+.container-section {
+    margin: 30px 0; /* Reduced from 40px for better centering */
+}
+
+/* Personal info grid - use responsive layout */
+.personal-info-grid-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.personal-info-grid-item {
+    /* Use global .div-option-item styles but with specific class for this page */
+    margin-right: 20px;
+    display: inline-block;
+    align-content: flex-end;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-width: 120px; /* Ensure consistent width */
+}
+
+.personal-info-grid-item:hover {
+    background-color: #f8f9fa;
+}
+
+.personal-info-grid-item:hover label {
+    color: var(--primary-color);
+}
+
+.personal-info-grid-item input[type='radio'] {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    outline: none;
+    border: 2px solid var(--primary-color);
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.personal-info-grid-item input[type='radio']:checked {
+    border: 8px solid var(--primary-color);
+}
+
+.personal-info-grid-item label {
+    font-size: 17px;
+    display: inline-block;
+    vertical-align: top;
+    margin-top: 3px;
+    margin-left: 0;
+    transition: color 0.3s ease;
+    cursor: pointer;
+}
+
+/* Title styling */
+.personal-info-title-text-h1 {
+    font-size: 1em;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--primary-titletext-color);
+    margin-bottom: 20px;
+}
+
+/* Submit button spacing adjustment */
+.personal-info-submit-button {
+    margin-top: 40px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .personal-info-grid-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .personal-info-grid-item {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .container-section {
+        margin: 25px 0;
+    }
+    
+    .personal-info-title-text-h1 {
+        font-size: 1em;
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .personal-info-title-text-h1 {
+        font-size: 1em;
+    }
+    
+    .personal-info-grid-item label {
+        font-size: 16px;
+    }
+}

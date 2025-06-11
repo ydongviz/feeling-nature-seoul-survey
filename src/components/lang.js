@@ -1,0 +1,158 @@
+import {React} from "react";
+
+export const languages = {
+     "한국인": 'Korean', "English": 'eng',
+};
+
+export const LOCALE_TEXT = {
+
+    // City List
+    "city-list-Seoul": {
+        "eng": "Seoul",
+        "Korean": "서울"
+    },
+    
+    // Home Page
+    'home-page-title': {
+        'eng': 'Feeling Nature Seoul',
+        'Korean': '필링 네이처 서울',
+    }, 'home-page-subtitle': {
+        'eng': 'Measuring Biophilic perception using Visual AI',
+        'Korean': '비주얼 AI로 바이오필리아 인식 측정하기',
+    }, 'home-page-description': {
+        'eng': (<>
+            You're invited to participate in a brief research survey on how people perceive and value nature in Seoul. It takes <span style={{color: '#598112', fontWeight: '600'}}>3–5 minutes</span> to complete. 
+            Participation is voluntary, responses are anonymous, and all data will be used solely for scientific research.
+        </>), 'Korean': (<>
+            서울에서 사람들이 자연을 어떻게 인식하고 가치 있게 여기는지를 알아보기 위한 간단한 연구 설문에 참여해 주세요. 설문은 <span style={{color: '#598112', fontWeight: '600'}}>3–5분</span> 정도 소요됩니다.  
+            참여는 자발적이며, 응답은 익명으로 처리됩니다. 모든 데이터는 오직 학술 연구 목적으로만 사용됩니다.  
+        </>), 
+    }, 'home-page-button-start-survey': {
+        'eng': 'Start',
+        'Korean': '시작하기',
+    }, 'home-page-author-title': {
+        'eng': 'A project by',
+        'Korean': '프로젝트 진행',
+    },
+
+    // Seoul Residency Question
+    'seoul-residency-question': {
+        'eng': '1 | Have you lived in Seoul for at least 1 year?',
+        'Korean': '1 | 서울에서 1년 이상 거주한 경험이 있습니까?',
+    },
+    'seoul-residency-description': {
+        'eng': 'After completing the survey, you will be able to come back and repeat it again.',
+        'Korean': '설문을 완료한 후, 언제든지 다시 돌아와서 설문을 반복할 수 있습니다.',
+    },
+    'seoul-residency-yes': {
+        'eng': 'Yes',
+        'Korean': '네',
+    },
+    'seoul-residency-no': {
+        'eng': 'No',
+        'Korean': '아니오',
+    },
+
+    // Thank you page for non-eligible users
+    'thank-you-not-eligible-title': {
+        'eng': 'Thank you for your interest!',
+        'Korean': '관심을 가져주셔서 감사합니다!',
+    },
+    'thank-you-not-eligible-description': {
+        'eng': 'This survey is designed for people who have lived in Seoul for at least 1 year. Thank you for your understanding.',
+        'Korean': '이 설문조사는 서울에서 1년 이상 거주한 경험이 있는 분들을 대상으로 합니다. 양해해 주셔서 감사합니다.',
+    },
+
+    // SurveyImgChoicePage
+    'survey-img-choice-title': {
+        'eng': 'Which image brings you more positive feelings?',
+        'Korean': '어떤 이미지가 더 긍정적인 감정을 불러일으키나요?',
+    }, 'survey-img-choice-comment-box-question': {
+        'eng': 'Which elements and aspects of the selected image bring you more positive feelings?',
+        'Korean': '선택한 이미지의 어떤 요소나 측면이 긍정적인 감정을 불러일으켰나요?',
+    }, 'survey-img-choice-submit-button': {
+        'eng': 'Next', 'Korean': '다음', 
+    },
+    'survey-img-choice-comment-placeholder': {
+        'eng': 'Please comment on your choice',
+        'Korean': '선택한 이유를 간단히 설명해 주세요',
+    },
+
+    'survey-img-choice-button-left': {
+        'eng': 'Left', 'Korean': '왼쪽', 
+    },
+    'survey-img-choice-button-right': {
+        'eng': 'Right', 'Korean': '오른쪽', 
+    },
+    'survey-img-choice-loading-text': {
+        'eng': 'Loading', 'Korean': '로딩 중', 
+
+    },
+
+    // SurveyPersonalInfoPage
+    'survey-personal-info-question-age': {
+        'eng': '8 | Please select your age group.',
+        'Korean': '8 | 연령대를 선택해 주세요.',
+    }, 'survey-personal-info-question-gender': {
+        'eng': '9 | Please select the option that describes you best.',
+        'Korean': '9 | 본인에게 가장 적합한 항목을 선택해 주세요.',
+    },
+
+    'survey-personal-info-question-gender-option-Male': {
+        'eng': 'Male', 'Korean': '남성', 
+    }, 'survey-personal-info-question-gender-option-Female': {
+        'eng': 'Female', 'Korean': '여성',
+    }, 'survey-personal-info-question-gender-option-Other': {
+        'eng': 'Other', 'Korean': '기타', 
+    }, 'survey-personal-info-question-gender-option-Prefer not to answer': {
+        'eng': 'Prefer not to answer',
+        'Korean': '응답하지 않음',
+    },
+    'survey-personal-info-submit-button': {
+        'eng': 'Submit', 'Korean': '제출하기',
+    },
+
+    // Thank you
+    'thank-you-title': {
+        'eng': 'Thank you for your participation!',
+        'Korean': '참여해 주셔서 감사합니다!',
+    }, 'thank-you-description': {
+        'eng': 'Return to the homepage to take the survey again if you would like to contribute more to this research.',
+        'Korean': '이 연구에 더 기여하고 싶으시면, 홈페이지로 돌아가서 설문을 다시 진행해 주세요.',
+    }, 'thank-you-button-start-again': {
+        'eng': 'Start Again',
+        'Korean': '다시 시작하기',
+    }, 'thank-you-form-description': {
+        'eng': 'Would you like to know more about Biophila? Get in touch with us!',
+        'Korean': 'Biophila에 대해 더 알고 싶으신가요? 저희에게 연락해 주세요!',
+    }, 'thank-you-form-full-name': {
+        'eng': 'Full Name',
+        'Korean': '이름',
+    }, 'thank-you-form-email': {
+        'eng': 'Email',
+        'Korean': '이메일',
+    }, 'thank-you-form-message': {
+        'eng': 'Message', 'Korean': '메시지',
+    }, 'thank-you-form-submit-button': {
+        'eng': 'Send', 'Korean': '보내기', 
+    }
+
+}
+
+export const DEFAULT_LANG = 'eng';
+
+export const locale_text_raw =
+    (lang, identifier) => (LOCALE_TEXT[identifier][lang] || LOCALE_TEXT[identifier][DEFAULT_LANG]);
+export const locale_text = (lang, identifier) => {
+    const text = locale_text_raw(lang, identifier);
+    if (lang === 'arb') {
+        return (
+            <p style={{margin: 0}}>
+                {text}
+            </p>
+        )
+    }
+
+
+    return text;
+};
