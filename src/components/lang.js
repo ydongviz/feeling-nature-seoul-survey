@@ -18,7 +18,7 @@ export const LOCALE_TEXT = {
         'Korean': '필링 네이처 서울',
     }, 'home-page-subtitle': {
         'eng': 'Measuring How People Perceive Nature in Seoul',
-        'Korean': '비주얼 AI로 바이오필리아 인식 측정하기',
+        'Korean': '서울에서 사람들이 자연을 어떻게 인식하는지 측정하기',
     }, 'home-page-description': {
         'eng': (<>
             You're invited to participate in a brief research survey on how people perceive and value nature in Seoul. It takes <span style={{color: '#598112', fontWeight: '600'}}>3–5 minutes</span> to complete. 
@@ -139,7 +139,7 @@ export const LOCALE_TEXT = {
 
 }
 
-export const DEFAULT_LANG = 'eng';
+export const DEFAULT_LANG = 'Korean';
 
 export const locale_text_raw =
     (lang, identifier) => (LOCALE_TEXT[identifier][lang] || LOCALE_TEXT[identifier][DEFAULT_LANG]);

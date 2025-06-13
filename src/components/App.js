@@ -13,7 +13,8 @@ import {useStateMachine} from "little-state-machine";
 function App() {
 
     const {actions, state} = useStateMachine({});
-    const [globalLanguage, setGlobalLanguage] = useState(state['language'] || 'en');
+    //const [globalLanguage, setGlobalLanguage] = useState(state['language'] || 'en');
+    const [globalLanguage, setGlobalLanguage] = useState(state['language'] || 'Korean');
     const textDirection = (globalLanguage === 'arb') ? "rtl" : "ltr";
     return (
         <div className="App Theme-Background" dir={textDirection}>

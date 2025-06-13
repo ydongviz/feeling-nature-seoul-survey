@@ -2,7 +2,7 @@ import {createStore, StateMachineProvider} from "little-state-machine";
 
 export function create_global_store() {
     createStore({
-        'language': 'eng',
+        'language': 'Korean',
     }, {
         name: 'SurveyData',
         middleWares: [],
