@@ -41,8 +41,8 @@ export const LOCALE_TEXT = {
         'Korean': '1 | 서울에서 1년 이상 거주한 경험이 있습니까?',
     },
     'seoul-residency-description': {
-        'eng': 'After completing the survey, you will be able to come back and repeat it again.',
-        'Korean': '설문을 완료한 후, 언제든지 다시 돌아와서 설문을 반복할 수 있습니다.',
+        'eng': 'This survey is designed for people who have lived in Seoul for at least 1 year.',
+        'Korean': '이 설문조사는 서울에서 1년 이상 거주한 경험이 있는 분들을 대상으로 합니다. 양해해 주셔서 감사합니다.',
     },
     'seoul-residency-yes': {
         'eng': 'Yes',
@@ -123,8 +123,8 @@ export const LOCALE_TEXT = {
         'eng': 'Start Again',
         'Korean': '다시 시작하기',
     }, 'thank-you-form-description': {
-        'eng': 'Would you like to know more about Biophila? Get in touch with us!',
-        'Korean': 'Biophila에 대해 더 알고 싶으신가요? 저희에게 연락해 주세요!',
+        'eng': 'Would you like to know more about this research? Get in touch with us!',
+        'Korean': '이 연구에 대해 더 알고 싶으신가요? 저희에게 연락해 주세요!',
     }, 'thank-you-form-full-name': {
         'eng': 'Full Name',
         'Korean': '이름',
