@@ -32,6 +32,7 @@ export function ThankYouPage() {
     const [message, setMessage] = useState("");
 
     const submitContactInfo = () => {
+        e.preventDefault();
         const _data = {
             name: name, 
             email: email, 
@@ -85,12 +86,6 @@ export function ThankYouPage() {
             <h1 className="title-text title-text-h1 thank-you-title-text-h1">
                 {locale_text(lang, 'thank-you-title')}
             </h1>
-            <p className="thank-you-description-text">
-                {locale_text(lang, 'thank-you-description')}
-            </p>
-            <ReturnButton>
-                {locale_text(lang, 'thank-you-button-start-again')}
-            </ReturnButton>
         </div>
         <div>
             <p className="thank-you-description-text">
