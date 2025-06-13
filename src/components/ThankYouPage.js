@@ -46,7 +46,7 @@ export function ThankYouPage() {
         axios.post('/api/contact', data)
             .then(response => {
                 console.log('Contact info sent successfully:', response.data);
-                alert('Thank you for your message! We will get back to you soon.');
+                //alert('Thank you for your message! We will get back to you soon.');
                 // Clear the form
                 setName("");
                 setEmail("");
@@ -54,7 +54,7 @@ export function ThankYouPage() {
             })
             .catch(error => {
                 console.error('Contact form submission failed:', error);
-                alert('Message failed to send. Please try again.');
+                //alert('Message failed to send. Please try again.');
             });
     };
 
