@@ -17,7 +17,7 @@ export const LOCALE_TEXT = {
         'eng': 'Feeling Nature Seoul',
         'Korean': '필링 네이처 서울',
     }, 'home-page-subtitle': {
-        'eng': 'Measuring Biophilic perception using Visual AI',
+        'eng': 'Measuring how people perceive nature in Seoul',
         'Korean': '비주얼 AI로 바이오필리아 인식 측정하기',
     }, 'home-page-description': {
         'eng': (<>
