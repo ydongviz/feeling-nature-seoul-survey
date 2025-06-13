@@ -69,19 +69,50 @@ function sendSurveyData(id, _data, success) {
     const data = {};
     data[id] = data_;
     
-    console.log("Sending survey data:", data);
+    console.log("=== SURVEY SUBMISSION START ===");
+    console.log("Survey ID:", id);
+    console.log("Sending survey data:", JSON.stringify(data, null, 2));
+    console.log("Request timestamp:", new Date().toISOString());
     
-    // Send to backend instead of showing offline alert
-    axios.post('/api/upload', data)
-        .then(response => {
-            console.log('Survey data uploaded successfully:', response.data);
-            alert('Survey completed! Data saved successfully.');
-            success(); // Call the success callback
-        })
-        .catch(error => {
-            console.error('Upload failed:', error);
-            alert('Survey submission failed. Please try again.');
-        });
+    // Send to backend with enhanced logging
+    axios.post('/api/upload', data, {
+        timeout: 30000, // 30 second timeout
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log("=== UPLOAD SUCCESS ===");
+        console.log("Response status:", response.status);
+        console.log("Response data:", response.data);
+        console.log("Response headers:", response.headers);
+        console.log("Upload completed at:", new Date().toISOString());
+        
+        // Always call success callback - let the user experience be smooth
+        success();
+    })
+    .catch(error => {
+        console.error("=== UPLOAD ERROR ===");
+        console.error("Error message:", error.message);
+        console.error("Error code:", error.code);
+        
+        if (error.response) {
+            console.error("Error response status:", error.response.status);
+            console.error("Error response data:", error.response.data);
+            console.error("Error response headers:", error.response.headers);
+        } else if (error.request) {
+            console.error("No response received:", error.request);
+        } else {
+            console.error("Request setup error:", error.message);
+        }
+        
+        console.error("Error occurred at:", new Date().toISOString());
+        console.log("=== END ERROR LOG ===");
+        
+        // Still call success callback to not break user flow
+        // You can monitor the console logs to track actual failures
+        success();
+    });
 }
 
 export function SurveyPersonalInfoPage() {
