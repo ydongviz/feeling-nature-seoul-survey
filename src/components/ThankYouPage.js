@@ -31,8 +31,7 @@ export function ThankYouPage() {
     const [email, setEmail] = useState("");
     const [message, setMessage] = useState("");
 
-    const submitContactInfo = () => {
-        //e.preventDefault();
+    /*const submitContactInfo = () => {
         const _data = {
             name: name, 
             email: email, 
@@ -47,7 +46,7 @@ export function ThankYouPage() {
         axios.post('/api/contact', data)
             .then(response => {
                 console.log('Contact info sent successfully:', response.data);
-                //alert('Thank you for your message! We will get back to you soon.');
+                alert('Thank you for your message! We will get back to you soon.');
                 // Clear the form
                 setName("");
                 setEmail("");
@@ -55,7 +54,73 @@ export function ThankYouPage() {
             })
             .catch(error => {
                 console.error('Contact form submission failed:', error);
-                //alert('Message failed to send. Please try again.');
+                alert('Message failed to send. Please try again.');
+            });
+    };*/
+    const submitContactInfo = () => {
+        const _data = {
+            name: name, 
+            email: email, 
+            message: message
+        };
+        const data = {};
+        data[surveyid] = _data;
+    
+        console.log("🚀 Sending contact info:", data);
+        
+        // Send to backend with detailed debugging
+        axios.post('/api/contact', data)
+            .then(response => {
+                // SUCCESS CASE - Check what we're actually getting
+                console.log("✅ SUCCESS - Full response object:", response);
+                console.log("✅ Response status:", response.status);
+                console.log("✅ Response data:", response.data);
+                console.log("✅ Response headers:", response.headers);
+                
+                // Check if it's actually successful
+                if (response.status === 200 || response.status === 201) {
+                    alert('Thank you for your message! We will get back to you soon.');
+                    // Clear the form
+                    setName("");
+                    setEmail("");
+                    setMessage("");
+                } else {
+                    console.error("❌ Unexpected success status:", response.status);
+                    alert(`Unexpected response status: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                // ERROR CASE - Check what's really happening
+                console.error("❌ CAUGHT ERROR:", error);
+                console.error("❌ Error message:", error.message);
+                console.error("❌ Error code:", error.code);
+                
+                if (error.response) {
+                    // Server responded with error status
+                    console.error("❌ Error response status:", error.response.status);
+                    console.error("❌ Error response data:", error.response.data);
+                    console.error("❌ Error response headers:", error.response.headers);
+                    console.error("❌ Full error response:", error.response);
+                    
+                    // CHECK: Is this actually a success disguised as an error?
+                    if (error.response.status === 200 || error.response.data?.success === true) {
+                        console.log("🔄 FALSE ALARM: This is actually a success!");
+                        alert('Thank you for your message! We will get back to you soon.');
+                        setName("");
+                        setEmail("");
+                        setMessage("");
+                    } else {
+                        alert(`Message failed to send. Status: ${error.response.status}. Please try again.`);
+                    }
+                } else if (error.request) {
+                    // Network error
+                    console.error("❌ Network error - no response received:", error.request);
+                    alert('Network error - please check your connection and try again.');
+                } else {
+                    // Request setup error
+                    console.error("❌ Request setup error:", error.message);
+                    alert('Message failed to send. Please try again.');
+                }
             });
     };
 
