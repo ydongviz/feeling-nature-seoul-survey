@@ -22,7 +22,7 @@ export function ThankYouPage() {
     const lang = state['language'] || DEFAULT_LANG;
 
     // Add debug line to see what's happening
-    console.log("ThankYou Page - Current language:", lang, "Full state:", state);
+    //console.log("ThankYou Page - Current language:", lang, "Full state:", state);
 
     // Check if user is not eligible (answered "No" to residency)
     const isNotEligible = surveyid === 'not-eligible';
