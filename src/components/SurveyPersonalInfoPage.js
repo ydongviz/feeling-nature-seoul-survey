@@ -69,10 +69,10 @@ function sendSurveyData(id, _data, success) {
     const data = {};
     data[id] = data_;
     
-    console.log("=== SURVEY SUBMISSION START ===");
-    console.log("Survey ID:", id);
-    console.log("Sending survey data:", JSON.stringify(data, null, 2));
-    console.log("Request timestamp:", new Date().toISOString());
+    //console.log("=== SURVEY SUBMISSION START ===");
+    //console.log("Survey ID:", id);
+    //console.log("Sending survey data:", JSON.stringify(data, null, 2));
+    //console.log("Request timestamp:", new Date().toISOString());
     
     // Send to backend with enhanced logging
     axios.post('/api/upload', data, {
@@ -85,8 +85,8 @@ function sendSurveyData(id, _data, success) {
         console.log("=== UPLOAD SUCCESS ===");
         console.log("Response status:", response.status);
         console.log("Response data:", response.data);
-        console.log("Response headers:", response.headers);
-        console.log("Upload completed at:", new Date().toISOString());
+        //console.log("Response headers:", response.headers);
+        //console.log("Upload completed at:", new Date().toISOString());
         
         // Always call success callback - let the user experience be smooth
         success();
@@ -128,7 +128,7 @@ export function SurveyPersonalInfoPage() {
     const {actions, state} = useStateMachine({
         simpleUpdate: (state, payload) => ({...state, ...payload}), 
         resetStateMachine: (state, payload) => {
-            console.log("ResetPreviousState", state);
+            //console.log("ResetPreviousState", state);
             return {};
         },
     });

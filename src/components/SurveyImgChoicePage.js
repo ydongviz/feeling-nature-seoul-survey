@@ -124,7 +124,7 @@ export function SurveyImgChoicePage() {
         return `/images/${value}`;
     });
     
-    console.log('Loading images:', leftImagePath, rightImagePath); // Debug log
+    //console.log('Loading images:', leftImagePath, rightImagePath); 
 
     // Field names for saving responses
     const formFieldCity = `${surveyid}/city`;
