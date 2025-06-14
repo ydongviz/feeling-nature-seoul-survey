@@ -125,7 +125,7 @@ export function ThankYouPage() {
     };
 
     // Handle not eligible case
-    /*if (isNotEligible) {
+    if (isNotEligible) {
         return (
             <div className="container-page-mid-root">
                 <div>
@@ -143,62 +143,7 @@ export function ThankYouPage() {
                 </div>
             </div>
         );
-    }*/
-
-    // Handle not eligible case with both Start Again and Leave buttons
-if (isNotEligible) {
-    const handleLeave = () => {
-        // Close the current tab/window
-        window.close();
-        
-        // Fallback: If window.close() doesn't work (some browsers block it),
-        // try to go back in history or redirect to a blank page
-        setTimeout(() => {
-            if (!window.closed) {
-                // Try going back in browser history
-                if (window.history.length > 1) {
-                    window.history.back();
-                } else {
-                    // Last resort: redirect to about:blank
-                    window.location.href = 'about:blank';
-                }
-            }
-        }, 100);
-    };
-
-    return (
-        <div className="container-page-mid-root">
-            <div>
-                <h1 className="title-text title-text-h1 thank-you-title-text-h1">
-                    {locale_text(lang, 'thank-you-not-eligible-title')}
-                </h1>
-                <p className="thank-you-description-text">
-                    {locale_text(lang, 'thank-you-not-eligible-description')}
-                </p>
-                
-                {/* Button container for side-by-side layout */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px' }}>
-                    {/* Original Start Again button */}
-                    <Link to="/">
-                        <button className="button-generic thankyou-button">
-                            {locale_text(lang, 'thank-you-button-start-again')}
-                        </button>
-                    </Link>
-                    
-                    {/* New Leave button */}
-                    <button 
-                        className="button-generic thankyou-button"
-                        onClick={handleLeave}
-                    >
-                        {lang === 'Korean' ? '나가기' : 'Leave'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
- 
+    }
 
     // Regular thank you page (using original structure)
     return (<div className="container-page-mid-root">

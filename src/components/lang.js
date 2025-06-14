@@ -24,8 +24,8 @@ export const LOCALE_TEXT = {
             You're invited to participate in a brief research survey on how people perceive and value nature in Seoul. It takes <span style={{color: '#598112', fontWeight: '600'}}>3–5 minutes</span> to complete. 
             Participation is voluntary, responses are anonymous, and all data will be used solely for scientific research.
         </>), 'Korean': (<>
-            서울에서 사람들이 자연을 어떻게 인식하고 가치 있게 여기는지를 알아보기 위한 간단한 연구 설문에 참여해 주세요. 설문은 <span style={{color: '#598112', fontWeight: '600'}}>3–5분</span> 정도 소요됩니다.  
-            참여는 자발적이며, 응답은 익명으로 처리됩니다. 모든 데이터는 오직 학술 연구 목적으로만 사용됩니다.  
+            서울에서 사람들이 자연을 어떻게 인식하고 소중하게 여기는지 알아보기 위한 간단한 설문 조사에 참여해 주세요. 설문은 약 <span style={{color: '#598112', fontWeight: '600'}}>3–5분</span> 정도 소요됩니다. 
+            참여는 자발적이고 응답은 익명으로 처리되며, 모든 결과는 오직 학술 연구 목적으로만 사용됩니다. 
         </>), 
     }, 'home-page-button-start-survey': {
         'eng': 'Start',
@@ -59,23 +59,23 @@ export const LOCALE_TEXT = {
         'Korean': '관심을 가져주셔서 감사합니다!',
     },
     'thank-you-not-eligible-description': {
-        'eng': 'This survey is designed for people who have lived in Seoul for at least 1 year. Thank you for your understanding.',
-        'Korean': '이 설문조사는 서울에서 1년 이상 거주한 경험이 있는 분들을 대상으로 합니다. 양해해 주셔서 감사합니다.',
+        'eng': 'This survey is designed for people who have lived in Seoul for at least 1 year. You can close the page to leave or use the button below to restart. Thank you for your understanding.',
+        'Korean': '이 설문조사는 서울에서 1년 이상 거주한 경험이 있는 분들을 대상으로 합니다. 나가시려면 페이지를 닫거나 아래 버튼으로 다시 시작하실 수 있습니다. 양해해 주셔서 감사합니다.',
     },
 
     // SurveyImgChoicePage
     'survey-img-choice-title': {
         'eng': 'Which image brings you more positive feelings?',
-        'Korean': '어떤 이미지가 더 긍정적인 감정을 불러일으키나요?',
+        'Korean': '어느 이미지가 더 긍정적인 느낌을 가져다주나요?',
     }, 'survey-img-choice-comment-box-question': {
         'eng': 'Which elements and aspects of the selected image bring you more positive feelings?',
-        'Korean': '선택한 이미지의 어떤 요소나 측면이 긍정적인 감정을 불러일으켰나요?',
+        'Korean': '선택한 이미지의 어떤 요소나 측면이 긍정적인 느낌을 주었나요?',
     }, 'survey-img-choice-submit-button': {
         'eng': 'Next', 'Korean': '다음', 
     },
     'survey-img-choice-comment-placeholder': {
         'eng': 'Please comment on your choice',
-        'Korean': '선택한 이유를 간단히 설명해 주세요',
+        'Korean': '선택한 이유를 간단히 설명해주세요',
     },
 
     'survey-img-choice-button-left': {
@@ -85,7 +85,7 @@ export const LOCALE_TEXT = {
         'eng': 'Right', 'Korean': '오른쪽', 
     },
     'survey-img-choice-loading-text': {
-        'eng': 'Loading', 'Korean': '로딩 중', 
+        'eng': 'Loading', 'Korean': '로딩 중',  
 
     },
 
@@ -118,7 +118,7 @@ export const LOCALE_TEXT = {
         'Korean': '참여해 주셔서 감사합니다!',
     }, 'thank-you-description': {
         'eng': 'Return to the homepage to take the survey again if you would like to contribute more to this research.',
-        'Korean': '이 연구에 더 기여하고 싶으시면, 홈페이지로 돌아가서 설문을 다시 진행해 주세요.',
+        'Korean': '이 연구에 더 기여하고 싶으시면, 처음으로 돌아가서 설문을 다시 진행해 주세요.',
     }, 'thank-you-button-start-again': {
         'eng': 'Start Again',
         'Korean': '다시 시작하기',
