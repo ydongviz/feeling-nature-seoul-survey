@@ -32,7 +32,7 @@ export function ThankYouPage() {
     const [message, setMessage] = useState("");
 
     const submitContactInfo = () => {
-        e.preventDefault();
+        //e.preventDefault();
         const _data = {
             name: name, 
             email: email, 
