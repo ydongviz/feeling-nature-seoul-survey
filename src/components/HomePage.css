@@ -1,3 +1,7 @@
+/* ================================================
+   HOMEPAGE STYLES - COMPLETE UPDATED VERSION
+   ================================================ */
+
 /* ===== LAYOUT CONTAINERS ===== */
 .page-container {
     width: 100%;
@@ -505,13 +509,13 @@ ul.navbar li:hover a::after {
     .subtitle {
         font-size: 1.2rem;
         margin-top: 20px;
-        text-align: center; /* IMPROVED: Center align for better mobile UX */
+        text-align: left; /* FIXED: Keep left alignment as intended */
     }
     
     .description-text {
         font-size: 14px;
         margin-bottom: 20px;
-        text-align: center; /* IMPROVED: Center align for better mobile UX */
+        text-align: left; /* FIXED: Keep left alignment as intended */
         line-height: 1.5; /* IMPROVED: Better line height for mobile reading */
     }
     
