@@ -450,11 +450,13 @@ ul.navbar li:hover a::after {
         text-align: left;
         padding: 15px 0 0 0;
         position: relative;
+        margin-bottom: 25px; /* IMPROVED: Better spacing below header */
+        margin-top: 35px;
     }
     
     .header-logo {
         position: absolute;
-        left: 20px;
+        left: 15px; /* IMPROVED: Better alignment with page padding */
         top: 35px;
         order: unset;
     }
@@ -484,30 +486,44 @@ ul.navbar li:hover a::after {
     
     ul.navbar li {
         font-size: 14px;
+        padding: 5px; /* IMPROVED: Better touch area */
+        margin: 0 2px; /* IMPROVED: Small spacing between items */
     }
     
     ul.navbar li a {
         font-size: 15px;
+        padding: 5px 8px; /* IMPROVED: Better touch target */
+        border-radius: 4px; /* IMPROVED: Subtle rounded corners */
+        transition: all 0.3s ease;
+    }
+    
+    /* IMPROVED: Better mobile hover/active states */
+    ul.navbar li:active a {
+        background-color: rgba(105, 152, 21, 0.1); /* IMPROVED: Touch feedback */
     }
     
     .subtitle {
         font-size: 1.2rem;
         margin-top: 20px;
+        text-align: center; /* IMPROVED: Center align for better mobile UX */
     }
     
     .description-text {
         font-size: 14px;
         margin-bottom: 20px;
+        text-align: center; /* IMPROVED: Center align for better mobile UX */
+        line-height: 1.5; /* IMPROVED: Better line height for mobile reading */
     }
     
     .homepage-button {
-        margin: 20px 0;
+        margin: 20px auto; /* FIXED: Center the button properly */
         padding: 10px 30px;
+        display: block; /* FIXED: Block display for proper centering */
     }
     
     .content-wrapper {
-        margin-top: 40px;
-        padding: 0 0px;
+        margin-top: 30px; /* IMPROVED: Better flow from header */
+        padding: 0 15px; /* FIXED: Match page-container padding for proper alignment */
     }
     
     /* SIMPLIFIED: Mobile footer - reposition existing divs */
@@ -539,10 +555,10 @@ ul.navbar li:hover a::after {
         height: 20px;
     }
     
-    /* Floating dots mobile adjustments */
+    /* IMPROVED: Better dots masking to avoid header interference */
     .floating-dots-container {
-        -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 10%, black 10%, black 100%);
-        mask: linear-gradient(to bottom, transparent 0%, transparent 10%, black 10%, black 100%);
+        -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 12%, black 15%, black 100%);
+        mask: linear-gradient(to bottom, transparent 0%, transparent 12%, black 15%, black 100%);
     }
     
     .floating-dot.tiny {
@@ -569,29 +585,65 @@ ul.navbar li:hover a::after {
         width: 12px;
         height: 12px;
     }
+    
+    /* IMPROVED: Better focus states for mobile */
+    .homepage-button:focus {
+        outline: 2px solid var(--primary-color); /* IMPROVED: Clear focus indicator */
+        outline-offset: 2px;
+    }
+    
+    ul.navbar li a:focus {
+        outline: 2px solid var(--primary-color); /* IMPROVED: Navigation focus states */
+        outline-offset: 1px;
+    }
+    
+    .header-logo:focus,
+    .main-title:focus {
+        outline: 2px solid var(--primary-color); /* IMPROVED: Header focus states */
+        outline-offset: 2px;
+    }
 }
 
 /* Small Mobile */
 @media (max-width: 480px) {
+    .page-container {
+        padding: 0 10px; /* FIXED: Match content-wrapper padding for consistency */
+    }
+    
+    .header-container {
+        margin-bottom: 20px; /* IMPROVED: Tighter spacing on small screens */
+        margin-top: 30px; /* IMPROVED: Fit more content */
+    }
+    
+    .header-logo {
+        left: 10px; /* IMPROVED: Align with page container padding */
+        top: 30px;
+    }
+    
     .main-title {
         font-size: 0.8em;
         animation-duration: 12s;
     }
     
     .subtitle {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
+        margin-bottom: 15px; /* IMPROVED: Tighter spacing on small screens */
     }
     
     ul.navbar li {
-        font-size: 15px;
+        font-size: 13px;
+        padding: 4px; /* IMPROVED: Smaller touch area for very small screens */
     }
     
     ul.navbar li a {
-        font-size: 15px;
+        font-size: 14px;
+        padding: 4px 6px; /* IMPROVED: Smaller but still touchable */
     }
     
     .description-text {
-        font-size: 15px;
+        font-size: 13px;
+        margin-bottom: 20px;
+        line-height: 1.4; /* IMPROVED: Slightly tighter for small screens */
     }
     
     .header-logo-image {
@@ -600,7 +652,7 @@ ul.navbar li:hover a::after {
     }
     
     ul.navbar {
-        gap: 20px;
+        gap: 10px; /* IMPROVED: Tighter spacing to fit better */
     }
     
     .logo-container {
@@ -614,6 +666,23 @@ ul.navbar li:hover a::after {
     .home-org-icon,
     .right-corner-logo {
         height: 18px;
+    }
+    
+    .homepage-button {
+        margin: 20px auto;
+        padding: 12px 25px; /* IMPROVED: Slightly smaller but still good touch target */
+        font-size: 16px; /* IMPROVED: Better mobile font size */
+    }
+    
+    .content-wrapper {
+        margin-top: 25px; /* IMPROVED: Maximize content area */
+        padding: 0 10px; /* KEEP: Your current setting, but now matches page container */
+    }
+    
+    /* IMPROVED: More conservative masking on very small screens */
+    .floating-dots-container {
+        -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 15%, black 18%, black 100%);
+        mask: linear-gradient(to bottom, transparent 0%, transparent 15%, black 18%, black 100%);
     }
 }
 
