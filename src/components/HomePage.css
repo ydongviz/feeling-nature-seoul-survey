@@ -238,7 +238,7 @@ ul.navbar li:hover a::after {
 }
 
 .right-corner-logo {
-    height: 22px;
+    height: 20px;
     width: auto;
     transition: all 0.3s ease;
 }
