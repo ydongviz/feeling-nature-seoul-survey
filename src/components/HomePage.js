@@ -221,16 +221,6 @@ export function HomePage({setGlobalLanguage}) {
 
             {/* Footer with clickable logos */}
             <footer className="footer-container">
-               <div className="footer-left-logo">
-                    <a 
-                        href="https://www.mit.edu/" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="footer-left-logo-link"
-                    >
-                    <img className="left-corner-logo" src="/mit_logo.svg" alt="Left Logo" />
-                    </a>
-                </div>
                 <div className="logo-container">
                     <a 
                         href="https://senseable.mit.edu/" 
@@ -249,6 +239,20 @@ export function HomePage({setGlobalLanguage}) {
                         <img className="home-org-icon" src="/org-kaist.svg" alt="KAIST" />
                     </a>
                 </div>
+
+                  {/* New right corner logo */}
+
+                <div className="footer-right-logo">
+                    <a 
+                        href="https://www.mit.edu/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="footer-right-logo-link"
+                    >
+                    <img className="right-corner-logo" src="/mit_logo.svg" alt="Left Logo" />
+                    </a>
+                </div>
+                
             </footer>
         </div>
     );

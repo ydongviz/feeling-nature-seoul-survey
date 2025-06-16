@@ -194,35 +194,13 @@ ul.navbar li:hover a::after {
 /* Footer styles */
 .footer-container {
     display: flex;
-    justify-content: space-between; 
+    justify-content: flex-start; 
     align-items: center;
     width: 100%;
     padding: 30px 0;
     margin-top: auto;
     position: relative;
     z-index: 2;
-}
-
-
-.footer-left-logo {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto; 
-}
-
-.footer-left-logo-link {
-    display: inline-block;
-    transition: opacity 0.3s ease;
-}
-
-.footer-left-logo-link:hover {
-    opacity: 0.8;
-}
-
-.left-corner-logo {
-    height: 22px;
-    width: auto;
-    transition: all 0.3s ease;
 }
 
 
@@ -236,6 +214,30 @@ ul.navbar li:hover a::after {
 }
 
 .home-org-icon {
+    height: 22px;
+    width: auto;
+    transition: all 0.3s ease;
+}
+
+/* New right corner logo styles */
+.footer-right-logo {
+    display: flex;
+    align-items: center;
+    position: static;
+    right: 0px;
+    bottom: auto;
+}
+
+.footer-right-logo-link {
+    display: inline-block;
+    transition: opacity 0.3s ease;
+}
+
+.footer-right-logo-link:hover {
+    opacity: 0.8;
+}
+
+.right-corner-logo {
     height: 22px;
     width: auto;
     transition: all 0.3s ease;
@@ -661,42 +663,35 @@ ul.navbar li:hover a::after {
 /* Mobile responsiveness for footer */
 @media (max-width: 768px) {
     .footer-container {
-        justify-content: space-between;
+        justify-content: center; /* Keep original mobile behavior */
         padding: 15px 0;
-        flex-wrap: wrap; 
-        gap: 10px;
-    }
-    
-    .footer-left-logo {
-        order: 1; 
     }
     
     .logo-container {
-        order: 2; 
         margin-left: 0;
-        position: static; 
+        position: relative; /* Keep original mobile positioning */
         bottom: auto;
     }
     
-    .left-corner-logo,
+    .footer-right-logo {
+        position: absolute;
+        right: 20px;
+        bottom: 15px;
+    }
+    
+    .right-corner-logo,
     .home-org-icon {
         height: 20px;
     }
 }
 
 @media (max-width: 480px) {
-    .footer-container {
-        flex-direction: column; 
-        gap: 15px;
-        text-align: center;
+    .footer-right-logo {
+        right: 15px;
+        bottom: 15px;
     }
     
-    .footer-left-logo,
-    .logo-container {
-        order: unset;
-    }
-    
-    .left-corner-logo,
+    .right-corner-logo,
     .home-org-icon {
         height: 18px;
     }
