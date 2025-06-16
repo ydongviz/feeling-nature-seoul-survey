@@ -1,4 +1,4 @@
-import {React, useState, useEffect} from "react";
+import {React, useState, useEffect, useRef} from "react";
 import {useStateMachine} from "little-state-machine";
 import {Link} from "react-router-dom";
 import './theme.css';
@@ -21,36 +21,32 @@ export function HomePage({setGlobalLanguage}) {
         window.open('https://senseable.mit.edu/feeling-nature/', '_blank', 'noopener,noreferrer');
     };
 
-    // Enhanced floating dots effect with 1000+ dots
+    // FIXED: Enhanced floating dots effect with memory management
     useEffect(() => {
         const createFloatingDots = () => {
             const container = document.querySelector('.floating-dots-container');
             if (!container) return;
 
-            // More visible nature-inspired colors with better opacity
+            // FIXED: Limit maximum dots to prevent memory issues
+            const MAX_DOTS = 30; // Reduced from unlimited
+            let activeDots = 0;
+            let intervalIds = [];
+
+            // Nature-inspired colors (same as before)
             const colors = [
-                '#78a429', // Primary green (from your theme)
-                '#95C11F', // Lighter primary green
-                '#A8D5A8', // Soft green
-                '#B8E6B8', // Light green
-                '#87B987', // Medium green
-                '#9FCC9F', // Soft medium green
-                '#C8F7C8', // Very light green
-                '#6B8E23', // Olive green
-                '#8FBC8F', // Dark sea green
-                '#90EE90', // Light green
-                '#98FB98', // Pale green
-                '#ADFF2F', // Green yellow
-                '#7CFC00', // Lawn green
-                '#00FF7F', // Spring green
-                '#00FA9A'  // Medium spring green
+                '#78a429', '#95C11F', '#A8D5A8', '#B8E6B8', '#87B987',
+                '#9FCC9F', '#C8F7C8', '#6B8E23', '#8FBC8F', '#90EE90',
+                '#98FB98', '#ADFF2F', '#7CFC00', '#00FF7F', '#00FA9A'
             ];
 
             const sizes = ['tiny', 'small', 'medium', 'large', 'extra-large'];
-            const dotPool = []; // Reuse dots for better performance
 
             const createDot = () => {
+                // FIXED: Check limit before creating new dots
+                if (activeDots >= MAX_DOTS) return;
+                
                 const dot = document.createElement('div');
+                activeDots++; // Increment counter
                 
                 // Random size with weighted distribution (more small dots)
                 const sizeRandom = Math.random();
@@ -68,7 +64,7 @@ export function HomePage({setGlobalLanguage}) {
                     dot.className += ' pulse';
                 }
                 
-                // Random color with some transparency
+                // Random color
                 const color = colors[Math.floor(Math.random() * colors.length)];
                 dot.style.backgroundColor = color;
                 
@@ -80,69 +76,67 @@ export function HomePage({setGlobalLanguage}) {
                 const drift = (Math.random() - 0.5) * 200; // -100px to +100px
                 dot.style.setProperty('--drift', drift + 'px');
                 
-                // Random animation duration (5-25 seconds)
-                const duration = 5 + Math.random() * 20;
+                // Random animation duration (8-20 seconds) - REDUCED range
+                const duration = 8 + Math.random() * 12;
                 dot.style.animationDuration = duration + 's';
                 
                 // Random delay before starting
-                const delay = Math.random() * 10;
+                const delay = Math.random() * 5; // REDUCED delay
                 dot.style.animationDelay = delay + 's';
                 
-                container.appendChild(dot);
+                // FIXED: Safe DOM manipulation
+                if (container) {
+                    container.appendChild(dot);
+                }
                 
-                // Remove dot after animation completes - Fixed to avoid React DOM errors
-                setTimeout(() => {
-                    if (container && dot && dot.parentNode === container) {
+                // FIXED: Enhanced cleanup with counter management
+                const cleanup = () => {
+                    if (container && dot && container.contains(dot)) {
                         try {
                             container.removeChild(dot);
+                            activeDots--; // Decrement counter
                         } catch (error) {
-                            // Silently handle case where dot was already removed
-                            console.log('Dot already removed or container changed');
+                            // Silently handle removal errors
+                            activeDots = Math.max(0, activeDots - 1);
                         }
                     }
-                }, (duration + delay) * 1000);
+                };
+
+                setTimeout(cleanup, (duration + delay) * 1000);
             };
 
-            // Create many initial dots immediately
-            const initialDotCount = 100;
+            // FIXED: Dramatically reduced dot creation frequency
+            // Create initial dots (fewer than before)
+            const initialDotCount = 15; // Reduced from 100
             for (let i = 0; i < initialDotCount; i++) {
-                setTimeout(() => createDot(), i * 20); // Stagger creation slightly
+                setTimeout(() => createDot(), i * 100); // Stagger creation
             }
 
-            // Continue creating dots very frequently
-            const intervals = [];
+            // FIXED: Much slower and fewer dot creation intervals
+            // Create 1 dot every 3 seconds instead of 5 dots every 0.5 seconds
+            intervalIds.push(setInterval(createDot, 3000));
             
-            // Fast creation interval - many dots
-            intervals.push(setInterval(() => {
-                for (let i = 0; i < 5; i++) {
-                    createDot();
-                }
-            }, 500)); // Every 0.5 seconds, create 5 dots
+            // Create additional dots occasionally
+            intervalIds.push(setInterval(createDot, 5000));
 
-            // Medium creation interval
-            intervals.push(setInterval(() => {
-                for (let i = 0; i < 3; i++) {
-                    createDot();
-                }
-            }, 1000)); // Every 1 second, create 3 dots
-
-            // Slower creation interval for variety
-            intervals.push(setInterval(() => {
-                createDot();
-            }, 200)); // Every 0.2 seconds, create 1 dot
-
-            // Cleanup function - Enhanced to prevent React DOM errors
+            // FIXED: Enhanced cleanup function
             return () => {
-                intervals.forEach(interval => clearInterval(interval));
+                // Clear all intervals
+                intervalIds.forEach(interval => clearInterval(interval));
+                
+                // Clear all dots safely
                 if (container) {
-                    // Clear all dots safely
                     try {
-                        while (container.firstChild) {
-                            container.removeChild(container.firstChild);
-                        }
+                        const dots = container.querySelectorAll('.floating-dot');
+                        dots.forEach(dot => {
+                            if (container.contains(dot)) {
+                                container.removeChild(dot);
+                            }
+                        });
+                        activeDots = 0; // Reset counter
                     } catch (error) {
-                        // If container is already cleared or unmounted, ignore error
-                        console.log('Container already cleared');
+                        // If container is already cleared, just reset counter
+                        activeDots = 0;
                     }
                 }
             };
@@ -240,8 +234,7 @@ export function HomePage({setGlobalLanguage}) {
                     </a>
                 </div>
 
-                  {/* New right corner logo */}
-
+                {/* New right corner logo */}
                 <div className="footer-right-logo">
                     <a 
                         href="https://www.mit.edu/" 
@@ -249,10 +242,9 @@ export function HomePage({setGlobalLanguage}) {
                         rel="noopener noreferrer"
                         className="footer-right-logo-link"
                     >
-                    <img className="right-corner-logo" src="/mit_logo.svg" alt="Left Logo" />
+                        <img className="right-corner-logo" src="/mit_logo.svg" alt="MIT Logo" />
                     </a>
                 </div>
-                
             </footer>
         </div>
     );

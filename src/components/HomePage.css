@@ -523,7 +523,7 @@ ul.navbar li:hover a::after {
     }
 }
 
-/* UPDATED FLOATING DOTS - Mask the top area to prevent any dots from showing */
+/* UPDATED FLOATING DOTS - Optimized for better performance */
 .floating-dots-container {
     position: fixed;
     top: 0;
@@ -533,9 +533,12 @@ ul.navbar li:hover a::after {
     pointer-events: none;
     z-index: 1; /* Behind content but visible everywhere */
     overflow: hidden;
-    /* Add mask to hide any dots that might reach the top 5% of screen */
+    /* KEEP ORIGINAL: Add mask to hide any dots that might reach the top 5% of screen */
     -webkit-mask: linear-gradient(to bottom, transparent 0%, transparent 5%, black 5%, black 100%);
     mask: linear-gradient(to bottom, transparent 0%, transparent 5%, black 5%, black 100%);
+    /* ADDED: Hardware acceleration for better performance */
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .floating-dot {
@@ -543,12 +546,17 @@ ul.navbar li:hover a::after {
     border-radius: 50%;
     opacity: 0.7;
     animation: floatUpDown linear infinite;
+    /* ADDED: Hardware acceleration for smoother animations */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    /* ADDED: Contain layout to improve performance */
+    contain: layout style paint;
 }
 
-/* Updated animation - dots fade out well before reaching top */
+/* OPTIMIZED: More efficient animation with better performance */
 @keyframes floatUpDown {
     0% {
-        transform: translateY(110vh) translateX(0) rotate(0deg);
+        transform: translate3d(0, 110vh, 0) rotate(0deg); /* Use translate3d for hardware acceleration */
         opacity: 0;
     }
     5% {
@@ -556,35 +564,35 @@ ul.navbar li:hover a::after {
     }
     40% {
         opacity: 0.7;
-        transform: translateY(60vh) translateX(var(--drift)) rotate(120deg);
+        transform: translate3d(var(--drift), 60vh, 0) rotate(120deg);
     }
     60% {
         opacity: 0.5;
-        transform: translateY(40vh) translateX(calc(var(--drift) * 1.2)) rotate(200deg);
+        transform: translate3d(calc(var(--drift) * 1.2), 40vh, 0) rotate(200deg);
     }
     75% {
         opacity: 0.3;
-        transform: translateY(25vh) translateX(calc(var(--drift) * 1.5)) rotate(270deg);
+        transform: translate3d(calc(var(--drift) * 1.5), 25vh, 0) rotate(270deg);
     }
     85% {
         opacity: 0.1;
-        transform: translateY(15vh) translateX(calc(var(--drift) * 1.8)) rotate(310deg);
+        transform: translate3d(calc(var(--drift) * 1.8), 15vh, 0) rotate(310deg);
     }
     90% {
         opacity: 0.05;
-        transform: translateY(10vh) translateX(calc(var(--drift) * 2)) rotate(340deg);
+        transform: translate3d(calc(var(--drift) * 2), 10vh, 0) rotate(340deg);
     }
     95% {
         opacity: 0;
-        transform: translateY(5vh) translateX(calc(var(--drift) * 2.2)) rotate(360deg);
+        transform: translate3d(calc(var(--drift) * 2.2), 5vh, 0) rotate(360deg);
     }
     100% {
-        transform: translateY(-10vh) translateX(calc(var(--drift) * 2.5)) rotate(360deg);
+        transform: translate3d(calc(var(--drift) * 2.5), -10vh, 0) rotate(360deg);
         opacity: 0; /* Completely invisible well before top */
     }
 }
 
-/* Different sizes for variety */
+/* KEEP ORIGINAL: Different sizes for variety */
 .floating-dot.tiny {
     width: 2px;
     height: 2px;
@@ -610,7 +618,7 @@ ul.navbar li:hover a::after {
     height: 14px;
 }
 
-/* Pulse animation for some dots */
+/* KEEP ORIGINAL: Pulse animation for some dots */
 @keyframes pulse {
     0%, 100% {
         transform: scale(1);
@@ -626,7 +634,7 @@ ul.navbar li:hover a::after {
     animation: floatUpDown linear infinite, pulse 3s ease-in-out infinite;
 }
 
-/* Mobile adjustments */
+/* KEEP ORIGINAL: Mobile adjustments */
 @media (max-width: 768px) {
     .floating-dots-container {
         /* Hide top 10% on mobile for header area */
@@ -659,6 +667,21 @@ ul.navbar li:hover a::after {
         height: 12px;
     }
 }
+
+/* ADDED: Accessibility support for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .floating-dot {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        opacity: 0.2;
+    }
+    
+    .floating-dot.pulse {
+        animation: none !important;
+    }
+}
+
+
 
 /* Mobile responsiveness for footer */
 @media (max-width: 768px) {
