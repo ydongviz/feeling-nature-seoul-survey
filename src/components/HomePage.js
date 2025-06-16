@@ -251,7 +251,7 @@ export function HomePage({setGlobalLanguage}) {
                     >
                         <img className="right-corner-logo" src="/mit_logo.svg" alt="MIT Logo" />
                     </a>
-                </div>
+                </div>   
             </footer>
         </div>
     );
