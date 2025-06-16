@@ -22,8 +22,8 @@ export function HomePage({setGlobalLanguage}) {
     };
 
     // Enhanced floating dots effect with balanced performance and visibility
-useEffect(() => {
-    const createFloatingDots = () => {
+    useEffect(() => {
+        const createFloatingDots = () => {
         const container = document.querySelector('.floating-dots-container');
         if (!container) return;
 
@@ -145,9 +145,9 @@ useEffect(() => {
         };
     };
 
-    const cleanup = createFloatingDots();
-    return cleanup;
-}, []);
+           const cleanup = createFloatingDots();
+           return cleanup;
+    }, []);
 
  
 
