@@ -124,13 +124,13 @@ input::placeholder, textarea::placeholder {
     }
     
     .thank-you-title-text-h1 {
-        font-size: 1em;
-        text-align: center;
+        font-size: 1.2em;
+        text-align: left;
     }
     
     .thank-you-description-text {
-        font-size: 14px;
-        text-align: center;
+        font-size: 15px;
+        text-align: left;
     }
     
     input, textarea {
@@ -150,10 +150,10 @@ input::placeholder, textarea::placeholder {
 
 @media (max-width: 480px) {
     .thank-you-title-text-h1 {
-        font-size: 1em;
+        font-size: 1.2em;
     }
     
     .thank-you-description-text {
-        font-size: 13px;
+        font-size: 15px;
     }
 }
