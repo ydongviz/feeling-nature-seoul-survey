@@ -228,12 +228,12 @@ ul.navbar li:hover a::after {
     bottom: 40px;
 }
 
-.footer-right-logo-link {
+.footer-logo-link{
     display: inline-block;
     transition: opacity 0.3s ease;
 }
 
-.footer-right-logo-link:hover {
+.footer-logo-link:hover {
     opacity: 0.8;
 }
 
