@@ -208,8 +208,8 @@ ul.navbar li:hover a::after {
     display: flex;
     gap: 15px;
     align-items: center;
-    position: static;
-    bottom: auto;
+    position: absolute;
+    bottom: 40px;
     margin-left: 0px;
 }
 
@@ -223,9 +223,9 @@ ul.navbar li:hover a::after {
 .footer-right-logo {
     display: flex;
     align-items: center;
-    position: static;
+    position: absolute;
     right: 0px;
-    bottom: auto;
+    bottom: 40px;
 }
 
 .footer-right-logo-link {
