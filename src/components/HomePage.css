@@ -194,21 +194,44 @@ ul.navbar li:hover a::after {
 /* Footer styles */
 .footer-container {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between; 
     align-items: center;
     width: 100%;
-    padding: 20px 0;
-    margin-top: auto; /* Push to bottom */
+    padding: 30px 0;
+    margin-top: auto;
     position: relative;
     z-index: 2;
 }
+
+
+.footer-left-logo {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto; 
+}
+
+.footer-left-logo-link {
+    display: inline-block;
+    transition: opacity 0.3s ease;
+}
+
+.footer-left-logo-link:hover {
+    opacity: 0.8;
+}
+
+.left-corner-logo {
+    height: 22px;
+    width: auto;
+    transition: all 0.3s ease;
+}
+
 
 .logo-container {
     display: flex;
     gap: 15px;
     align-items: center;
-    position: absolute;
-    bottom:40px;
+    position: static;
+    bottom: auto;
     margin-left: 0px;
 }
 
@@ -220,11 +243,11 @@ ul.navbar li:hover a::after {
 
 /* Remove old styles */
 .home-footer-section {
-    display: none; /* Remove the old author section */
+    display: none; 
 }
 
 .grid-container {
-    display: none; /* Hide the old grid layout */
+    display: none; 
 }
 
 /* IMPROVED: Mobile responsiveness - Fix logo/title positioning */
@@ -632,5 +655,49 @@ ul.navbar li:hover a::after {
     .floating-dot.extra-large {
         width: 12px;
         height: 12px;
+    }
+}
+
+/* Mobile responsiveness for footer */
+@media (max-width: 768px) {
+    .footer-container {
+        justify-content: space-between;
+        padding: 15px 0;
+        flex-wrap: wrap; 
+        gap: 10px;
+    }
+    
+    .footer-left-logo {
+        order: 1; 
+    }
+    
+    .logo-container {
+        order: 2; 
+        margin-left: 0;
+        position: static; 
+        bottom: auto;
+    }
+    
+    .left-corner-logo,
+    .home-org-icon {
+        height: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .footer-container {
+        flex-direction: column; 
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .footer-left-logo,
+    .logo-container {
+        order: unset;
+    }
+    
+    .left-corner-logo,
+    .home-org-icon {
+        height: 18px;
     }
 }
