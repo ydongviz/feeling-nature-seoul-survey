@@ -22,129 +22,137 @@ export function HomePage({setGlobalLanguage}) {
     };
 
     // FIXED: Enhanced floating dots effect with memory management
-    useEffect(() => {
-        const createFloatingDots = () => {
-            const container = document.querySelector('.floating-dots-container');
-            if (!container) return;
+useEffect(() => {
+    const createFloatingDots = () => {
+        const container = document.querySelector('.floating-dots-container');
+        if (!container) return;
 
-            // FIXED: Limit maximum dots to prevent memory issues
-            const MAX_DOTS = 30; // Reduced from unlimited
-            let activeDots = 0;
-            let intervalIds = [];
+        // OPTIMIZED: Rich visual effect with excellent performance
+        const MAX_DOTS = 130; // Conservative sweet spot for all devices
+        let activeDots = 0;
+        let intervalIds = [];
 
-            // Nature-inspired colors (same as before)
-            const colors = [
-                '#78a429', '#95C11F', '#A8D5A8', '#B8E6B8', '#87B987',
-                '#9FCC9F', '#C8F7C8', '#6B8E23', '#8FBC8F', '#90EE90',
-                '#98FB98', '#ADFF2F', '#7CFC00', '#00FF7F', '#00FA9A'
-            ];
+        // Nature-inspired colors (same as before)
+        const colors = [
+            '#78a429', '#95C11F', '#A8D5A8', '#B8E6B8', '#87B987',
+            '#9FCC9F', '#C8F7C8', '#6B8E23', '#8FBC8F', '#90EE90',
+            '#98FB98', '#ADFF2F', '#7CFC00', '#00FF7F', '#00FA9A'
+        ];
 
-            const sizes = ['tiny', 'small', 'medium', 'large', 'extra-large'];
+        const sizes = ['tiny', 'small', 'medium', 'large', 'extra-large'];
 
-            const createDot = () => {
-                // FIXED: Check limit before creating new dots
-                if (activeDots >= MAX_DOTS) return;
-                
-                const dot = document.createElement('div');
-                activeDots++; // Increment counter
-                
-                // Random size with weighted distribution (more small dots)
-                const sizeRandom = Math.random();
-                let sizeClass;
-                if (sizeRandom < 0.4) sizeClass = 'tiny';
-                else if (sizeRandom < 0.7) sizeClass = 'small';
-                else if (sizeRandom < 0.85) sizeClass = 'medium';
-                else if (sizeRandom < 0.95) sizeClass = 'large';
-                else sizeClass = 'extra-large';
-
-                dot.className = `floating-dot ${sizeClass}`;
-                
-                // Add pulse effect to some dots
-                if (Math.random() < 0.1) {
-                    dot.className += ' pulse';
-                }
-                
-                // Random color
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                dot.style.backgroundColor = color;
-                
-                // Random horizontal position
-                const leftPos = Math.random() * 100;
-                dot.style.left = leftPos + '%';
-                
-                // Random horizontal drift during animation
-                const drift = (Math.random() - 0.5) * 200; // -100px to +100px
-                dot.style.setProperty('--drift', drift + 'px');
-                
-                // Random animation duration (8-20 seconds) - REDUCED range
-                const duration = 8 + Math.random() * 12;
-                dot.style.animationDuration = duration + 's';
-                
-                // Random delay before starting
-                const delay = Math.random() * 5; // REDUCED delay
-                dot.style.animationDelay = delay + 's';
-                
-                // FIXED: Safe DOM manipulation
-                if (container) {
-                    container.appendChild(dot);
-                }
-                
-                // FIXED: Enhanced cleanup with counter management
-                const cleanup = () => {
-                    if (container && dot && container.contains(dot)) {
-                        try {
-                            container.removeChild(dot);
-                            activeDots--; // Decrement counter
-                        } catch (error) {
-                            // Silently handle removal errors
-                            activeDots = Math.max(0, activeDots - 1);
-                        }
-                    }
-                };
-
-                setTimeout(cleanup, (duration + delay) * 1000);
-            };
-
-            // FIXED: Dramatically reduced dot creation frequency
-            // Create initial dots (fewer than before)
-            const initialDotCount = 15; // Reduced from 100
-            for (let i = 0; i < initialDotCount; i++) {
-                setTimeout(() => createDot(), i * 100); // Stagger creation
-            }
-
-            // FIXED: Much slower and fewer dot creation intervals
-            // Create 1 dot every 3 seconds instead of 5 dots every 0.5 seconds
-            intervalIds.push(setInterval(createDot, 3000));
+        const createDot = () => {
+            // Check limit before creating new dots
+            if (activeDots >= MAX_DOTS) return;
             
-            // Create additional dots occasionally
-            intervalIds.push(setInterval(createDot, 5000));
+            const dot = document.createElement('div');
+            activeDots++; // Increment counter
+            
+            // OPTIMIZED: Balanced size distribution for 150 dots
+            const sizeRandom = Math.random();
+            let sizeClass;
+            if (sizeRandom < 0.30) sizeClass = 'tiny';        // 30% tiny
+            else if (sizeRandom < 0.50) sizeClass = 'small';   // 20% small  
+            else if (sizeRandom < 0.75) sizeClass = 'medium';  // 25% medium
+            else if (sizeRandom < 0.92) sizeClass = 'large';   // 17% large
+            else sizeClass = 'extra-large';                    // 8% extra-large
 
-            // FIXED: Enhanced cleanup function
-            return () => {
-                // Clear all intervals
-                intervalIds.forEach(interval => clearInterval(interval));
-                
-                // Clear all dots safely
-                if (container) {
+            dot.className = `floating-dot ${sizeClass}`;
+            
+            // OPTIMIZED: Moderate pulse effects for performance at 150 dots
+            if (Math.random() < 0.15) { // 15% pulse rate for good balance
+                dot.className += ' pulse';
+            }
+            
+            // Random color
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            dot.style.backgroundColor = color;
+            
+            // Random horizontal position
+            const leftPos = Math.random() * 100;
+            dot.style.left = leftPos + '%';
+            
+            // Random horizontal drift during animation
+            const drift = (Math.random() - 0.5) * 200; // -100px to +100px
+            dot.style.setProperty('--drift', drift + 'px');
+            
+            // OPTIMIZED: Shorter animation duration for faster cycling
+            const duration = 6 + Math.random() * 10; // 6-16 seconds (was 8-20)
+            dot.style.animationDuration = duration + 's';
+            
+            // Random delay before starting
+            const delay = Math.random() * 3; // Reduced delay for faster appearance
+            dot.style.animationDelay = delay + 's';
+            
+            // Safe DOM manipulation
+            if (container) {
+                container.appendChild(dot);
+            }
+            
+            // Enhanced cleanup with counter management
+            const cleanup = () => {
+                if (container && dot && container.contains(dot)) {
                     try {
-                        const dots = container.querySelectorAll('.floating-dot');
-                        dots.forEach(dot => {
-                            if (container.contains(dot)) {
-                                container.removeChild(dot);
-                            }
-                        });
-                        activeDots = 0; // Reset counter
+                        container.removeChild(dot);
+                        activeDots--; // Decrement counter
                     } catch (error) {
-                        // If container is already cleared, just reset counter
-                        activeDots = 0;
+                        // Silently handle removal errors
+                        activeDots = Math.max(0, activeDots - 1);
                     }
                 }
             };
+
+            setTimeout(cleanup, (duration + delay) * 1000);
         };
 
-        const cleanup = createFloatingDots();
-        return cleanup;
-    }, []);
+        // OPTIMIZED: Initial dots for 130-dot system
+        const initialDotCount = 42; // Balanced for 130-dot system
+        for (let i = 0; i < initialDotCount; i++) {
+            setTimeout(() => createDot(), i * 65); // Optimized stagger timing
+        }
+
+        // OPTIMIZED: Steady creation rate for 130-dot system
+        // Create 2-3 dots every 2.5 seconds = ~60 dots per minute
+        intervalIds.push(setInterval(() => {
+            createDot();
+            setTimeout(createDot, 200);
+            // Occasionally create a third dot
+            if (Math.random() < 0.4) {
+                setTimeout(createDot, 400);
+            }
+        }, 2500));
+        
+        // Additional slower interval for continuous flow
+        intervalIds.push(setInterval(createDot, 2200));
+
+        // Enhanced cleanup function
+        return () => {
+            // Clear all intervals
+            intervalIds.forEach(interval => clearInterval(interval));
+            
+            // Clear all dots safely
+            if (container) {
+                try {
+                    const dots = container.querySelectorAll('.floating-dot');
+                    dots.forEach(dot => {
+                        if (container.contains(dot)) {
+                            container.removeChild(dot);
+                        }
+                    });
+                    activeDots = 0; // Reset counter
+                } catch (error) {
+                    // If container is already cleared, just reset counter
+                    activeDots = 0;
+                }
+            }
+        };
+    };
+
+    const cleanup = createFloatingDots();
+    return cleanup;
+}, []);
+
+
 
     return (
         <div className="page-container">
