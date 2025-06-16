@@ -507,7 +507,7 @@ ul.navbar li:hover a::after {
     
     .content-wrapper {
         margin-top: 40px;
-        padding: 0 10px;
+        padding: 0 0px;
     }
     
     /* SIMPLIFIED: Mobile footer - reposition existing divs */
