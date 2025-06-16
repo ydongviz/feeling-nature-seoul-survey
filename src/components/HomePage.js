@@ -117,10 +117,10 @@ export function HomePage({setGlobalLanguage}) {
             createDot();
             setTimeout(createDot, 150);
             setTimeout(createDot, 300);
-        }, 2500));
+        }, 1800));
         
         // Additional slower interval for continuous flow
-        intervalIds.push(setInterval(createDot, 2000));
+        intervalIds.push(setInterval(createDot, 1500));
 
         // Enhanced cleanup function
         return () => {
