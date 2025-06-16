@@ -579,19 +579,19 @@ ul.navbar li:hover a::after {
     }
     
     .subtitle {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
     }
     
     ul.navbar li {
-        font-size: 13px;
+        font-size: 15px;
     }
     
     ul.navbar li a {
-        font-size: 14px;
+        font-size: 15px;
     }
     
     .description-text {
-        font-size: 13px;
+        font-size: 15px;
     }
     
     .header-logo-image {
@@ -600,7 +600,7 @@ ul.navbar li:hover a::after {
     }
     
     ul.navbar {
-        gap: 12px;
+        gap: 20px;
     }
     
     .logo-container {
