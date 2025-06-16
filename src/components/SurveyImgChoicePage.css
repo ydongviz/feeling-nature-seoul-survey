@@ -106,7 +106,7 @@
 /* Mobile specific adjustments */
 @media (max-width: 768px) {
     .survey-image-title-text-h1 {
-        font-size: 1.5em;
+        font-size: 1em;
         margin-bottom: 20px;
     }
     
@@ -116,12 +116,12 @@
     }
     
     .button-img-choice {
-        margin: 15px auto 0 auto;
+        margin: 15px auto 20px auto;
     }
 }
 
 @media (max-width: 480px) {
     .survey-image-title-text-h1 {
-        font-size: 1.3em;
+        font-size: 1em;
     }
 }

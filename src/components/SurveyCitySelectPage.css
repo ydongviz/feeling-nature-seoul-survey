@@ -21,12 +21,12 @@
 /* Mobile specific adjustments */
 @media (max-width: 768px) {
     .city-select-title-text-h1 {
-        font-size: 0.8em;
+        font-size: 1em;
     }
 }
 
 @media (max-width: 480px) {
     .city-select-title-text-h1 {
-        font-size: 0.7em;
+        font-size: 1em;
     }
 }
