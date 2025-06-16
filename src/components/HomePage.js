@@ -21,14 +21,14 @@ export function HomePage({setGlobalLanguage}) {
         window.open('https://senseable.mit.edu/feeling-nature/', '_blank', 'noopener,noreferrer');
     };
 
-    // FIXED: Enhanced floating dots effect with memory management
+    // Enhanced floating dots effect with balanced performance and visibility
 useEffect(() => {
     const createFloatingDots = () => {
         const container = document.querySelector('.floating-dots-container');
         if (!container) return;
 
-        // OPTIMIZED: Rich visual effect with excellent performance
-        const MAX_DOTS = 130; // Conservative sweet spot for all devices
+        // OPTIMIZED: Rich visual effect with good performance
+        const MAX_DOTS = 150; // Sweet spot for visibility and performance
         let activeDots = 0;
         let intervalIds = [];
 
@@ -105,25 +105,22 @@ useEffect(() => {
             setTimeout(cleanup, (duration + delay) * 1000);
         };
 
-        // OPTIMIZED: Initial dots for 130-dot system
-        const initialDotCount = 42; // Balanced for 130-dot system
+        // OPTIMIZED: More initial dots for rich immediate effect
+        const initialDotCount = 50; // Increased for 150-dot system
         for (let i = 0; i < initialDotCount; i++) {
-            setTimeout(() => createDot(), i * 65); // Optimized stagger timing
+            setTimeout(() => createDot(), i * 60); // Slightly faster stagger
         }
 
-        // OPTIMIZED: Steady creation rate for 130-dot system
-        // Create 2-3 dots every 2.5 seconds = ~60 dots per minute
+        // OPTIMIZED: Steady creation rate for 150-dot system
+        // Create 3 dots every 2.5 seconds = ~72 dots per minute
         intervalIds.push(setInterval(() => {
             createDot();
-            setTimeout(createDot, 200);
-            // Occasionally create a third dot
-            if (Math.random() < 0.4) {
-                setTimeout(createDot, 400);
-            }
+            setTimeout(createDot, 150);
+            setTimeout(createDot, 300);
         }, 2500));
         
         // Additional slower interval for continuous flow
-        intervalIds.push(setInterval(createDot, 2200));
+        intervalIds.push(setInterval(createDot, 2000));
 
         // Enhanced cleanup function
         return () => {
@@ -151,6 +148,8 @@ useEffect(() => {
     const cleanup = createFloatingDots();
     return cleanup;
 }, []);
+
+ 
 
 
 
