@@ -84,10 +84,17 @@ export const LOCALE_TEXT = {
     'survey-img-choice-button-right': {
         'eng': 'Right', 'Korean': '오른쪽', 
     },
+    'survey-img-choice-button-top': {
+        'eng': 'Top', 'Korean': '위쪽', 
+    },
+    'survey-img-choice-button-bottom': {
+        'eng': 'Bottom', 'Korean': '아래쪽', 
+    },
+    
     'survey-img-choice-loading-text': {
         'eng': 'Loading', 'Korean': '로딩 중',  
-
     },
+
 
     // SurveyPersonalInfoPage
     'survey-personal-info-question-age': {

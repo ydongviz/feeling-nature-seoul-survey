@@ -1,4 +1,4 @@
-import {React, useState} from "react";
+import {React, useState, useEffect} from "react";
 import {useStateMachine} from "little-state-machine";
 import {useNavigate, useParams} from "react-router-dom";
 import './theme.css';
@@ -92,14 +92,62 @@ const Image = (opts) => {
     );
 };
 
-// Image Choice Button Component
-const ButtonImgPicker = (opts) => {
+// Custom hook to detect mobile view
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkIsMobile = () => {
+            // Consider mobile if width is less than 768px (typical tablet/mobile breakpoint)
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        // Check on mount
+        checkIsMobile();
+
+        // Add event listener for window resize
+        window.addEventListener('resize', checkIsMobile);
+
+        // Cleanup
+        return () => window.removeEventListener('resize', checkIsMobile);
+    }, []);
+
+    return isMobile;
+};
+
+// Image Choice Button Component with responsive labels
+const ButtonImgPicker = ({ isSelected, position, lang, onClick, ...props }) => {
+    const isMobile = useIsMobile();
+    
     let className = "button-generic button-img-choice";
-    const {isSelected, ...props} = opts;
     if (isSelected) {
         className += " button-generic-selected";
     }
-    return (<button className={className} {...props}></button>);
+
+    // Determine button text based on screen size
+    const getButtonText = () => {
+        if (isMobile) {
+            // Mobile view: use Top/Bottom
+            return position === 'left' 
+                ? locale_text(lang, "survey-img-choice-button-top")
+                : locale_text(lang, "survey-img-choice-button-bottom");
+        } else {
+            // Desktop view: use Left/Right
+            return position === 'left'
+                ? locale_text(lang, "survey-img-choice-button-left")
+                : locale_text(lang, "survey-img-choice-button-right");
+        }
+    };
+
+    return (
+        <button 
+            className={className} 
+            onClick={onClick}
+            {...props}
+        >
+            {getButtonText()}
+        </button>
+    );
 };
 
 export function SurveyImgChoicePage() {
@@ -147,6 +195,7 @@ export function SurveyImgChoicePage() {
     const handleSelection = (side) => {
         const now = new Date();
         let formDict = {};
+        // IMPORTANT: Still record 'left' or 'right' regardless of button label
         formDict[formFieldImageSelection] = side;
         formDict[formFieldDuration] = now - startTime;
         formDict[formFieldStartTime] = startTime;
@@ -191,10 +240,10 @@ export function SurveyImgChoicePage() {
                         shouldImageDisplayed={shouldImageDisplayed}
                     />
                     <ButtonImgPicker
-                        onClick={() => handleSelection('left')}
-                    >
-                        {locale_text(lang, "survey-img-choice-button-left")}
-                    </ButtonImgPicker>
+                        position="left"
+                        lang={lang}
+                        onClick={() => handleSelection('left')} // Still records 'left'
+                    />
                 </div>
                 <div className="grid-item-image-picker">
                     <Image
@@ -205,10 +254,10 @@ export function SurveyImgChoicePage() {
                         shouldImageDisplayed={shouldImageDisplayed}
                     />
                     <ButtonImgPicker
-                        onClick={() => handleSelection('right')}
-                    >
-                        {locale_text(lang, "survey-img-choice-button-right")}
-                    </ButtonImgPicker>
+                        position="right"
+                        lang={lang}
+                        onClick={() => handleSelection('right')} // Still records 'right'
+                    />
                 </div>
             </div>
         </div>
