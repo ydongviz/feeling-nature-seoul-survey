@@ -253,16 +253,6 @@ export function ThankYouPage() {
             )}
         </div>
         
-        {/* Always show "Start Again" button for taking survey again */}
-        <div style={{ marginTop: isSuccessfullySubmitted ? '1rem' : '2rem' }}>
-            <p className="thank-you-description-text">
-                {locale_text(lang, 'thank-you-description')}
-            </p>
-            <Link to="/">
-                <button className="button-generic button-stick-to-center thankyou-button">
-                    {locale_text(lang, 'thank-you-button-start-again')}
-                </button>
-            </Link>
-        </div>
+
     </div>);
 }
