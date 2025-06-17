@@ -186,10 +186,10 @@ export function ThankYouPage() {
             {/* Dynamic description text based on submission state */}
             <p className="thank-you-description-text">
                 {isSuccessfullySubmitted ? (
-                    // SUCCESS: Show success message instead of form description
+                    // SUCCESS: Show success message
                     lang === 'Korean' 
-                        ? '메시지를 보내주셔서 감사합니다! 곧 연락드리겠습니다.'
-                        : 'Thank you for your message! We will get back to you soon.'
+                        ? '메시지를 받았습니다! 곧 연락드리겠습니다.'
+                        : 'We have received your message! We will get back to you soon.'
                 ) : (
                     // DEFAULT: Show form description
                     locale_text(lang, 'thank-you-form-description')
