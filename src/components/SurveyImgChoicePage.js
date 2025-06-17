@@ -20,86 +20,111 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
     );
 };
 
-// Image Component
-const Image = (opts) => {
+// LITE: Simplified Image Component with Essential Optimization
+const LiteOptimizedImage = ({ 
+    src, 
+    alt, 
+    lang, 
+    didImageLoaded, 
+    className = "survey-image"
+}) => {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
-    
-    // Extract custom props that shouldn't go to DOM
-    const {
-        shouldSetGrey, 
-        shouldImageDisplayed, 
-        didImageLoaded,
-        lang,
-        ...imgProps  // Only pass standard img props to DOM
-    } = opts;
-    
-    const handleImageLoaded = () => {
+
+    const handleImageLoad = () => {
         setIsLoading(false);
+        setHasError(false);
         if (didImageLoaded) {
             didImageLoaded();
         }
     };
 
     const handleImageError = () => {
+        console.error('Failed to load image:', src);
         setIsLoading(false);
         setHasError(true);
-        console.error('Failed to load image:', imgProps.src);
-        // Still call didImageLoaded to prevent infinite loading
         if (didImageLoaded) {
-            didImageLoaded();
+            didImageLoaded(); // Prevent infinite waiting
         }
     };
 
-    let className = "survey-image";
-    if (shouldSetGrey) {
-        className += " survey-image-grey";
-    }
+    const retryLoad = () => {
+        setHasError(false);
+        setIsLoading(true);
+        // Force reload by adding timestamp
+        const imgElement = document.querySelector(`img[src*="${src}"]`);
+        if (imgElement) {
+            imgElement.src = src + '?retry=' + Date.now();
+        }
+    };
 
     return (
-        <div>
-            {isLoading && (!shouldImageDisplayed || shouldImageDisplayed()) && (
-                <div className="spinner">
-                    {locale_text(lang, 'survey-img-choice-loading-text')} ...
+        <div className="lite-image-container">
+            {/* Simple loading indicator */}
+            {isLoading && (
+                <div className="simple-loading">
+                    <div className="simple-spinner"></div>
+                    <p className="loading-text">
+                        {lang ? locale_text(lang, 'survey-img-choice-loading-text') : 'Loading'} ...
+                    </p>
                 </div>
             )}
-            
+
+            {/* Simple error state with retry */}
             {hasError && (
-                <div style={{
-                    width: '400px', 
-                    height: '300px', 
-                    backgroundColor: '#f0f0f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '2px dashed #ccc',
-                    color: '#666',
-                    borderRadius: '8px'
-                }}>
-                    Image not found<br/>
-                    <small>{imgProps.src}</small>
+                <div className="simple-error">
+                    <p>Image failed to load</p>
+                    <small className="error-path">{src}</small>
+                    <button 
+                        className="retry-button" 
+                        onClick={retryLoad}
+                        type="button"
+                    >
+                        Retry
+                    </button>
                 </div>
             )}
-            
+
+            {/* Main image with native lazy loading */}
             <img
-                {...imgProps}  // Only standard props (src, alt, etc.)
+                src={src}
+                alt={alt}
                 className={className}
-                style={{display: (isLoading || hasError) ? 'none' : 'block'}}
-                onLoad={handleImageLoaded}
+                style={{ 
+                    display: (isLoading || hasError) ? 'none' : 'block',
+                    opacity: isLoading ? 0 : 1,
+                    transition: 'opacity 0.3s ease'
+                }}
+                onLoad={handleImageLoad}
                 onError={handleImageError}
+                loading="lazy" // Native browser lazy loading
+                decoding="async" // Better performance
             />
         </div>
     );
 };
 
-// Image Choice Button Component
-const ButtonImgPicker = (opts) => {
+// IMPROVED: Enhanced Image Choice Button Component
+const ButtonImgPicker = ({ isDisabled, ...opts }) => {
     let className = "button-generic button-img-choice";
     const {isSelected, ...props} = opts;
+    
     if (isSelected) {
         className += " button-generic-selected";
     }
-    return (<button className={className} {...props}></button>);
+    
+    if (isDisabled) {
+        className += " button-disabled";
+    }
+    
+    return (
+        <button 
+            className={className} 
+            disabled={isDisabled}
+            type="button"
+            {...props}
+        />
+    );
 };
 
 export function SurveyImgChoicePage() {
@@ -114,6 +139,8 @@ export function SurveyImgChoicePage() {
 
     const [counter, setCounter] = useState(0);
     const [startTime, setStartTime] = useState(new Date());
+    const [imagesLoaded, setImagesLoaded] = useState({ left: false, right: false });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     let [leftImagePath, rightImagePath] = imageSet[counter].map((value) => {
         // If it's already a full URL (starts with http), use as-is
@@ -124,8 +151,6 @@ export function SurveyImgChoicePage() {
         return `/images/${value}`;
     });
     
-    //console.log('Loading images:', leftImagePath, rightImagePath); 
-
     // Field names for saving responses
     const formFieldCity = `${surveyid}/city`;
     const formFieldImageSelection = `${surveyid}/${counter}/selection`;
@@ -137,14 +162,22 @@ export function SurveyImgChoicePage() {
 
     const MAX_COUNTER = 6;
 
-    let [isLeftImageLoaded, setLeftImageLoaded] = useState(false);
-    let [isRightImageLoaded, setRightImageLoaded] = useState(false);
+    // IMPROVED: Better image loading tracking
+    const handleImageLoaded = (side) => {
+        setImagesLoaded(prev => ({
+            ...prev,
+            [side]: true
+        }));
+    };
 
-    const didLeftImageLoaded = () => setLeftImageLoaded(true);
-    const didRightImageLoaded = () => setRightImageLoaded(true);
-    const shouldImageDisplayed = () => isLeftImageLoaded && isRightImageLoaded;
+    const bothImagesLoaded = imagesLoaded.left && imagesLoaded.right;
 
-    const handleSelection = (side) => {
+    // IMPROVED: Enhanced selection handler with loading state
+    const handleSelection = async (side) => {
+        if (isSubmitting || !bothImagesLoaded) return;
+        
+        setIsSubmitting(true);
+        
         const now = new Date();
         let formDict = {};
         formDict[formFieldImageSelection] = side;
@@ -156,14 +189,18 @@ export function SurveyImgChoicePage() {
         formDict[formFieldCity] = city;
         actions.simpleUpdate(formDict);
 
+        // Small delay for better UX
+        await new Promise(resolve => setTimeout(resolve, 150));
+
         setStartTime(new Date());
         if (counter + 1 < MAX_COUNTER) {
             setCounter(counter + 1);
+            setImagesLoaded({ left: false, right: false }); // Reset for next images
         } else {
             navigate(`/surveyinfo/${surveyid}`);
         }
-        setLeftImageLoaded(false);
-        setRightImageLoaded(false);
+        
+        setIsSubmitting(false);
         window.scrollTo(0, 0);
     };
 
@@ -180,37 +217,45 @@ export function SurveyImgChoicePage() {
                 {currentStep} | {locale_text_raw(lang, 'survey-img-choice-title')}
             </h1>
 
-            {/* Image Comparison Grid */}
+            {/* IMPROVED: Image Comparison Grid with lite optimization */}
             <div className="grid-container-image-picker">
                 <div className="grid-item-image-picker">
-                    <Image
+                    <LiteOptimizedImage
                         src={leftImagePath}
-                        alt="left"
+                        alt="left option"
                         lang={lang}
-                        didImageLoaded={didLeftImageLoaded}
-                        shouldImageDisplayed={shouldImageDisplayed}
+                        didImageLoaded={() => handleImageLoaded('left')}
                     />
                     <ButtonImgPicker
                         onClick={() => handleSelection('left')}
+                        isDisabled={!bothImagesLoaded || isSubmitting}
                     >
                         {locale_text(lang, "survey-img-choice-button-left")}
                     </ButtonImgPicker>
                 </div>
+                
                 <div className="grid-item-image-picker">
-                    <Image
+                    <LiteOptimizedImage
                         src={rightImagePath}
-                        alt="right"
+                        alt="right option"
                         lang={lang}
-                        didImageLoaded={didRightImageLoaded}
-                        shouldImageDisplayed={shouldImageDisplayed}
+                        didImageLoaded={() => handleImageLoaded('right')}
                     />
                     <ButtonImgPicker
                         onClick={() => handleSelection('right')}
+                        isDisabled={!bothImagesLoaded || isSubmitting}
                     >
                         {locale_text(lang, "survey-img-choice-button-right")}
                     </ButtonImgPicker>
                 </div>
             </div>
+
+            {/* ADDED: Simple loading indicator */}
+            {!bothImagesLoaded && (
+                <div className="images-loading-status">
+                    <p>Loading images... {imagesLoaded.left ? '✓' : '○'} {imagesLoaded.right ? '✓' : '○'}</p>
+                </div>
+            )}
         </div>
     );
 }
