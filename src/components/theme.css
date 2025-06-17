@@ -79,8 +79,7 @@
 @media (max-width: 919px) {
     .App-container {
         width: 95%;
-        min-height: 100vh; /* CHANGED: Use min-height instead of fixed height */
-        /* REMOVED: height: 95vh that was preventing scrolling */
+        min-height: 100vh;
     }
 
     .container-page-root {
@@ -91,8 +90,8 @@
     .container-page-mid-root {
         width: 100%;
         margin: auto 0;
-        min-height: 100vh; /* CHANGED: Use min-height for mobile */
-        padding: 70px 0; /* REDUCED: Smaller padding on mobile */
+        min-height: 100vh; 
+        padding: 70px 0; 
     }
 
     .progress-bar-container {
@@ -108,8 +107,7 @@
     .App-container {
         width: 90%;
         max-width: 1200px;
-        min-height: 100vh; /* CHANGED: Use min-height instead of fixed height */
-        /* REMOVED: height: 95vh that was preventing scrolling */
+        min-height: 100vh; 
     }
 
     .container-page-root {
@@ -122,7 +120,7 @@
         width: 100%;
         max-width: 900px;
         margin: auto;
-        min-height: 100vh; /* CHANGED: Use min-height */
+        min-height: 100vh; 
     }
 }
 

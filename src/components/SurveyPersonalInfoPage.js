@@ -151,7 +151,7 @@ export function SurveyPersonalInfoPage() {
         // Send the request to the backend endpoint using axios with POST /survey
         //const success = actions.resetStateMachine;
 
-          // Create a custom success function that preserves language
+        // Create a custom success function that preserves language
         const success = () => {
         // Reset survey data but keep language
            const currentLang = state['language'];

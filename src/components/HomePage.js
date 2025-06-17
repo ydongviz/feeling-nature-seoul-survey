@@ -27,12 +27,10 @@ export function HomePage({setGlobalLanguage}) {
         const container = document.querySelector('.floating-dots-container');
         if (!container) return;
 
-        // OPTIMIZED: Rich visual effect with good performance
-        const MAX_DOTS = 150; // Sweet spot for visibility and performance
+        const MAX_DOTS = 150; 
         let activeDots = 0;
         let intervalIds = [];
 
-        // Nature-inspired colors (same as before)
         const colors = [
             '#78a429', '#95C11F', '#A8D5A8', '#B8E6B8', '#87B987',
             '#9FCC9F', '#C8F7C8', '#6B8E23', '#8FBC8F', '#90EE90',
@@ -42,11 +40,10 @@ export function HomePage({setGlobalLanguage}) {
         const sizes = ['tiny', 'small', 'medium', 'large', 'extra-large'];
 
         const createDot = () => {
-            // Check limit before creating new dots
             if (activeDots >= MAX_DOTS) return;
             
             const dot = document.createElement('div');
-            activeDots++; // Increment counter
+            activeDots++; 
             
             // OPTIMIZED: Balanced size distribution for 150 dots
             const sizeRandom = Math.random();
@@ -59,12 +56,10 @@ export function HomePage({setGlobalLanguage}) {
 
             dot.className = `floating-dot ${sizeClass}`;
             
-            // OPTIMIZED: Moderate pulse effects for performance at 150 dots
-            if (Math.random() < 0.15) { // 15% pulse rate for good balance
+            if (Math.random() < 0.15) { 
                 dot.className += ' pulse';
             }
             
-            // Random color
             const color = colors[Math.floor(Math.random() * colors.length)];
             dot.style.backgroundColor = color;
             
@@ -81,7 +76,7 @@ export function HomePage({setGlobalLanguage}) {
             dot.style.animationDuration = duration + 's';
             
             // Random delay before starting
-            const delay = Math.random() * 3; // Reduced delay for faster appearance
+            const delay = Math.random() * 3; 
             dot.style.animationDelay = delay + 's';
             
             // Safe DOM manipulation
@@ -94,9 +89,8 @@ export function HomePage({setGlobalLanguage}) {
                 if (container && dot && container.contains(dot)) {
                     try {
                         container.removeChild(dot);
-                        activeDots--; // Decrement counter
+                        activeDots--; 
                     } catch (error) {
-                        // Silently handle removal errors
                         activeDots = Math.max(0, activeDots - 1);
                     }
                 }
@@ -105,29 +99,23 @@ export function HomePage({setGlobalLanguage}) {
             setTimeout(cleanup, (duration + delay) * 1000);
         };
 
-        // OPTIMIZED: More initial dots for rich immediate effect
-        const initialDotCount = 50; // Increased for 150-dot system
+        const initialDotCount = 50; 
         for (let i = 0; i < initialDotCount; i++) {
-            setTimeout(() => createDot(), i * 60); // Slightly faster stagger
+            setTimeout(() => createDot(), i * 60); 
         }
 
-        // OPTIMIZED: Steady creation rate for 150-dot system
-        // Create 3 dots every 2.5 seconds = ~72 dots per minute
         intervalIds.push(setInterval(() => {
             createDot();
             setTimeout(createDot, 150);
             setTimeout(createDot, 300);
         }, 1800));
         
-        // Additional slower interval for continuous flow
         intervalIds.push(setInterval(createDot, 1500));
 
         // Enhanced cleanup function
         return () => {
-            // Clear all intervals
             intervalIds.forEach(interval => clearInterval(interval));
             
-            // Clear all dots safely
             if (container) {
                 try {
                     const dots = container.querySelectorAll('.floating-dot');
@@ -136,9 +124,8 @@ export function HomePage({setGlobalLanguage}) {
                             container.removeChild(dot);
                         }
                     });
-                    activeDots = 0; // Reset counter
+                    activeDots = 0; 
                 } catch (error) {
-                    // If container is already cleared, just reset counter
                     activeDots = 0;
                 }
             }
@@ -253,6 +240,9 @@ export function HomePage({setGlobalLanguage}) {
                     </a>
                 </div>   
             </footer>
+            {/*<footer>*/}
+            {/*  2025 @ydongviz developed this based on <a href={"https://github.com/GindaChen"}>CopyRight © 2023 @GindaChen</a>*/}
+            {/*</footer>*/}
         </div>
     );
 }
