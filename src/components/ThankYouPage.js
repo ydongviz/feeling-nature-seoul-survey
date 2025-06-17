@@ -28,11 +28,11 @@ export function ThankYouPage() {
     const [email, setEmail] = useState("");
     const [message, setMessage] = useState("");
     
-    // ADDED: New state for form submission handling
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
+    const [isSuccessfullySubmitted, setIsSuccessfullySubmitted] = useState(false);
 
-    // ADDED: Form validation function
+    // Form validation function
     const validateForm = () => {
         // Clear previous status
         setSubmitStatus({ type: '', message: '' });
@@ -75,7 +75,7 @@ export function ThankYouPage() {
         return true;
     };
 
-    // UPDATED: Enhanced submission with proper validation
+    // Enhanced submission with success state management
     const submitContactInfo = async () => {
         // Validate form first
         if (!validateForm()) {
@@ -101,50 +101,29 @@ export function ThankYouPage() {
             const response = await axios.post('/api/contact', data);
             
             console.log("✅ SUCCESS - Full response object:", response);
-            console.log("✅ Response status:", response.status);
-            console.log("✅ Response data:", response.data);
 
             // Check for successful response
             if (response.status === 200 || response.status === 201) {
-                setSubmitStatus({
-                    type: 'success',
-                    message: lang === 'Korean' 
-                        ? '메시지가 성공적으로 전송되었습니다!' 
-                        : 'Thank you for your message! We will get back to you soon.'
-                });
+                // SUCCESS: Set success state and hide form
+                setIsSuccessfullySubmitted(true);
+                setSubmitStatus({ type: '', message: '' }); // Clear any error messages
                 
-                // Clear form on success
-                setName("");
-                setEmail("");
-                setMessage("");
             } else {
                 throw new Error(`Unexpected status: ${response.status}`);
             }
 
         } catch (error) {
             console.error("❌ CAUGHT ERROR:", error);
-            console.error("❌ Error message:", error.message);
-            console.error("❌ Error code:", error.code);
             
             if (error.response) {
-                // Server responded with error status
-                console.error("❌ Error response status:", error.response.status);
-                console.error("❌ Error response data:", error.response.data);
-                console.error("❌ Full error response:", error.response);
-                
-                // CHECK: Is this actually a success disguised as an error?
+                // Check if this is actually a success disguised as an error
                 if (error.response.status === 200 || error.response.data?.success === true) {
                     console.log("🔄 FALSE ALARM: This is actually a success!");
-                    setSubmitStatus({
-                        type: 'success',
-                        message: lang === 'Korean' 
-                            ? '메시지가 성공적으로 전송되었습니다!' 
-                            : 'Thank you for your message! We will get back to you soon.'
-                    });
-                    setName("");
-                    setEmail("");
-                    setMessage("");
+                    // SUCCESS: Set success state and hide form
+                    setIsSuccessfullySubmitted(true);
+                    setSubmitStatus({ type: '', message: '' });
                 } else {
+                    // FAILURE: Show error, keep form visible
                     setSubmitStatus({
                         type: 'error',
                         message: lang === 'Korean' 
@@ -153,8 +132,7 @@ export function ThankYouPage() {
                     });
                 }
             } else if (error.request) {
-                // Network error
-                console.error("❌ Network error - no response received:", error.request);
+                // FAILURE: Network error, keep form visible
                 setSubmitStatus({
                     type: 'error',
                     message: lang === 'Korean' 
@@ -162,8 +140,7 @@ export function ThankYouPage() {
                         : 'Network error - please check your connection and try again.'
                 });
             } else {
-                // Request setup error
-                console.error("❌ Request setup error:", error.message);
+                // FAILURE: Request setup error, keep form visible
                 setSubmitStatus({
                     type: 'error',
                     message: lang === 'Korean' 
@@ -197,72 +174,95 @@ export function ThankYouPage() {
         );
     }
 
-    // Regular thank you page (using original structure)
+    // Regular thank you page
     return (<div className="container-page-mid-root">
         <div>
             <h1 className="title-text title-text-h1 thank-you-title-text-h1">
                 {locale_text(lang, 'thank-you-title')}
             </h1>
         </div>
+        
         <div>
+            {/* Dynamic description text based on submission state */}
             <p className="thank-you-description-text">
-                {locale_text(lang, 'thank-you-form-description')}
+                {isSuccessfullySubmitted ? (
+                    // SUCCESS: Show success message instead of form description
+                    lang === 'Korean' 
+                        ? '메시지를 보내주셔서 감사합니다! 곧 연락드리겠습니다.'
+                        : 'Thank you for your message! We will get back to you soon.'
+                ) : (
+                    // DEFAULT: Show form description
+                    locale_text(lang, 'thank-you-form-description')
+                )}
             </p>
             
-            {/* UPDATED: Enhanced form with better handling */}
-            <form 
-                onSubmit={(e) => e.preventDefault()} 
-                style={{position: 'relative', left: '-5px'}}
-            >
-                <div className="thankyou-input-field">
-                    <input 
-                        type="text" 
-                        placeholder={locale_text_raw(lang, 'thank-you-form-full-name')}
-                        value={name} 
-                        onChange={(e) => setName(e.target.value)}
-                        disabled={isSubmitting}
-                    />
-                </div>
-                <div className="thankyou-input-field">
-                    <input 
-                        type="text" 
-                        placeholder={locale_text_raw(lang, 'thank-you-form-email')}
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={isSubmitting}
-                    />
-                </div>
-                <div className="thankyou-input-field">
-                    <textarea
-                        placeholder={locale_text_raw(lang, 'thank-you-form-message')}
-                        className="placeholder-text"
-                        value={message} 
-                        onChange={(e) => setMessage(e.target.value)}
-                        disabled={isSubmitting}
-                    />
-                </div>
-
-                {/* ADDED: Status message display */}
-                {submitStatus.message && (
-                    <div className={`submit-status ${submitStatus.type}`}>
-                        {submitStatus.message}
-                    </div>
-                )}
-
-                {/* UPDATED: Enhanced submit button with loading state */}
-                <button
-                    type="button"
-                    className={`button-generic button-stick-to-right thankyou-send-button ${isSubmitting ? 'submitting' : ''}`}
-                    onClick={submitContactInfo}
-                    disabled={isSubmitting}
+            {/* Only show contact form if NOT successfully submitted */}
+            {!isSuccessfullySubmitted && (
+                <form 
+                    onSubmit={(e) => e.preventDefault()} 
+                    style={{position: 'relative', left: '-5px'}}
                 >
-                    {isSubmitting ? (
-                        lang === 'Korean' ? '전송 중...' : 'Sending...'
-                    ) : (
-                        locale_text(lang, 'thank-you-form-submit-button')
+                    <div className="thankyou-input-field">
+                        <input 
+                            type="text" 
+                            placeholder={locale_text_raw(lang, 'thank-you-form-full-name')}
+                            value={name} 
+                            onChange={(e) => setName(e.target.value)}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="thankyou-input-field">
+                        <input 
+                            type="text" 
+                            placeholder={locale_text_raw(lang, 'thank-you-form-email')}
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+                    <div className="thankyou-input-field">
+                        <textarea
+                            placeholder={locale_text_raw(lang, 'thank-you-form-message')}
+                            className="placeholder-text"
+                            value={message} 
+                            onChange={(e) => setMessage(e.target.value)}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+
+                    {/* Error message display (only show if there's an error) */}
+                    {submitStatus.type === 'error' && (
+                        <div className="submit-status error">
+                            {submitStatus.message}
+                        </div>
                     )}
+
+                    <button
+                        type="button"
+                        className={`button-generic button-stick-to-right thankyou-send-button ${isSubmitting ? 'submitting' : ''}`}
+                        onClick={submitContactInfo}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            lang === 'Korean' ? '전송 중...' : 'Sending...'
+                        ) : (
+                            locale_text(lang, 'thank-you-form-submit-button')
+                        )}
+                    </button>
+                </form>
+            )}
+        </div>
+        
+        {/* Always show "Start Again" button for taking survey again */}
+        <div style={{ marginTop: isSuccessfullySubmitted ? '1rem' : '2rem' }}>
+            <p className="thank-you-description-text">
+                {locale_text(lang, 'thank-you-description')}
+            </p>
+            <Link to="/">
+                <button className="button-generic button-stick-to-center thankyou-button">
+                    {locale_text(lang, 'thank-you-button-start-again')}
                 </button>
-            </form>
+            </Link>
         </div>
     </div>);
 }
