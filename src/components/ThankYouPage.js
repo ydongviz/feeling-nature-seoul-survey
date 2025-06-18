@@ -96,11 +96,11 @@ export function ThankYouPage() {
             const data = {};
             data[surveyid] = _data;
 
-            console.log("🚀 Sending contact info:", data);
+            //console.log("🚀 Sending contact info:", data);
             
             const response = await axios.post('/api/contact', data);
             
-            console.log("✅ SUCCESS - Full response object:", response);
+            //console.log("✅ SUCCESS - Full response object:", response);
 
             // Check for successful response
             if (response.status === 200 || response.status === 201) {
