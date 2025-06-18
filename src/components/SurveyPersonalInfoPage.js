@@ -82,9 +82,9 @@ function sendSurveyData(id, _data, success) {
         }
     })
     .then(response => {
-        console.log("=== UPLOAD SUCCESS ===");
-        console.log("Response status:", response.status);
-        console.log("Response data:", response.data);
+        //console.log("=== UPLOAD SUCCESS ===");
+        //console.log("Response status:", response.status);
+        //console.log("Response data:", response.data);
         //console.log("Response headers:", response.headers);
         //console.log("Upload completed at:", new Date().toISOString());
         
