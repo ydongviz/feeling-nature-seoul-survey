@@ -37,12 +37,12 @@ export const LOCALE_TEXT = {
 
     // Seoul Residency Question
     'seoul-residency-question': {
-        'eng': '1 | Have you lived in Seoul for at least 1 year?',
-        'Korean': '1 | 서울에서 1년 이상 거주한 경험이 있습니까?',
+        'eng': '1 | Have you lived in Seoul or spent significant time in the city for at least 1 year?',
+        'Korean': '1 | 서울에 1년 이상 거주하거나 머문 적이 있습니까?',
     },
     'seoul-residency-description': {
-        'eng': 'This survey is designed for people who have lived in Seoul for at least 1 year.',
-        'Korean': '이 설문조사는 서울에서 1년 이상 거주한 경험이 있는 분들을 대상으로 합니다. 양해해 주셔서 감사합니다.',
+        'eng': 'This survey is for people who currently or previously lived in Seoul, or who have visited frequently and know the city well, as long as your time in Seoul adds up to at least 1 year.',
+        'Korean': '이 설문은 현재 또는 과거에 서울에 거주했거나, 자주 방문하며 서울의 동네와 자연환경에 익숙한 분들을 위한 것입니다. 서울에서의 총 체류 기간이 1년 이상이라면 참여하실 수 있습니다.',
     },
     'seoul-residency-yes': {
         'eng': 'Yes',
@@ -59,8 +59,8 @@ export const LOCALE_TEXT = {
         'Korean': '관심을 가져주셔서 감사합니다!',
     },
     'thank-you-not-eligible-description': {
-        'eng': 'This survey is designed for people who have lived in Seoul for at least 1 year. You can close the page to leave or use the button below to restart. Thank you for your understanding.',
-        'Korean': '이 설문조사는 서울에서 1년 이상 거주한 경험이 있는 분들을 대상으로 합니다. 나가시려면 페이지를 닫거나 아래 버튼으로 다시 시작하실 수 있습니다. 양해해 주셔서 감사합니다.',
+        'eng': 'This survey is intended for people who have lived in Seoul or spent significant time in the city for at least 1 year. If this doesn’t apply to you, you may close the page or use the button below to restart. Thank you for your understanding.',
+        'Korean': '이 설문은 서울에 1년 이상 거주하셨거나, 자주 방문하며 서울에 대해 잘 알고 계신 분들을 위한 것입니다. 해당되지 않는 경우 페이지를 닫거나 아래 버튼을 눌러 다시 시작해 주세요. 양해해 주셔서 감사합니다.',
     },
 
     // SurveyImgChoicePage
