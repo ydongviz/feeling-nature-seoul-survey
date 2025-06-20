@@ -41,7 +41,7 @@ export const LOCALE_TEXT = {
         'Korean': '1 | 서울에 1년 이상 거주하거나 머문 적이 있습니까?',
     },
     'seoul-residency-description': {
-        'eng': 'This survey is for people who currently lives or previously lived in Seoul, or who visited frequently and knows the city well, by experiencing Seoul for at least 1 year.',
+        'eng': 'This survey is for people who currently or previously lived in Seoul, or who have visited frequently and know the city well, having experienced Seoul for at least 1 year.',
         'Korean': '이 설문은 약 1년 이상 서울에 거주했거나 자주 방문하여 서울에 익숙한 분들을 대상으로 합니다.',
     },
     'seoul-residency-yes': {
