@@ -60,6 +60,12 @@ const SubmitButton = (opts) => {
 function sendSurveyData(id, _data, success) {
     // Prepare data for backend
     const data_ = {};
+
+    if (_data.language) {
+        data_['/language'] = _data.language;
+    }
+
+
     for (const [key, value] of Object.entries(_data)) {
         if (key.startsWith(id)) {
             const _key = key.substring(id.length);
