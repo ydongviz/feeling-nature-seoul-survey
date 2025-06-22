@@ -75,12 +75,10 @@ function sendSurveyData(id, _data, success) {
     const data = {};
     data[id] = data_;
     
-    onsole.log("=== SURVEY SUBMISSION START ===");
-    console.log("Survey ID:", id);
-    console.log("Raw input data (_data):", JSON.stringify(_data, null, 2));
-    console.log("Processed survey data (data_):", JSON.stringify(data_, null, 2));
-    console.log("Final submission data:", JSON.stringify(data, null, 2));
-    console.log("Request timestamp:", new Date().toISOString());
+    //console.log("=== SURVEY SUBMISSION START ===");
+    //console.log("Survey ID:", id);
+    //console.log("Sending survey data:", JSON.stringify(data, null, 2));
+    //console.log("Request timestamp:", new Date().toISOString());
     
     // Send to backend with enhanced logging
     axios.post('/api/upload', data, {
@@ -90,11 +88,11 @@ function sendSurveyData(id, _data, success) {
         }
     })
     .then(response => {
-        console.log("=== UPLOAD SUCCESS ===");
-        console.log("Response status:", response.status);
-        console.log("Response data:", response.data);
-        console.log("Response headers:", response.headers);
-        console.log("Upload completed at:", new Date().toISOString());
+        //console.log("=== UPLOAD SUCCESS ===");
+        //console.log("Response status:", response.status);
+        //console.log("Response data:", response.data);
+        //console.log("Response headers:", response.headers);
+        //console.log("Upload completed at:", new Date().toISOString());
         
         // Always call success callback - let the user experience be smooth
         success();
