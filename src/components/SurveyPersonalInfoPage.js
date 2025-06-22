@@ -146,7 +146,12 @@ export function SurveyPersonalInfoPage() {
         }
 
         actions.simpleUpdate(data);
-        const sendingData = {...state, ...data};
+        //const sendingData = {...state, ...data};
+        const sendingData = {
+            language: state['language'] || DEFAULT_LANG,
+            ...state, 
+            ...data
+        };
 
         // Send the request to the backend endpoint using axios with POST /survey
         //const success = actions.resetStateMachine;
