@@ -1,7 +1,7 @@
 import {React} from "react";
 
 export const languages = {
-     "한국인": 'Korean', "English": 'eng',
+     "한국어": 'Korean', "English": 'eng',
 };
 
 export const LOCALE_TEXT = {
