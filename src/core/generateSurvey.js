@@ -33,7 +33,6 @@ function sfc32(a, b, c, d) {
     }
 }
 
-
 function mulberry32(a) {
     return function () {
         var t = a += 0x6D2B79F5;
@@ -43,45 +42,16 @@ function mulberry32(a) {
     }
 }
 
-//generateSurveyID
-//decodeSurveyId
-//generateSurveyImage
+// Simplified for Seoul-only survey
+export const CITY_LIST = ["Seoul"];
 
-
-export const CITY_LIST = [
-    "Seoul"  // Only Seoul now
-   //"Amsterdam",
-    //"Barcelona",
-   // "Buenos Aires",
-   // "Dubai",
-    //"Nairobi",
-    //"Québec City",
-   // "Singapore",
-    //"Trondheim",
-];
 export const CITY_HASH = {
-    "Seoul": 'sel',  // Short hash for Seoul
-    //"Amsterdam": 'ams',
-    //"Barcelona": 'bcn',
-    //"Buenos Aires": 'bue',
-    //"Dubai": 'dxb',
-    //"Québec City": "que",
-    //"Nairobi": "nai",
-    //"Singapore": "sin",
-    //"Trondheim": "tro",
-}
+    "Seoul": 'sel'
+};
 
 export const PROPER_CITY_NAME = {
-    "Seoul": 'Seoul',
-    //"Amsterdam": 'Amsterdam',
-    //"Barcelona": 'Barcelona',
-    //"Buenos Aires": 'Buenos_Aires',
-    //"Dubai": 'Dubai',
-    //"Québec City": "Quebec_City",
-    //"Nairobi": "Nairobi",
-    //"Singapore": "Singapore",
-    //"Trondheim": "Trondheim",
-}
+    "Seoul": 'Seoul'
+};
 
 function choice(randFunc, length, N) {
     // Pick N from 1...length, non-duplicate
@@ -104,12 +74,11 @@ function _item(city, bag, index) {
 }
 
 function getImageSet(city, randFunc, topLively, bottomLively, topBeauty, bottomBeauty) {
-
     const item = (bag, index) => {
         return _item(city, bag, index);
     }
 
-    // Pick 4 from top lively, bottom ..., non-duplicate
+    // Pick 3 from each category for the 6 question pairs
     let topLivelyItems = {
         category: 'topLively', items: topLively, choices: choice(randFunc, topLively.length, 3),
     };
@@ -123,27 +92,24 @@ function getImageSet(city, randFunc, topLively, bottomLively, topBeauty, bottomB
         category: 'bottomBeauty', items: bottomBeauty, choices: choice(randFunc, bottomBeauty.length, 3),
     };
 
-
     return [
-        // Pick 2 from top lively
+        // Pair 1: Top lively vs Top lively
         [item(topLivelyItems, 0), item(topLivelyItems, 1)],
-        // Pick 2 from bottom lively
+        // Pair 2: Bottom lively vs Bottom lively  
         [item(bottomLivelyItems, 0), item(bottomLivelyItems, 1)],
-        // Pick 2 from top beauty
+        // Pair 3: Top beauty vs Top beauty
         [item(topBeautyItems, 0), item(topBeautyItems, 1)],
-        // Pick 2 from bottom beauty
+        // Pair 4: Bottom beauty vs Bottom beauty
         [item(bottomBeautyItems, 0), item(bottomBeautyItems, 1)],
-        // Pick 1 from top lively, 1 from bottom lively
+        // Pair 5: Top lively vs Bottom lively (cross-category)
         [item(topLivelyItems, 2), item(bottomLivelyItems, 2)],
-        // Pick 1 from top beauty, 1 from bottom beauty
+        // Pair 6: Top beauty vs Bottom beauty (cross-category)
         [item(topBeautyItems, 2), item(bottomBeautyItems, 2)],
     ];
 }
 
-
 function getCityImageList(city) {
     const properCityName = PROPER_CITY_NAME[city];
-    // console.log(properCityName);
     return cityImageList[properCityName];
 }
 
@@ -160,13 +126,12 @@ function _generateSurveyId() {
     return surveyId;
 }
 
-
 export function decodeSurveyID(surveyID) {
     // Split surveyID with "_" and get cityHash and surveyHash
     const [cityHash, surveyHash] = surveyID.split("_");
 
-    // Turn city hash into city name
-    const city = Object.keys(CITY_HASH).find(key => CITY_HASH[key] === cityHash);
+    // Turn city hash into city name (should always be Seoul now)
+    const city = Object.keys(CITY_HASH).find(key => CITY_HASH[key] === cityHash) || "Seoul";
     const {
         topLively, bottomLively, topBeauty, bottomBeauty,
     } = getCityImageList(city);
@@ -177,18 +142,18 @@ export function decodeSurveyID(surveyID) {
     const imageSet = getImageSet(city, randFunc, topLively, bottomLively, topBeauty, bottomBeauty);
 
     return {city, surveyHash, imageSet};
-
 }
 
-export function generateSurveyID(city) {
-    // SurveyID is `aaa_bbbbbbbb` ({city}_{surveyhash})
+export function generateSurveyID(city = "Seoul") {
+    // Default to Seoul since it's the only supported city
     if (!CITY_LIST.includes(city)) {
-        console.error(`City ${city} is not in the list.`)
-        throw new Error(`City ${city} is not in the list.`)
+        console.warn(`City ${city} is not supported, defaulting to Seoul`);
+        city = "Seoul";
     }
+    
     const city_hash = CITY_HASH[city];
     const survey_hash = _generateSurveyId();
 
-    // Organize the survey id
+    // Survey ID format: sel_xxxxxxxx (Seoul + 8 random chars)
     return `${city_hash}_${survey_hash}`;
 }

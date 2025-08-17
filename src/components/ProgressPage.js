@@ -2,17 +2,13 @@ import {React} from "react";
 import axios from "axios";
 import {useEffect, useState} from "react";
 
-export const CITY_HASH = {
-    'sel': "Seoul",   
-    'ams': "Amsterdam",
-    'bcn': "Barcelona",
-    'bue': "Buenos Aires",
-    'dxb': "Dubai",
-    "que": "Québec City",
-    "nai": "Nairobi",
-    "sin": "Singapore",
-    "tro": "Trondheim",
-}
+// Updated for Seoul-only survey with age group breakdown
+export const AGE_GROUPS = {
+    '18-25': '18-25 years old',
+    '26-40': '26-40 years old', 
+    '41-55': '41-55 years old',
+    '>55': 'Over 55 years old'
+};
 
 export const ProgressPage = () => {
     const [data, setData] = useState(null);
@@ -31,13 +27,20 @@ export const ProgressPage = () => {
                 
                 let progressData = {
                     'totalSubmit': 0,
-                    'totalByType': {},
+                    'totalByAgeGroup': {},
+                    'totalByGender': {},
+                    'seoulOnly': true
                 };
 
-                // Initialize city counts
-                for (const key of Object.keys(CITY_HASH)) {
-                    const city_name = CITY_HASH[key];
-                    progressData['totalByType'][city_name] = 0;
+                // Initialize age group counts
+                for (const ageGroup of Object.keys(AGE_GROUPS)) {
+                    progressData['totalByAgeGroup'][ageGroup] = 0;
+                }
+
+                // Initialize gender counts
+                const genderGroups = ['Male', 'Female', 'Other', 'Prefer not to answer'];
+                for (const gender of genderGroups) {
+                    progressData['totalByGender'][gender] = 0;
                 }
 
                 // Check if response has Contents
@@ -51,25 +54,23 @@ export const ProgressPage = () => {
                 const _contents = _data['Contents'];
                 console.log('Found Contents:', _contents.length, 'items');
 
-                // Filter contents to exclude keys starting with '_'
+                // Filter contents to exclude contact forms and other non-survey data
                 const contents = _contents.filter((content) => {
-                    return content.Key && !content.Key.startsWith('_');
+                    return content.Key && 
+                           !content.Key.startsWith('_') && 
+                           !content.Key.startsWith('__contact_') &&
+                           content.Key.startsWith('sel_'); // Only Seoul surveys
                 });
 
-                console.log('Filtered Contents:', contents.length, 'items');
+                console.log('Filtered Seoul survey contents:', contents.length, 'items');
                 progressData['totalSubmit'] = contents.length;
 
-                // Count submissions by city
-                for (const content of contents) {
-                    const _key = content['Key'];
-                    if (_key) {
-                        const city_acronym = _key.split('_')[0];
-                        if (city_acronym in CITY_HASH) {
-                            const city_name = CITY_HASH[city_acronym];
-                            progressData['totalByType'][city_name] += 1;
-                        }
-                    }
-                }
+                // For demographic breakdown, we would need to fetch and parse each survey's content
+                // This is a simplified version that just counts total submissions
+                // To get actual demographic data, you'd need to:
+                // 1. Fetch each survey's content from S3
+                // 2. Parse the ageGroup and genderGroup fields
+                // 3. Increment the appropriate counters
 
                 console.log('Final progress data:', progressData);
                 setData(progressData);
@@ -89,11 +90,16 @@ export const ProgressPage = () => {
                 // Set empty data to prevent null access
                 const emptyProgressData = {
                     'totalSubmit': 0,
-                    'totalByType': {},
+                    'totalByAgeGroup': {},
+                    'totalByGender': {},
+                    'seoulOnly': true
                 };
-                for (const key of Object.keys(CITY_HASH)) {
-                    const city_name = CITY_HASH[key];
-                    emptyProgressData['totalByType'][city_name] = 0;
+                for (const ageGroup of Object.keys(AGE_GROUPS)) {
+                    emptyProgressData['totalByAgeGroup'][ageGroup] = 0;
+                }
+                const genderGroups = ['Male', 'Female', 'Other', 'Prefer not to answer'];
+                for (const gender of genderGroups) {
+                    emptyProgressData['totalByGender'][gender] = 0;
                 }
                 setData(emptyProgressData);
                 setLoading(false);
@@ -108,7 +114,7 @@ export const ProgressPage = () => {
                 <div>Loading progress data...</div>
             ) : (
                 <div>
-                    <h1>Progress</h1>
+                    <h1>Seoul Survey Progress</h1>
                     
                     {/* Show error if exists */}
                     {error && (
@@ -147,24 +153,42 @@ export const ProgressPage = () => {
                     )}
 
                     {/* Show data (with null safety) */}
-                    <div>Total Submission: {data?.totalSubmit || 0}</div>
+                    <div>
+                        <h2>Total Submissions: {data?.totalSubmit || 0}</h2>
+                        <p>All survey responses are from Seoul residents or people familiar with Seoul.</p>
+                    </div>
                     
                     <div>
-                        <h2>Categorize by city name</h2>
-                        {data?.totalByType ? (
-                            Object.keys(data.totalByType).map((key) => {
+                        <h3>Breakdown by Age Group</h3>
+                        <p><em>Note: Demographic breakdown requires survey content analysis - currently showing structure only</em></p>
+                        {data?.totalByAgeGroup ? (
+                            Object.keys(AGE_GROUPS).map((ageGroup) => {
                                 return (
-                                    <div key={key}>
-                                        {key}: {data.totalByType[key] || 0}
+                                    <div key={ageGroup} style={{margin: '5px 0'}}>
+                                        <strong>{AGE_GROUPS[ageGroup]}:</strong> {data.totalByAgeGroup[ageGroup] || 0}
                                     </div>
                                 );
                             })
                         ) : (
-                            <div>No city data available</div>
+                            <div>No age group data available</div>
                         )}
                     </div>
 
-
+                    <div>
+                        <h3>Breakdown by Gender</h3>
+                        <p><em>Note: Demographic breakdown requires survey content analysis - currently showing structure only</em></p>
+                        {data?.totalByGender ? (
+                            Object.keys(data.totalByGender).map((gender) => {
+                                return (
+                                    <div key={gender} style={{margin: '5px 0'}}>
+                                        <strong>{gender}:</strong> {data.totalByGender[gender] || 0}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div>No gender data available</div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
