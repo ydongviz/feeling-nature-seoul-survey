@@ -117,7 +117,6 @@ export const ProgressPage = () => {
 
                     {/* Show data (with null safety) */}
                     <div>
-                        <h2>Seoul Survey Progress</h2>
                         <div style={{fontSize: '24px', fontWeight: 'bold', color: '#2e7d32', margin: '20px 0'}}>
                             Total Submissions: {data?.totalSubmit || 0}
                         </div>
