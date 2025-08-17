@@ -164,28 +164,7 @@ export const ProgressPage = () => {
                         )}
                     </div>
 
-                    {/* Debug information */}
-                    <div style={{
-                        marginTop: '30px',
-                        padding: '15px',
-                        backgroundColor: '#f5f5f5',
-                        borderRadius: '4px',
-                        fontSize: '12px'
-                    }}>
-                        <h3>Debug Information</h3>
-                        <p><strong>Data loaded:</strong> {data ? 'Yes' : 'No'}</p>
-                        <p><strong>Loading state:</strong> {loading.toString()}</p>
-                        <p><strong>Error state:</strong> {error ? 'Yes' : 'No'}</p>
-                        <p><strong>API endpoint:</strong> /api/progress</p>
-                        <p><strong>Last updated:</strong> {new Date().toLocaleString()}</p>
-                        
-                        {data && (
-                            <details style={{marginTop: '10px'}}>
-                                <summary>Raw Data</summary>
-                                <pre>{JSON.stringify(data, null, 2)}</pre>
-                            </details>
-                        )}
-                    </div>
+
                 </div>
             )}
         </div>
