@@ -45,16 +45,24 @@ app.post('/api/contact', async (req, res) => {
         const _key = Object.keys(req.body)[0];
         const value = JSON.stringify(req.body[_key]);
         const key = `__contact_${_key}`;
-        const params = {
+        
+        /*const params = {
             Bucket: AWS_BUCKET_NAME, Key: key, Body: value,
-        };
-        const uploader = new Upload({
+        };*/
+
+        const finalKey = key.startsWith("raw/") ? key : `raw/${key}`;
+        const params = { Bucket: AWS_BUCKET_NAME, Key: finalKey, Body: value, ContentType: "application/json" };
+
+        /*const uploader = new Upload({
             client: new S3Client({region: AWS_REGION, credentials: AWS_Credentials}), // replace with your AWS region
             params: params,
         });
         await uploader.done();
         console.log(`Uploaded or override ${key} successfully.`);
-        res.status(200).send(key);
+        res.status(200).send(key);*/
+        console.log(`Uploaded or override ${finalKey} successfully.`);
+        res.status(200).send(finalKey);
+
     } catch (error) {
         console.error(`Error uploading.`, error);
         res.status(500).send(`Internal Error Occurs`);
@@ -105,7 +113,8 @@ app.post('/api/data', async (req, res) => {
     try {
         // Fetch all keys from the bucket
         const params = {
-            Bucket: AWS_BUCKET_NAME
+            Bucket: AWS_BUCKET_NAME,
+            Prefix: "raw/"
         };
         const client = new S3Client({region: AWS_REGION, credentials: AWS_Credentials})
         const command = new ListObjectsV2Command(params);

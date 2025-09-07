@@ -137,6 +137,8 @@ export default async function handler(req, res) {
         }
 
         const key = bodyKeys[0];
+        const finalKey = key.startsWith("raw/") ? key : `raw/${key}`;
+
         const surveyData = requestBody[key];
         
         console.log('=== SURVEY DATA ===');
@@ -158,7 +160,7 @@ export default async function handler(req, res) {
         const value = JSON.stringify(surveyData);
         const params = {
             Bucket: AWS_BUCKET_NAME,
-            Key: key,
+            Key: finalKey,
             Body: value,
             ContentType: 'application/json',
             // Add metadata for debugging
@@ -170,7 +172,8 @@ export default async function handler(req, res) {
 
         console.log('=== S3 UPLOAD ATTEMPT ===');
         console.log('Bucket:', AWS_BUCKET_NAME);
-        console.log('Key:', key);
+        console.log('Key (original):', key);
+        console.log('Key (final):', finalKey);
         console.log('Body length:', value.length);
         console.log('Region:', AWS_REGION);
 
@@ -203,7 +206,7 @@ export default async function handler(req, res) {
         // Success response
         res.status(200).json({ 
             success: true, 
-            key: key,
+            key: finalKey,
             uploadedAt: new Date().toISOString(),
             s3Location: uploadResult.Location,
             etag: uploadResult.ETag
