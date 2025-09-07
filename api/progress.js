@@ -1,4 +1,4 @@
-import {ListObjectsCommand, S3Client} from "@aws-sdk/client-s3";
+import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 
 const {
     AWS_ACCESS_KEY_ID,
@@ -65,10 +65,9 @@ export default async function handler(req, res) {
         console.log('Bucket:', AWS_BUCKET_NAME);
         console.log('Region:', AWS_REGION);
 
-        const params = {
-            Bucket: AWS_BUCKET_NAME,
-        };
+        const params = { Bucket: AWS_BUCKET_NAME, Prefix: "raw/" };
 
+        
         const s3 = new S3Client({
             region: AWS_REGION, 
             credentials: AWS_Credentials,
@@ -80,7 +79,7 @@ export default async function handler(req, res) {
         });
 
         console.log('Sending ListObjectsCommand...');
-        const response = await s3.send(new ListObjectsCommand(params));
+        //const response = await s3.send(new ListObjectsCommand(params));
         
         console.log('=== S3 RESPONSE SUCCESS ===');
         console.log('Response metadata:', response.$metadata);
@@ -92,7 +91,25 @@ export default async function handler(req, res) {
             console.log('First 3 keys:', response.Contents.slice(0, 3).map(item => item.Key));
         }
 
-        res.status(200).json(response);
+        //res.status(200).json(response);
+
+        let total = 0;
+        let contents = [];
+let token;
+do {
+ const resp = await s3.send(new ListObjectsV2Command({ ...params, ContinuationToken: token }));
+   total += resp.KeyCount || 0;
+   if (resp.Contents) contents.push(...resp.Contents);
+  token = resp.IsTruncated ? resp.NextContinuationToken : undefined;
+ } while (token);
+
+ res.status(200).json({
+   ok: true,
+  count: total,
+   latest: contents.slice(-10).reverse().map(o => ({ key: o.Key, size: o.Size, lastModified: o.LastModified })),
+   bucket: AWS_BUCKET_NAME,
+   prefix: "raw/"
+ });
 
     } catch (error) {
         console.error('=== PROGRESS ERROR ===');
