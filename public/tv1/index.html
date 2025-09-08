@@ -5,34 +5,103 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TV-1 • Live Viz</title>
 
-  <!-- Your existing styles for the viz (copy your CSS here as styles.css) -->
+  <!-- your styles -->
   <link rel="stylesheet" href="./styles.css" />
 
-  <!-- (Optional) CDN helpers if your app expects them -->
+  <!-- libs your app.js uses -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
   <style>
-    /* Small, self-contained overlay style for countdown / notes */
-    #kioskOverlay {
-      position: fixed; inset: 0; z-index: 9999; display: none;
-      align-items: center; justify-content: center;
-      background: rgba(0,0,0,.5);
-    }
+    /* hide dev/test buttons on the kiosk */
+    #control-buttons { display: none; }
+    /* small overlay styles for note / countdown */
+    #kioskOverlay { position: fixed; inset: 0; z-index: 9999; display: none;
+      align-items: center; justify-content: center; background: rgba(0,0,0,.5); }
     #kioskOverlay .box {
-      background: rgba(20,20,20,.92); color: #fff;
-      border: 1px solid #333; border-radius: 12px;
-      padding: 18px 22px; min-width: 320px; text-align: center;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      box-shadow: 0 6px 30px rgba(0,0,0,.35);
+      background: rgba(20,20,20,.92); color:#fff; border:1px solid #333; border-radius:12px;
+      padding: 18px 22px; min-width:320px; text-align:center; box-shadow:0 6px 30px rgba(0,0,0,.35);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
     #kioskOverlay .msg { font-size: clamp(18px, 2.2vw, 28px); }
-    #kioskOverlay .count { margin-top: 6px; font-size: clamp(22px, 3vw, 44px); display:none; }
+    #kioskOverlay .count { margin-top:6px; font-size: clamp(22px, 3vw, 44px); display:none; }
   </style>
 </head>
 <body>
-  <!-- Your existing viz builds its own DOM; no fixed markup required here. -->
+  <!-- === your original DOM skeleton (unchanged IDs/classes) === -->
+  <div class="main-content">
+    <div class="overlay-container">
+      <div class="content-wrapper">
+        <div class="left-column">
+          <div class="left-column-top">
+            <h2 id="locationTitle">Seoul (Temperate Forest)</h2>
+            <p id="locationDescription">
+              The map locates how you perceive and value urban nature by quantifying your Biophilic Individual Perceptions (BiP) value in the city.
+            </p>
+            <div id="toggleContent" class="toggle-button">
+              <span class="toggle-label" data-mode="BS">BS</span>
+              <div class="toggle-dot"></div>
+              <span class="toggle-label" data-mode="BP">BP</span>
+            </div>
+            <div id="control-buttons" class="control-buttons"></div>
+          </div>
+        </div>
+
+        <div class="center-column">
+          <div class="visualization-wrapper">
+            <div id="map"></div>
+            <canvas id="visualization-canvas"></canvas>
+            <div class="loading-indicator" id="loadingIndicator" style="display: none;">Loading data...</div>
+          </div>
+        </div>
+
+        <div class="right-column">
+          <div class="right-column-top">
+            <img id="rightColumnImage" src="./img/seoul_label.svg" alt="Seoul Label" />
+          </div>
+        </div>
+      </div>
+
+      <div id="tooltip"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-section">
+      <h4>Your Biophilic Individual Perceptions (BiP) value</h4>
+      <div class="bp-value" id="bpValueDisplay">
+        <span id="bpValueNumber">0.72</span>
+        <div class="bp-indicator"></div>
+      </div>
+      <p>Highlights similar BiP value in the city areas that could fit your perception</p>
+      <button id="highlightButton" class="highlight-button">Highlight</button>
+    </div>
+    <div class="footer-section">
+      <div class="middle-section-title">Which natural element brings you most positive feeling</div>
+      <div class="plant-category" id="topCategoryText">Plant/Flora, grass, trees</div>
+      <div class="chart-content">
+        <div class="chart-left">
+          <div class="top-elements" id="topElements"></div>
+        </div>
+        <div class="chart-right">
+          <div class="chart-container">
+            <div class="bar-chart" id="barChart"></div>
+            <div class="bar-labels" id="barLabels"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-section">
+      <div class="chart-title">Your BiP value among the city</div>
+      <div class="chart-wrapper">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+  </footer>
+
+  <!-- overlay used by the poller -->
   <div id="kioskOverlay" aria-live="polite">
     <div class="box">
       <div class="msg" id="kioskMsg">Loading…</div>
@@ -40,10 +109,9 @@
     </div>
   </div>
 
-  <!-- 1) Your big viz/app code (rename your old script4.patched.js -> app.js) -->
+  <!-- your big app (was script4.patched.js; here named app.js) -->
   <script src="./app.js"></script>
-
-  <!-- 2) Kiosk adapter + state poller -->
+  <!-- the TV-1 kiosk adapter + state poller you added earlier -->
   <script src="./script.js"></script>
 </body>
 </html>

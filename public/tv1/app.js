@@ -22,8 +22,8 @@ const seoulData = {
   biomeName: "Temperate Forest",
   coordinates: { lat: 37.5503, lon: 126.9971 },
   dataFiles: {
-    BS: "data/SCL/Seoul_biophilic_setting_cleaned.csv",
-    BP: "data/SCL/Seoul_biophilic_setting_cleaned.csv"
+    BS: "./data/SCL/Seoul_biophilic_setting_cleaned.csv",
+    BP: "./data/SCL/Seoul_biophilic_setting_cleaned.csv"
   },
   BSDescription: 'The map locates how you perceive and value urban nature by quantifying your Biophilic Individual Perceptions (BiP) value in the city.',
   BPDescription: 'The map locates how you perceive and value urban nature by quantifying your Biophilic Individual Perceptions (BiP) value in the city.',
@@ -297,22 +297,27 @@ function generateSampleDistribution() {
 /* ========== MAP INITIALIZATION ========== */
 function initializeMapbox() {
   try {
-    mapboxgl.accessToken = 'pk.eyJ1IjoieWltYXAiLCJhIjoiY20yeWRqc2xzMDBkdjJ2cHhyczFiYzZyciJ9.ePNnEmtc0W3b7ep4xQjGNg';
+    // Wait until #map actually exists
+    const el = document.getElementById('map');
+    if (!el) {
+      // Not yet in DOM (or was temporarily re-rendered) → retry shortly
+      setTimeout(initializeMapbox, 50);
+      return;
+    }
 
+    // Use the element, not a string id (more robust)
+    mapboxgl.accessToken = 'pk.eyJ1IjoieWltYXAiLCJhIjoiY20yeWRqc2xzMDBkdjJ2cHhyczFiYzZyciJ9.ePNnEmtc0W3b7ep4xQjGNg';
     app.map = new mapboxgl.Map({
-      container: 'map',
+      container: el,
       style: 'mapbox://styles/yimap/cm2znj5kv00oj01qkhyuya0yn?fresh=true',
       center: [seoulData.coordinates.lon, seoulData.coordinates.lat],
       zoom: 11.5
     });
 
-    app.map.on('load', () => {
-      app.mapLoaded = true;
-    });
+    app.map.on('load', () => { app.mapLoaded = true; });
 
     const redrawCanvas = debounce(() => {
       if (app.state.animationInProgress) return;
-
       const data = app.data.cache[`seoul_${app.state.currentDataType}`];
       if (!data) return;
 
@@ -325,13 +330,12 @@ function initializeMapbox() {
 
     app.map.on('moveend', redrawCanvas);
     app.map.on('zoomend', redrawCanvas);
-
   } catch (error) {
     console.error('Mapbox initialization failed:', error);
   }
-
   return app.map;
 }
+
 
 /* ========== CONTROL BUTTONS ========== */
 function createAndSetupButtons() {
