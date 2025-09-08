@@ -1588,7 +1588,6 @@ window.updateBarChart = typeof updateBarChart === "function" ? updateBarChart : 
 window.updateDistributionChart = typeof updateDistributionChart === "function" ? updateDistributionChart : undefined;
 
 
-
 /* ========== EVENT LISTENERS ========== */
 document.addEventListener('DOMContentLoaded', () => {
   initializeApplication();
