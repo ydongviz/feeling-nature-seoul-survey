@@ -1,0 +1,232 @@
+:root{
+  --ui-bg: rgba(0,0,0,0.6);
+  --ui-text: #fff;
+}
+
+html, body {
+  overflow: hidden;
+  margin: 0;
+  height: 100%;
+  background: #11130E;
+  font-family: Arial, sans-serif;
+  /* Performance optimizations */
+  will-change: transform;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hardware acceleration for better performance */
+canvas {
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Hide the old top-left manual buttons (no longer used) */
+#buttonContainer, .control-button { display: none !important; }
+
+/* Always-visible controls at top-left (a) */
+#buttonContainer {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  /* Performance optimization */
+  will-change: transform;
+}
+
+.control-button {
+  background: rgba(255,255,255,0.92);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, background 0.2s ease;
+  line-height: 1;
+  /* Performance optimization */
+  will-change: transform, background;
+  /* Prevent touch highlights on mobile */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.control-button:hover { 
+  transform: translateY(-1px); 
+  background: #fff; 
+}
+
+.control-button:active { 
+  transform: translateY(0); 
+}
+
+/* Disable button interactions during transitions */
+.control-button:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Helper texts */
+#instructions {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  color: var(--ui-text);
+  background: var(--ui-bg);
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 1001;
+  font-size: 13px;
+  user-select: none;
+  pointer-events: none;
+  /* Smooth transitions */
+  transition: opacity 0.3s ease;
+  will-change: opacity;
+}
+
+#volumeDebug {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  color: var(--ui-text);
+  background: rgba(0,0,0,0.7);
+  padding: 10px 12px;
+  border-radius: 8px;
+  z-index: 1001;
+  font-size: 12px;
+  /* Performance optimization for frequent updates */
+  will-change: transform;
+  font-variant-numeric: tabular-nums; /* Prevent layout shifts */
+}
+
+/* Loading veil for model % */
+#veil { 
+  position: fixed; 
+  inset: 0; 
+  background: #11130E; 
+  display: none; 
+  z-index: 900;
+  /* Smooth fade transitions */
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+
+#percentage {
+  position: absolute; 
+  width: 10vw; 
+  height: 10vh; 
+  text-align: center; 
+  color: #fff;
+  font-weight: bold; 
+  font-size: 5vh; 
+  left: calc(50vw - 5vw); 
+  top: calc(50vh - 5vh);
+  /* Prevent layout shifts during loading */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fullscreen video container (b) */
+#videoContainer {
+  position: fixed;
+  inset: 0;
+  display: none;
+  background: #000;
+  z-index: 1050;
+  /* Smooth video transitions */
+  opacity: 1;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
+}
+
+#videoContainer.fade-in {
+  opacity: 1;
+}
+
+#videoContainer.fade-out {
+  opacity: 0;
+}
+
+#bgVideo {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  /* Video performance optimizations */
+  will-change: transform;
+}
+
+#tapToPlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  z-index: 1060;
+  cursor: pointer;
+  user-select: none;
+  /* Smooth interaction feedback */
+  transition: background 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#tapToPlay:hover {
+  background: rgba(0,0,0,0.7);
+}
+
+#tapToPlay:active {
+  background: rgba(0,0,0,0.8);
+}
+
+/* Performance optimizations for mobile */
+@media (max-width: 768px) {
+  .control-button {
+    font-size: 16px; /* Larger touch targets */
+    padding: 12px 16px;
+  }
+  
+  #instructions {
+    font-size: 14px;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    text-align: center;
+  }
+  
+  #volumeDebug {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  
+  .control-button:hover {
+    transform: none;
+  }
+}
+
+/* Hide scrollbars but keep functionality */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
