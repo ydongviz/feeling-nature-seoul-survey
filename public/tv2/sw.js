@@ -1,10 +1,10 @@
-const CACHE = 'tv2-cache-v2';  // <= bump this when you change assets
+const CACHE = 'tv2-cache-v3';  // <= bump this when you change assets
 const ASSETS = [
   '/tv2/',
   '/tv2/index.html',
   '/tv2/styles.css',
   '/tv2/script.js',
-  '/tv2/img/FN-draft.mp4'
+  '/tv2/img/FN-draft.mov'
 ];
 
 self.addEventListener('install', (e) => {
