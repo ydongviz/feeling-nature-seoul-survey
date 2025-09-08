@@ -10,6 +10,8 @@ const MAX_DISTANCE_METERS = 15000;
 const HIGHLIGHT_MIN = 0.70, HIGHLIGHT_MAX = 0.75;
 const HIGHLIGHT_COLOR = '#92C043', NON_HIGHLIGHT_GRAY = '#666666';
 
+window.USE_CURRENT_JSON = true;
+
 const BP_GROUPS = [
   { min: 0.00, max: 0.25, color: '#92C043', name: 'Very Low (0-0.25)' },
   { min: 0.25, max: 0.50, color: '#92C043', name: 'Low (0.25-0.5)' },
@@ -213,9 +215,36 @@ async function loadSeoulData(dataType) {
   return app.data.cache[cacheKey];
 }
 
+// Prefer current.json written by Lambda; fall back to CSV if unavailable
 async function loadDashboardData() {
   if (app.data.dashboardData) return app.data.dashboardData;
 
+  if (window.USE_CURRENT_JSON) {
+    try {
+      const r = await fetch("https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json", { cache: "no-cache" });
+      if (r.ok) {
+        const cur = await r.json();
+
+        // Normalize to a simple object we can re-use
+        const bp = Number(cur?.bp ?? NaN);
+        const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
+        app.data.dashboardData = { source: "current.json", bp, top, distribution: cur?.distribution || null };
+
+        // Update the UI immediately (keeps all your existing rendering)
+        const num = document.getElementById("bpValueNumber");
+        if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
+        if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
+        if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
+        if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
+
+        return app.data.dashboardData;
+      }
+    } catch (e) {
+      console.warn("current.json not available yet; falling back to CSV", e);
+    }
+  }
+
+  // Fallback: your existing CSV
   try {
     app.data.dashboardData = await d3.csv(seoulData.dashboardDataPath);
   } catch (error) {
@@ -233,9 +262,9 @@ async function loadDashboardData() {
       'Waterfall': '0.3'
     }];
   }
-
   return app.data.dashboardData;
 }
+
 
 async function loadAllParticipantsData() {
   if (app.data.allParticipantsData) return app.data.allParticipantsData;
@@ -338,7 +367,7 @@ function initializeMapbox() {
 
 
 /* ========== CONTROL BUTTONS ========== */
-function createAndSetupButtons() {
+/*function createAndSetupButtons() {
   let controlContainer = document.getElementById('control-buttons');
 
   if (!controlContainer) {
@@ -376,7 +405,7 @@ function createAndSetupButtons() {
   });
 
   app.elements.buttons = controlContainer;
-}
+} */
 
 /* ========== CLEANUP FUNCTIONS ========== */
 function clearAllTimersAndAnimations() {
@@ -409,7 +438,7 @@ function clearAllTimersAndAnimations() {
 /* ========== LAYOUT FUNCTIONS ========== */
 function showLandingLayout() {
   if (!document.getElementById('control-buttons')) {
-    createAndSetupButtons();
+    //createAndSetupButtons();
   }
 
   if (app.elements.rightCol) {
@@ -863,7 +892,7 @@ function buildLeftColumnContent() {
     </p>
   `;
 
-  createAndSetupButtons();
+  //createAndSetupButtons();
 }
 
 function buildRightColumnContent() {
@@ -1546,7 +1575,7 @@ async function initializeApplication() {
     app.elements.mapContainer = document.getElementById('map');
     app.elements.canvas = document.getElementById('visualization-canvas');
 
-    createAndSetupButtons();
+    //createAndSetupButtons();
     initializeMapbox();
 
     await setMode(Modes.LANDING);
@@ -1573,7 +1602,7 @@ async function initializeApplication() {
     console.error('CRITICAL: Application initialization failed:', error);
 
     try {
-      createAndSetupButtons();
+      //createAndSetupButtons();
       app.mode = Modes.LANDING;
     } catch (fallbackError) {
       console.error('Even fallback failed:', fallbackError);

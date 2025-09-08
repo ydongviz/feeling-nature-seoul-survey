@@ -549,6 +549,9 @@ footer {
   visibility: visible !important;
 }
 
+#control-buttons { display: none !important; }
+
+
 /* Hide content except control buttons in landing mode */
 .landing-mode .left-column .left-column-top > :not(.control-buttons):not(#control-buttons) {
   display: none !important;
