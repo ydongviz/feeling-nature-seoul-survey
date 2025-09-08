@@ -292,23 +292,24 @@ function initScene(){
       'varying float vIsEffect; uniform float globalOpacity; void main() {'
     );
     shader.fragmentShader = shader.fragmentShader.replace(
-      'vec4 diffuseColor = vec4( diffuse, opacity );',
-      `
-      // Petal shape (5-lobed) using gl_PointCoord — no #include edits
-      vec2 uv = gl_PointCoord - 0.5;
-      float ang = atan(uv.y, uv.x);
-      float petal = 0.42 + 0.10 * cos(ang * 5.0);  // adjust to taste to match reference
-      float mask = 1.0 - step(petal, length(uv));
-      if (mask < 0.5) discard;
-
-      // Color mix: default vertex color → Seoul pink on letter mask
-      vec3 seoul = vec3(0.95, 0.00, 0.45);
-      vec3 baseCol = vColor;   // from PointsMaterial
-      vec3 mixed   = mix(baseCol, seoul, clamp(vIsEffect, 0.0, 1.0));
-
-      vec4 diffuseColor = vec4(mixed, opacity * globalOpacity);
-      `
-    );
+        'vec4 diffuseColor = vec4( diffuse, opacity );',
+        `
+        // Petal shape (5-lobed) — use our own temp var to avoid 'uv' collision
+        vec2 p = gl_PointCoord - 0.5;   // 'uv' already exists in PointsMaterial
+        float ang = atan(p.y, p.x);
+        float petal = 0.42 + 0.10 * cos(ang * 5.0);
+        float mask = 1.0 - step(petal, length(p));
+        if (mask < 0.5) discard;
+      
+        // Color mix: default vertex color → Seoul pink on letter mask
+        vec3 seoul = vec3(0.95, 0.00, 0.45);
+        vec3 baseCol = vColor;
+        vec3 mixed   = mix(baseCol, seoul, clamp(vIsEffect, 0.0, 1.0));
+      
+        vec4 diffuseColor = vec4(mixed, opacity * globalOpacity);
+        `
+      );  
+ 
   };
 
   const pts = new THREE.Points(pointsGeom, pointsMat);
