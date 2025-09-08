@@ -1,4 +1,4 @@
-// public/tv2/script.js  (ES module)
+// public/tv2/script.js  (ES module, fragment-safe)
 
 // ===== Imports =====
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.115.0/build/three.module.js';
@@ -18,6 +18,7 @@ const videoBox = document.getElementById('videoContainer');
 const bgVideo = document.getElementById('bgVideo');
 const tapToPlay = document.getElementById('tapToPlay');
 
+// Optional HUD
 const dbg = new URLSearchParams(location.search).get('debug') === '1';
 if (dbg) document.getElementById('volumeDebug').hidden = false;
 const volVal = document.getElementById('volumeValue');
@@ -35,6 +36,7 @@ let currentVolume = 1, targetVolume = 1, baseVolume = 1;
 let scene, camera, renderer, controls;
 let base, pointsGeom, pointsMat, circleTexture;
 let treeObject = null;
+
 const uniforms = {
   time: { value: 0 },
   upperLimit: { value: 10 },
@@ -132,32 +134,37 @@ function initScene(){
   const baseMat = new THREE.MeshBasicMaterial({ color:0x5A4218 });
   base = new THREE.Mesh(baseGeom, baseMat); base.position.y = -0.15; scene.add(base);
 
-  // Tree & sampler points
+  // Pre-create textures
+  circleTexture = createCircleTexture();
+  uniforms.tex2020.value = buildSeoulTexture();
+
+  // Tree & sampled points (vertex-only tweak; NO fragment edits)
   const loader = new OBJLoader();
   loader.load('https://threejs.org/examples/models/obj/tree.obj',(obj)=>{
     obj.children[0].material = new THREE.MeshBasicMaterial({ color:0x4A3C28, transparent:true, opacity:0.75 });
+
     const sampler = new MeshSurfaceSampler(obj.children[0]).setWeightAttribute(null).build();
-    const pts=[], ang=[], idx=[];
+    const pts=[], idx=[];
     const n = new THREE.Vector3();
-    for (let i=0;i<1250;i++){ const p = new THREE.Vector3(); sampler.sample(p,n); pts.push(p); ang.push(Math.random()*Math.PI*2/5); idx.push(i); }
-    const treePts = new THREE.Points(new THREE.BufferGeometry().setFromPoints(pts), new THREE.PointsMaterial({ color:0x482D02, size:0.16 }));
-    treePts.geometry.setAttribute("angle", new THREE.BufferAttribute(new Float32Array(ang),1));
+    for (let i=0;i<1250;i++){ const p = new THREE.Vector3(); sampler.sample(p,n); pts.push(p); idx.push(i); }
+
+    const treePts = new THREE.Points(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.PointsMaterial({ color:0x482D02, size:0.16, map:circleTexture, transparent:true, alphaTest:0.05, depthWrite:false })
+    );
     treePts.geometry.setAttribute("idx", new THREE.BufferAttribute(new Float32Array(idx),1));
     treePts.material.onBeforeCompile = (shader)=>{
       shader.uniforms.time = uniformsTree.time;
-      shader.vertexShader = `uniform float time; attribute float angle; attribute float idx; varying float vAngle;` + shader.vertexShader;
-      shader.vertexShader = shader.vertexShader.replace(`#include <begin_vertex>`, `#include <begin_vertex>\n vAngle = angle;`);
-      shader.vertexShader = shader.vertexShader.replace(`gl_PointSize = size;`, `float halfSize = size*0.5; float tIdx = idx + time; gl_PointSize = size + (sin(tIdx)*cos(tIdx*2.5)*0.5+0.5)*halfSize*0.5;`);
-      shader.fragmentShader = `varying float vAngle;` + shader.fragmentShader;
-      shader.fragmentShader = shader.fragmentShader.replace(`#include <clipping_planes_fragment>`, `
-        vec2 uv = gl_PointCoord - 0.5; float a = atan(uv.y, uv.x) + vAngle;
-        float f = 0.4 + 0.1 * cos(a * 5.); f = 1. - step(f, length(uv));
-        if (f < 0.5) discard; #include <clipping_planes_fragment>`);
-      shader.fragmentShader = shader.fragmentShader.replace(`vec4 diffuseColor = vec4( diffuse, opacity );`, `
-        vec3 col = vec3(1.,1.,0.8); vec2 uv = gl_PointCoord - 0.5; uv *= 2.;
-        float d = clamp(length(uv),0.,1.); vec4 diffuseColor = vec4(mix(col, diffuse, pow(d,2.)),1.);`);
+      shader.vertexShader = 'uniform float time; attribute float idx;' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        'gl_PointSize = size;',
+        `float halfSize = size*0.5; float tIdx = idx + time;
+         gl_PointSize = size + (sin(tIdx)*cos(tIdx*2.5)*0.5+0.5) * halfSize * 0.5;`
+      );
     };
-    obj.add(treePts); obj.rotation.y = THREE.Math.DEG2RAD * 20; obj.scale.setScalar(5);
+
+    obj.add(treePts);
+    obj.rotation.y = THREE.Math.DEG2RAD * 20; obj.scale.setScalar(5);
     scene.add(obj); treeObject = obj; percent.style.display = "none";
   }, (xhr)=>{ if (xhr.lengthComputable) percent.innerText = (xhr.loaded/xhr.total*100).toFixed(0)+'%'; });
 
@@ -173,8 +180,11 @@ function initScene(){
       let val = THREE.Math.randFloat(1,2); if (Math.random()<0.25) val = 0;
       speed.push(Math.PI*val*0.125, val);
       const b = biomeNames[Math.floor(Math.random()*biomeNames.length)];
-      const bc = biomeColors[b]; const tx=(Math.random()-0.5)*80, ty=(Math.random()-0.5)*40, tz=(Math.random()-0.5)*60;
-      targetPositions.push(new THREE.Vector3(tx,ty,tz)); targetColors.push([bc.r, bc.g, bc.b]); pointsCount++;
+      const bc = biomeColors[b];
+      const tx=(Math.random()-0.5)*80, ty=(Math.random()-0.5)*40, tz=(Math.random()-0.5)*60;
+      targetPositions.push(new THREE.Vector3(tx,ty,tz));
+      targetColors.push([bc.r, bc.g, bc.b]);
+      pointsCount++;
     }
   }
   pointsGeom = new THREE.BufferGeometry().setFromPoints(points);
@@ -182,12 +192,16 @@ function initScene(){
   pointsGeom.setAttribute("delay", new THREE.BufferAttribute(new Float32Array(delay),1));
   pointsGeom.setAttribute("speed", new THREE.BufferAttribute(new Float32Array(speed),2));
 
-  uniforms.tex2020.value = buildSeoulTexture();
-  circleTexture = createCircleTexture();
-
-  pointsMat = new THREE.PointsMaterial({ size:0.12, vertexColors:true, transparent:true, opacity:0.9 });
+  pointsMat = new THREE.PointsMaterial({
+    size: 0.12,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    map: circleTexture,
+    alphaTest: 0.05,
+    depthWrite: false
+  });
   pointsMat.onBeforeCompile = (shader)=>{
-    // Pass uniforms
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = `
       uniform float time, upperLimit, upperRatio, spiralRadius, spiralTurns, azimuth, transformProgress, isTransformed;
@@ -239,8 +253,6 @@ function initScene(){
         vIsEffect = isE;
       }`);
   };
-  circleTexture = createCircleTexture();
-  pointsMat.map = null;
 
   const pts = new THREE.Points(pointsGeom, pointsMat);
   scene.add(pts);
@@ -256,8 +268,11 @@ function onResize(){
 const clock = new THREE.Clock();
 function animate(){
   renderer.setAnimationLoop(()=>{
-    const dt = clock.getDelta(); uniforms.time.value += dt * 0.5; uniforms.azimuth.value = controls.getAzimuthalAngle();
-    uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0; uniformsTree.time.value = uniforms.time.value * 5.0;
+    const dt = clock.getDelta();
+    uniforms.time.value += dt * 0.5;
+    uniforms.azimuth.value = controls.getAzimuthalAngle();
+    uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0;
+    uniformsTree.time.value = uniforms.time.value * 5.0;
     if (!isTransformed && isPlaying && currentMode === 'landing') calcVolumeProxy();
     controls.update(); renderer.render(scene, camera);
   });
@@ -302,6 +317,7 @@ function toBiomeDots(){
   if (base) base.visible = false;
 
   controls.target.set(0,0,0); camera.position.set(0,15,50); controls.autoRotate=false; controls.minDistance=20; controls.maxDistance=80;
+
   const pos = pointsGeom.attributes.position.array;
   const col = pointsGeom.attributes.color.array;
   for (let i=0;i<targetPositions.length;i++){
@@ -311,9 +327,8 @@ function toBiomeDots(){
   }
   pointsGeom.attributes.position.needsUpdate = true;
   pointsGeom.attributes.color.needsUpdate = true;
+
   uniforms.isTransformed.value = 1;
-  if (!circleTexture) circleTexture = createCircleTexture();
-  pointsMat.map = circleTexture; pointsMat.needsUpdate = true;
   isTransformed = true;
 }
 function fadeDots(ms=2000, done){
@@ -367,7 +382,6 @@ async function tick(){
 
 // ===== Boot =====
 function prefillTargets(){
-  // build targetPositions/Colors to same length as points
   for (let i=0;i<MAX_POINTS;i++){
     const b = biomeNames[i % biomeNames.length];
     const bc = biomeColors[b];
@@ -391,16 +405,12 @@ function buildPointsCloud(){
     }
   }
 }
-function startLandingExperience(){ startLanding(); }
-
 (function main(){
-  // Init audio (safe if missing)
   try{ bgm.load(); }catch(e){}
-  // Build targets and points arrays (ensure they exist before scene)
   buildPointsCloud();
   prefillTargets();
-  // Scene
   initScene();
-  startLandingExperience();
+  // enter landing immediately
+  currentMode = 'landing'; isPlaying = true; veil.style.display = "none"; playBgm();
   setInterval(tick, POLL_MS);
 })();
