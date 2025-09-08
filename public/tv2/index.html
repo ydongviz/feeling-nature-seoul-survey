@@ -2,45 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>TV-2 · Landing → Video (state-driven)</title>
-
-  <!-- Optional: if you didn't add the vercel.json rewrite, keep this base so /tv2 works -->
+  <title>TV-2 · Petals → Biome Dots → Video</title>
+  <!-- So /tv2 works without /index.html -->
   <base href="/tv2/">
-
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- (optional) tiny debug HUD. Hidden by CSS unless ?debug=1 -->
+  <!-- Optional debug HUD: show with ?debug=1 -->
   <div id="volumeDebug" hidden>
     Volume: <span id="volumeValue">1.00</span><br>
     Height (P90): <span id="heightValue">0</span><br>
     Phase: <span id="phaseValue">-</span>
   </div>
 
-  <!-- Background music (loops). Safe to keep even if the file is missing. -->
+  <!-- Background music -->
   <audio id="backgroundMusic" loop preload="auto">
-    <!-- put your audio in /public/tv2/music/ if you want it -->
-    <source src="music/nature-dreamscape-350256.mp3" type="audio/mpeg">
-    <source src="music/nature-dreamscape-350256.ogg" type="audio/ogg">
+    <source src="music/nature-dreamscape-350256.mp3" type="audio/mpeg" />
+    <source src="music/nature-dreamscape-350256.ogg" type="audio/ogg" />
   </audio>
 
-  <!-- Loading veil for OBJ % -->
+  <!-- Loading veil while OBJ loads -->
   <div id="veil"><div id="percentage">0%</div></div>
 
   <!-- Fullscreen video layer -->
   <div id="videoContainer">
     <video id="bgVideo" loop playsinline preload="auto">
-      <!-- Replace with your final file name if different -->
-      <source src="img/FN-draft.mov" type="video/mp4">
+      <!-- update filename/path if yours differs -->
+      <source src="img/FN-draft.mp4" type="video/mp4" />
     </video>
     <div id="tapToPlay">Tap to play ▶</div>
   </div>
 
-  <!-- 3D / video controller (module) -->
+  <!-- Three scene -->
   <script type="module" src="script.js"></script>
 
-  <!-- Service worker: pre-cache the video so it plays through Wi-Fi drops -->
+  <!-- Service worker (bump version in sw.js when you change assets) -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/tv2/sw.js', { scope: '/tv2/' }).catch(()=>{});

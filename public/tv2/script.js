@@ -1,53 +1,50 @@
-// public/tv2/script.js  (ES module, fragment-safe)
+// TV-2 · Petals → “SEOUL” → Biome Dots → Video (state-driven, ES module)
 
-// ===== Imports =====
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.115.0/build/three.module.js';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/loaders/OBJLoader.js';
 import { MeshSurfaceSampler } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/math/MeshSurfaceSampler.js';
 
-// ===== Config =====
+/* ---------- Config ---------- */
 const S3_STATE_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 const POLL_MS = 1200;
 
-// ===== DOM =====
+/* ---------- DOM ---------- */
 const bgm = document.getElementById('backgroundMusic');
 const veil = document.getElementById('veil');
-const percent = document.getElementById('percentage');
+const percentage = document.getElementById('percentage');
 const videoBox = document.getElementById('videoContainer');
 const bgVideo = document.getElementById('bgVideo');
 const tapToPlay = document.getElementById('tapToPlay');
 
-// Optional HUD
-const dbg = new URLSearchParams(location.search).get('debug') === '1';
-if (dbg) document.getElementById('volumeDebug').hidden = false;
+const debug = new URLSearchParams(location.search).get('debug') === '1';
+const dbgHUD = document.getElementById('volumeDebug');
 const volVal = document.getElementById('volumeValue');
 const hVal = document.getElementById('heightValue');
 const phaseVal = document.getElementById('phaseValue');
+if (debug) dbgHUD.hidden = false;
 
-// ===== State =====
-let currentMode = 'boot';     // 'boot' | 'landing' | 'video'
-let isTransformed = false;
-let isPlaying = false;
+/* ---------- Kiosk state ---------- */
+let mode = 'landing';          // 'landing' | 'video'
+let isTransformed = false;     // biome-dots phase flag
+let playing = false;
 
 let currentVolume = 1, targetVolume = 1, baseVolume = 1;
 
-// ===== THREE globals =====
+/* ---------- THREE globals ---------- */
 let scene, camera, renderer, controls;
-let base, pointsGeom, pointsMat, circleTexture;
-let treeObject = null;
-
+let base, treeObject = null;
+let pointsGeom, pointsMat, circleTexture;
 const uniforms = {
   time: { value: 0 },
   upperLimit: { value: 10 },
   upperRatio: { value: 2.1 },
   spiralRadius: { value: 1.8 },
   spiralTurns: { value: 1.3 },
-  tex2020: { value: null },
+  tex2020: { value: null },    // “SEOUL” texture
   azimuth: { value: 0 },
-  transformProgress: { value: 0 },
   isTransformed: { value: 0 },
-  globalOpacity: { value: 1.0 }
+  globalOpacity: { value: 1.0 } // fade petals/dots when switching to video
 };
 const uniformsTree = { time: { value: 0 } };
 
@@ -67,7 +64,7 @@ const biomeColors = {
 const biomeNames = Object.keys(biomeColors);
 let targetPositions = [], targetColors = [];
 
-// ===== Utilities =====
+/* ---------- Utilities ---------- */
 function createCircleTexture(){
   const c = document.createElement('canvas'); c.width = 32; c.height = 32;
   const x = c.getContext('2d'), m = 16, R = 14;
@@ -81,36 +78,33 @@ function buildSeoulTexture(){
   cnvs.width = 400; cnvs.height = 100;
   const ctx = cnvs.getContext("2d");
   ctx.fillStyle = "transparent"; ctx.fillRect(0,0,cnvs.width,cnvs.height);
-  ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000"; ctx.lineWidth = 4;
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000"; ctx.lineWidth = 6;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.font = "900 80px 'Arial Black', Arial, sans-serif";
-  ctx.strokeText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
-  ctx.lineWidth = 6; ctx.strokeText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
-  ctx.fillText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
+  ctx.strokeText("SEOUL", cnvs.width*0.5, cnvs.height*0.5);
+  ctx.lineWidth = 8; ctx.strokeText("SEOUL", cnvs.width*0.5, cnvs.height*0.5);
+  ctx.fillText("SEOUL", cnvs.width*0.5, cnvs.height*0.5);
   return new THREE.CanvasTexture(cnvs);
 }
 
-// ===== Music =====
+/* ---------- Music ---------- */
 function playBgm(){ if (!bgm) return; bgm.currentTime = 4; bgm.volume = currentVolume; bgm.play().catch(()=>{}); }
 function fadeOutBgm(ms=1500){
   if (!bgm || bgm.paused) return;
   const steps = Math.max(1, Math.floor(ms/50)); const v0 = bgm.volume; let i=0;
-  const it = setInterval(()=>{ i++; bgm.volume = Math.max(0, v0*(1 - i/steps));
-    if (i>=steps){ clearInterval(it); bgm.pause(); }
-  },50);
+  const it = setInterval(()=>{ i++; bgm.volume = Math.max(0, v0*(1 - i/steps)); if (i>=steps){ clearInterval(it); bgm.pause(); } },50);
 }
 function updateMusic(avgHeight, maxH, phase){
-  let ratio = Math.max(0, Math.min(1, avgHeight / maxH));
-  if (ratio > 0.98) ratio = 1;
+  let ratio = Math.max(0, Math.min(1, avgHeight / maxH)); if (ratio > 0.98) ratio = 1;
   targetVolume = Math.min(1, ratio * baseVolume);
   if (Math.abs(currentVolume - targetVolume) > 0.005){
     currentVolume += (targetVolume - currentVolume) * 0.2;
     if (!bgm.paused) bgm.volume = currentVolume;
   }
-  if (dbg){ volVal.textContent = currentVolume.toFixed(3); hVal.textContent = avgHeight.toFixed(2); phaseVal.textContent = phase; }
+  if (debug){ volVal.textContent = currentVolume.toFixed(3); hVal.textContent = avgHeight.toFixed(2); phaseVal.textContent = phase; }
 }
 
-// ===== Scene =====
+/* ---------- Scene ---------- */
 function initScene(){
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 1, 1000);
@@ -130,24 +124,23 @@ function initScene(){
   controls.minDistance = 5; controls.maxDistance = 12.5;
   controls.target.set(0,4,0); controls.update();
 
+  // ground
   const baseGeom = new THREE.CircleBufferGeometry(6,64); baseGeom.rotateX(-Math.PI*0.5);
   const baseMat = new THREE.MeshBasicMaterial({ color:0x5A4218 });
   base = new THREE.Mesh(baseGeom, baseMat); base.position.y = -0.15; scene.add(base);
 
-  // Pre-create textures
+  // textures
   circleTexture = createCircleTexture();
   uniforms.tex2020.value = buildSeoulTexture();
 
-  // Tree & sampled points (vertex-only tweak; NO fragment edits)
+  // tree + shimmering points (vertex-only edit → no fragment hacking)
   const loader = new OBJLoader();
   loader.load('https://threejs.org/examples/models/obj/tree.obj',(obj)=>{
     obj.children[0].material = new THREE.MeshBasicMaterial({ color:0x4A3C28, transparent:true, opacity:0.75 });
 
     const sampler = new MeshSurfaceSampler(obj.children[0]).setWeightAttribute(null).build();
-    const pts=[], idx=[];
-    const n = new THREE.Vector3();
+    const pts=[], idx=[]; const n = new THREE.Vector3();
     for (let i=0;i<1250;i++){ const p = new THREE.Vector3(); sampler.sample(p,n); pts.push(p); idx.push(i); }
-
     const treePts = new THREE.Points(
       new THREE.BufferGeometry().setFromPoints(pts),
       new THREE.PointsMaterial({ color:0x482D02, size:0.16, map:circleTexture, transparent:true, alphaTest:0.05, depthWrite:false })
@@ -162,13 +155,12 @@ function initScene(){
          gl_PointSize = size + (sin(tIdx)*cos(tIdx*2.5)*0.5+0.5) * halfSize * 0.5;`
       );
     };
-
     obj.add(treePts);
     obj.rotation.y = THREE.Math.DEG2RAD * 20; obj.scale.setScalar(5);
-    scene.add(obj); treeObject = obj; percent.style.display = "none";
-  }, (xhr)=>{ if (xhr.lengthComputable) percent.innerText = (xhr.loaded/xhr.total*100).toFixed(0)+'%'; });
+    scene.add(obj); treeObject = obj; percentage.style.display = "none";
+  }, (xhr)=>{ if (xhr.lengthComputable) percentage.textContent = (xhr.loaded/xhr.total*100).toFixed(0)+'%'; });
 
-  // Points field
+  // petals / dots
   const c = new THREE.Color();
   while (pointsCount < MAX_POINTS){
     const v = new THREE.Vector3(THREE.Math.randFloat(-r,r),0,THREE.Math.randFloat(-r,r));
@@ -196,21 +188,26 @@ function initScene(){
     size: 0.12,
     vertexColors: true,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.95,
     map: circleTexture,
     alphaTest: 0.05,
     depthWrite: false
   });
+
+  // Vertex-only motion + letter sampling. Fragment stays default (round sprites from map).
   pointsMat.onBeforeCompile = (shader)=>{
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = `
-      uniform float time, upperLimit, upperRatio, spiralRadius, spiralTurns, azimuth, transformProgress, isTransformed;
-      uniform sampler2D tex2020; attribute float delay; attribute vec2 speed;
-      varying float vRatio; varying vec2 vSpeed; varying float vIsEffect;
+      uniform float time, upperLimit, upperRatio, spiralRadius, spiralTurns, azimuth, isTransformed;
+      uniform sampler2D tex2020;
+      attribute float delay; attribute vec2 speed;
+      varying float vRatio; varying float vIsEffect;
       mat2 rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
     ` + shader.vertexShader;
+
     shader.vertexShader = shader.vertexShader.replace(`#include <begin_vertex>`, `#include <begin_vertex>
       if (isTransformed > 0.5){
+        // biome dots floating
         float ws1 = 0.3 + (position.x + position.z) * 0.02;
         float wp1 = (position.x * 1.2 + position.z * 0.9);
         float w1 = sin(time * ws1 + wp1) * 0.8;
@@ -225,33 +222,58 @@ function initScene(){
         float rA = sin(time * rS) * 0.1;
         mat3 rY = mat3(cos(rA),0.,sin(rA), 0.,1.,0., -sin(rA),0.,cos(rA));
         transformed = gR * (rY * position + vec3(dx, w1+w2, dz));
-        vRatio = 0.; vSpeed = vec2(0.); vIsEffect = 0.;
+        vRatio = 0.; vIsEffect = 0.;
       } else {
-        float t = time + delay; t = max(t, 0.0);
-        float cycle = 40., riseT=20., fallT=6.; float loopT = mod(t, cycle);
+        // petals rise/fall spiral + SEOUL mask
+        float t = max(time + delay, 0.0);
+        float cycle=40., rise=20., fall=6.; float loopT = mod(t, cycle);
         float h;
-        if (loopT < riseT) { h = mod(speed.y * loopT, upperLimit); }
+        if (loopT < rise) { h = mod(speed.y * loopT, upperLimit); }
         else {
-          float fp = (loopT - riseT) / fallT;
-          float id = (delay + 10.0) / 10.0;
-          float adj = clamp((fp - id*0.3) / (1.0 - id*0.3), 0.0, 1.0);
-          adj = smoothstep(0.0, 1.0, adj);
-          float maxH = mod(speed.y * riseT, upperLimit);
-          h = maxH * (1.0 - adj);
+          float fp=(loopT-rise)/fall; float id=(delay+10.)/10.;
+          float adj = clamp((fp - id*0.3)/(1.-id*0.3), 0., 1.); adj = smoothstep(0.,1.,adj);
+          float maxH = mod(speed.y * rise, upperLimit); h = maxH * (1. - adj);
         }
-        float hR = clamp(h/upperLimit, 0., 1.); vRatio = hR; vSpeed = speed; transformed.y = h;
+        float hR = clamp(h/upperLimit, 0., 1.); vRatio = hR;
+        transformed.y = h;
         float a = atan(position.x, position.z); a += speed.x * t;
         float initL = length(position.xz), finL = initL * upperRatio, radi = mix(initL, finL, hR);
         transformed.x = cos(a) * radi; transformed.z = sin(a) * -radi;
         float sT = sin(time*0.5)*0.5 + spiralTurns; float sA = hR * sT * 6.2831853;
         float sR = mix(spiralRadius, 0., hR); transformed.x += cos(sA)*sR; transformed.z += sin(sA)*-sR;
-        vec3 efcPos = vec3(0,6,0.5), efcClamp = vec3(2.0,0.9,0.25)*3.5;
-        vec3 efcMin = efcPos - efcClamp, efcMax = efcPos + efcClamp;
+
+        // letter sampling window in world space (rotated by camera azimuth)
+        vec3 efcPos = vec3(0, 6, 0.5);
+        vec3 efcClamp = vec3(2.0, 0.9, 0.25) * 3.5;
+        vec3 efcMin = efcPos - efcClamp;
+        vec3 efcMax = efcPos + efcClamp;
         vec3 UVT = vec3(transformed); UVT.xz *= rot(azimuth);
         vec3 efcUV = (UVT - efcMin) / (efcMax - efcMin);
-        float isE = texture2D(tex2020, efcUV.xy).r; isE *= (efcUV.z>0. && efcUV.z<1.) ? 1. : 0.;
+        float isE = texture2D(tex2020, efcUV.xy).r;
+        isE *= (efcUV.z>0. && efcUV.z<1.) ? 1. : 0.;
         vIsEffect = isE;
       }`);
+
+    // Make petals larger/brighter on the letters (no fragment #include edits)
+    shader.vertexShader = shader.vertexShader.replace('gl_PointSize = size;', `
+      float s = size;
+      if (isTransformed < 0.5) {              // petals phase
+        s = mix(size, size * 2.2, vIsEffect); // bigger on SEOUL letters
+      } else { s = 0.3; }                     // small dots in biome phase
+      gl_PointSize = s;
+    `);
+
+    // Color mix in fragment without touching #includes
+    shader.fragmentShader =
+      'uniform float globalOpacity; varying float vIsEffect;' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'vec4 diffuseColor = vec4( diffuse, opacity );',
+      `
+      vec3 seoul = vec3(0.95, 0.0, 0.45);
+      vec3 mixed = mix(vColor, seoul, clamp(vIsEffect, 0.0, 1.0));
+      vec4 diffuseColor = vec4(mixed, opacity * globalOpacity);
+      `
+    );
   };
 
   const pts = new THREE.Points(pointsGeom, pointsMat);
@@ -259,12 +281,9 @@ function initScene(){
 
   animate();
 }
-function onResize(){
-  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-}
+function onResize(){ camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); }
 
-// ===== Animation / volume =====
+/* ---------- Animation / volume ---------- */
 const clock = new THREE.Clock();
 function animate(){
   renderer.setAnimationLoop(()=>{
@@ -273,15 +292,15 @@ function animate(){
     uniforms.azimuth.value = controls.getAzimuthalAngle();
     uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0;
     uniformsTree.time.value = uniforms.time.value * 5.0;
-    if (!isTransformed && isPlaying && currentMode === 'landing') calcVolumeProxy();
+
+    if (!isTransformed && playing && mode==='landing') calcVolume();
     controls.update(); renderer.render(scene, camera);
   });
 }
-function calcVolumeProxy(){
+function calcVolume(){
   const delays = pointsGeom.attributes.delay.array;
   const speeds = pointsGeom.attributes.speed.array;
   const UL = uniforms.upperLimit.value;
-
   const SAMPLE = 1500, total = delays.length;
   const idxs = new Uint32Array(Math.min(SAMPLE, total));
   for (let i=0;i<idxs.length;i++) idxs[i] = (Math.random()*total)|0;
@@ -291,33 +310,30 @@ function calcVolumeProxy(){
   for (let k=0;k<idxs.length;k++){
     const i = idxs[k], d = delays[i], sp = speeds[i*2+1], ct = t + d; if (ct<=0) continue;
     const cycle=40, rise=20, fall=6, loop=ct%cycle;
-    let h;
-    if (loop < rise){ h = (sp*loop)%UL; rising++; }
+    let h; if (loop < rise){ h = (sp*loop)%UL; rising++; }
     else { const fp=(loop-rise)/fall, id=(d+10)/10, adj=Math.max(0,Math.min(1,(fp-id*0.3)/(1-id*0.3)));
            const maxH=(sp*rise)%UL; h=maxH*(1 - (adj*adj*(3-2*adj))); falling++; }
     hts.push(h);
   }
   let phase='Mixed'; if (rising > 2*falling) phase='Rising'; else if (falling > 2*rising) phase='Falling';
-  if (hts.length){
-    hts.sort((a,b)=>a-b); const p90 = hts[Math.floor(0.9*hts.length)];
-    updateMusic(p90, UL, phase);
-  }
+  if (hts.length){ hts.sort((a,b)=>a-b); const p90 = hts[Math.floor(0.9*hts.length)]; updateMusic(p90, UL, phase); }
 }
 
-// ===== Transitions =====
+/* ---------- Transitions ---------- */
 function startLanding(){
-  if (currentMode === 'landing') return;
-  if (currentMode === 'video'){ location.reload(); return; }
-  currentMode = 'landing'; isPlaying = true; veil.style.display = "none"; playBgm();
+  if (mode === 'landing') return;
+  if (mode === 'video'){ location.reload(); return; } // simplest back-to-3D reset
+  mode = 'landing'; playing = true; veil.style.display = "none"; try{ bgm.load(); }catch{}; playBgm();
 }
 function toBiomeDots(){
   if (isTransformed) return;
-  if (bgm) fadeOutBgm(3000);
+  fadeOutBgm(3000);
   if (treeObject) treeObject.visible = false;
   if (base) base.visible = false;
+  controls.target.set(0,0,0); camera.position.set(0,15,50);
+  controls.autoRotate=false; controls.minDistance=20; controls.maxDistance=80;
 
-  controls.target.set(0,0,0); camera.position.set(0,15,50); controls.autoRotate=false; controls.minDistance=20; controls.maxDistance=80;
-
+  // warp petals to biome colors/positions
   const pos = pointsGeom.attributes.position.array;
   const col = pointsGeom.attributes.color.array;
   for (let i=0;i<targetPositions.length;i++){
@@ -328,22 +344,21 @@ function toBiomeDots(){
   pointsGeom.attributes.position.needsUpdate = true;
   pointsGeom.attributes.color.needsUpdate = true;
 
-  uniforms.isTransformed.value = 1;
-  isTransformed = true;
+  uniforms.isTransformed.value = 1; isTransformed = true;
 }
 function fadeDots(ms=2000, done){
   const s = performance.now();
-  function step(now){
+  const step = (now)=>{
     const t = Math.min(1,(now-s)/ms); uniforms.globalOpacity.value = 1 - t;
-    if (t<1) requestAnimationFrame(step); else { uniforms.globalOpacity.value = 0; done&&done(); }
-  }
+    if (t<1) requestAnimationFrame(step); else { uniforms.globalOpacity.value = 0; done && done(); }
+  };
   requestAnimationFrame(step);
 }
 function teardownThree(){
-  try{ controls.dispose(); }catch(e){}
-  try{ renderer.setAnimationLoop(null); }catch(e){}
-  try{ scene.traverse(o=>{ if(o.isMesh||o.isPoints){ o.geometry.dispose?.(); o.material.dispose?.(); } }); }catch(e){}
-  try{ renderer.dispose?.(); }catch(e){} try{ renderer.domElement.remove?.(); }catch(e){}
+  try{ controls?.dispose?.(); }catch{}
+  try{ renderer?.setAnimationLoop(null); }catch{}
+  try{ scene?.traverse(o=>{ if(o.isMesh||o.isPoints){ o.geometry.dispose?.(); o.material.dispose?.(); } }); }catch{}
+  try{ renderer?.dispose?.(); }catch{} try{ renderer?.domElement?.remove?.(); }catch{}
   scene=camera=renderer=controls=null;
 }
 function showVideo(){
@@ -355,7 +370,7 @@ function showVideo(){
 }
 tapToPlay.addEventListener('click', ()=>{ tapToPlay.style.display='none'; bgVideo.muted=false; bgVideo.play(); });
 
-// ===== State Poller =====
+/* ---------- State poller (ETag) ---------- */
 let lastETag = null;
 async function fetchState(){
   try{
@@ -369,19 +384,18 @@ async function fetchState(){
 function expired(s){ const e = Date.parse(s?.expires_at||''); return Number.isFinite(e) && Date.now() > e; }
 async function tick(){
   const s = await fetchState(); if (!s) return;
-  if (!s.stage || expired(s)){ if (currentMode!=='landing') startLanding(); return; }
+  if (!s.stage || expired(s)){ if (mode!=='landing') startLanding(); return; }
   if (s.stage === 'show_result'){
-    if (currentMode !== 'video'){
+    if (mode !== 'video'){
       toBiomeDots();
-      setTimeout(()=>{ fadeDots(2000, ()=>{ teardownThree(); fadeOutBgm(1200); showVideo(); currentMode='video'; }); }, 5000);
+      setTimeout(()=>{ fadeDots(2000, ()=>{ teardownThree(); fadeOutBgm(1200); showVideo(); mode='video'; }); }, 5000);
     }
-  } else {
-    if (currentMode !== 'landing') startLanding();
-  }
+  } else { if (mode !== 'landing') startLanding(); }
 }
 
-// ===== Boot =====
-function prefillTargets(){
+/* ---------- Boot ---------- */
+(function main(){
+  // Prebuild targets to length
   for (let i=0;i<MAX_POINTS;i++){
     const b = biomeNames[i % biomeNames.length];
     const bc = biomeColors[b];
@@ -389,28 +403,8 @@ function prefillTargets(){
     targetPositions.push(new THREE.Vector3(tx,ty,tz));
     targetColors.push([bc.r,bc.g,bc.b]);
   }
-}
-function buildPointsCloud(){
-  const c = new THREE.Color();
-  while (pointsCount < MAX_POINTS){
-    const v = new THREE.Vector3(THREE.Math.randFloat(-r,r),0,THREE.Math.randFloat(-r,r));
-    const rr = v.length()/r;
-    if (v.length()<=r && Math.random()<(1-rr)){
-      points.push(v);
-      c.set(0xffffcc); color.push(c.r, c.g - Math.random()*0.1, c.b + Math.random()*0.2);
-      delay.push(THREE.Math.randFloat(-10,0));
-      let val = THREE.Math.randFloat(1,2); if (Math.random()<0.25) val = 0;
-      speed.push(Math.PI*val*0.125, val);
-      pointsCount++;
-    }
-  }
-}
-(function main(){
-  try{ bgm.load(); }catch(e){}
-  buildPointsCloud();
-  prefillTargets();
   initScene();
   // enter landing immediately
-  currentMode = 'landing'; isPlaying = true; veil.style.display = "none"; playBgm();
+  playing = true; veil.style.display = 'none'; try{ bgm.load(); }catch{}; playBgm();
   setInterval(tick, POLL_MS);
 })();
