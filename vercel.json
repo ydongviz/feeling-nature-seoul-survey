@@ -1,6 +1,6 @@
 {
-  "rewrites": [
-    { "source": "/tv1", "destination": "/tv1/index.html" },
-    { "source": "/tv2", "destination": "/tv2/index.html" }
+  "redirects": [
+    { "source": "/tv1", "destination": "/tv1/", "permanent": true },
+    { "source": "/tv2", "destination": "/tv2/", "permanent": true }
   ]
 }
