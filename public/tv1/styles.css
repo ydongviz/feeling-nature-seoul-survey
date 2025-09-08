@@ -1,0 +1,608 @@
+/* ========================================
+   SEOUL BIOPHILIC VISUALIZATION - CSS
+   Complete updated version with all fixes
+   ======================================== */
+
+/* ========== BASE STYLES ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #1a1a1a;
+  backdrop-filter: blur(5px);
+  color: white;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ========== MAIN LAYOUT STRUCTURE ========== */
+.main-content {
+  height: 78vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 20px;
+}
+
+.overlay-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.content-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* ========== COLUMN LAYOUTS ========== */
+.left-column {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  width: 300px;
+  z-index: 10;
+}
+
+.center-column {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  width: 600px;
+  height: 600px;
+}
+
+.right-column {
+  position: absolute;
+  top: 40px;
+  right: 20px;
+  width: 300px;
+  z-index: 10;
+}
+
+/* ========== LEFT COLUMN CONTENT ========== */
+.left-column-top h2 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.left-column-top p {
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
+/* ========== RIGHT COLUMN CONTENT ========== */
+.right-column-top img {
+  max-width: 60%;
+  height: auto;
+}
+
+/* ========== VISUALIZATION COMPONENTS ========== */
+.visualization-wrapper {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  background: rgba(42, 42, 42, 0.3);
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+#map.hidden-map {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#visualization-canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #888;
+  font-size: 14px;
+  z-index: 100;
+}
+
+/* ========== CONTROL ELEMENTS ========== */
+
+/* Toggle Button */
+.toggle-button {
+  background: #333;
+  border-radius: 20px;
+  padding: 5px;
+  position: relative;
+  width: 80px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-dot {
+  width: 30px;
+  height: 30px;
+  background: #92C043;
+  border-radius: 50%;
+  position: absolute;
+  left: 5px;
+  transition: left 0.3s ease;
+}
+
+.toggle-label {
+  font-size: 12px;
+  z-index: 1;
+  padding: 0 8px;
+  color: white;
+}
+
+/* View Toggle Button */
+.view-toggle-button {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #666;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  z-index: 20;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.view-toggle-button:hover {
+  background: #888;
+}
+
+/* Control Buttons */
+.control-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  width: 100px;
+}
+
+.control-button {
+  padding: 8px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  border: none;
+  transition: all 0.3s ease;
+  font-family: Arial, sans-serif;
+  font-weight: normal;
+  text-align: center;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-button {
+  background: #92C043;
+  color: white;
+}
+
+.landing-button:hover {
+  background: #7da837;
+  transform: translateY(-1px);
+}
+
+.show-result-button {
+  background: #666;
+  color: white;
+}
+
+.show-result-button:hover {
+  background: #888;
+  transform: translateY(-1px);
+}
+
+.reset-button {
+  background: #dc3545;
+  color: white;
+}
+
+.reset-button:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.control-button:active {
+  transform: translateY(0);
+}
+
+/* Highlight Button */
+.highlight-button {
+  background: transparent;
+  color: #888;
+  border: 1px solid #666;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 10px;
+  transition: all 0.3s ease;
+}
+
+.highlight-button:hover {
+  border-color: #999;
+  color: #aaa;
+}
+
+.highlight-button.active {
+  background: transparent;
+  color: #a1f8d0;
+  border-color: #a1f8d0;
+}
+
+/* ========== TOOLTIP ========== */
+#tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+/* ========== FOOTER LAYOUT ========== */
+footer {
+  background: #1a1a1a;
+  padding: 15px 60px;
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) minmax(640px, 1fr) minmax(360px, 420px);
+  gap: 28px;
+  align-items: start;
+  height: 22vh;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.footer-section {
+  min-width: 0;
+  text-align: left;
+  height: 100%;
+  overflow: hidden;
+}
+
+.footer-section:first-child {
+  flex: 0 0 200px;
+  max-width: 200px;
+}
+
+.footer-section:nth-child(2) {
+  flex: 1 1 50%;
+  min-width: 320px;
+  padding-right: 8px;
+}
+
+.footer-section:last-child {
+  flex: 0 0 340px;
+  max-width: 420px;
+  padding-left: 8px;
+}
+
+/* ========== FOOTER CONTENT STYLES ========== */
+.footer-section h4 {
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #888;
+  font-weight: normal;
+  text-transform: none;
+}
+
+.bp-value {
+  font-size: 48px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.bp-indicator {
+  width: 16px;
+  height: 16px;
+  background: #92C043;
+  border-radius: 50%;
+}
+
+.footer-section p {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 180px;
+}
+
+.middle-section-title {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 8px;
+  font-weight: normal;
+}
+
+.plant-category {
+  font-size: 16px;
+  color: white;
+  margin-bottom: 20px;
+  font-weight: normal;
+}
+
+/* ========== CHART COMPONENTS ========== */
+
+/* Chart Container */
+.chart-container {
+  width: 100%;
+  max-width: 100%;
+  height: 120px;
+  overflow: visible;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.chart-title {
+  font-size: 13px;
+  margin-bottom: 20px;
+  color: #888;
+  font-weight: normal;
+  text-align: left;
+}
+
+.chart-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+  position: relative;
+  min-height: 120px;
+}
+
+.chart-left {
+  flex: 0 0 auto;
+}
+
+.chart-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Top Elements with Icons */
+.top-elements {
+  display: flex;
+  justify-content: flex-start;
+  gap: 15px;
+  margin-bottom: 15px;
+  flex: 0 0 auto;
+}
+
+.top-element {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.top-element img {
+  width: 100px;
+  height: auto;
+  margin-bottom: 5px;
+  opacity: 0.8;
+}
+
+.top-element .element-name {
+  font-size: 10px;
+  color: #888;
+  line-height: 1.1;
+  max-width: 60px;
+}
+
+/* Bar Chart Styles */
+.bar-chart,
+.bar-labels {
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.bar-chart {
+  display: flex;
+  align-items: end;
+  justify-content: left;
+  height: 80px;
+  padding: 0;
+  gap: 12px;
+  margin-left: 10px;
+}
+
+.bar {
+  position: relative;
+  width: 32px;
+  background: #92C043;
+  border-radius: 2px 2px 0 0;
+  transition: all 0.3s ease;
+}
+
+.bar-labels {
+  display: flex;
+  justify-content: left;
+  gap: 14px;
+  margin-top: 15px;
+  margin-left: 10px;
+  padding-bottom: 8px;
+}
+
+.bar-label {
+  width: 30px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  transform-origin: top center;
+  color: #ccc;
+  text-align: center;
+  line-height: 1.2;
+  overflow: visible;
+}
+
+/* Y-axis labels for bar chart */
+.y-axis-labels {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 8px;
+  color: #888;
+  width: 15px;
+}
+
+.y-axis-label {
+  text-align: right;
+  line-height: 1;
+}
+
+/* Line Chart Styles */
+.chart-wrapper {
+  position: relative;
+  height: 110px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 20px;
+  overflow: visible;
+}
+
+.chart-wrapper canvas {
+  width: 100% !important;
+  max-width: 380px;
+  max-height: 100px !important;
+}
+
+.intensity_text {
+  color: #ccc;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+/* ========== LANDING MODE STYLES ========== */
+
+/* Landing Mode Layout */
+.landing-mode .right-column,
+.landing-mode footer {
+  display: none !important;
+}
+
+.landing-mode .left-column {
+  display: block !important;
+  visibility: visible !important;
+  z-index: 999 !important;
+  position: absolute;
+}
+
+.landing-mode .left-column-top {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Hide content except control buttons in landing mode */
+.landing-mode .left-column .left-column-top > :not(.control-buttons):not(#control-buttons) {
+  display: none !important;
+}
+
+/* Always show control buttons */
+.landing-mode .control-buttons,
+.landing-mode #control-buttons {
+  display: flex !important;
+  flex-direction: column;
+  gap: 10px;
+  visibility: visible !important;
+}
+
+/* Landing Mode Visualization */
+.landing-mode .visualization-wrapper,
+.landing-mode #visualization-canvas,
+.landing-mode #map {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0;
+  left: 0;
+}
+
+.landing-mode #visualization-canvas {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.landing-mode #map {
+  z-index: 1;
+}
+
+/* Landing Text Styles */
+.landing-text {
+  text-align: center;
+  margin-top: 50px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #dbe6cf;
+}
+
+.landing-text .landing-line1 {
+  font-weight: 400;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.landing-text .landing-line2 {
+  color: #cbd5b1;
+}
+
+/* ========== MAPBOX CUSTOMIZATION ========== */
+.mapboxgl-ctrl-attrib {
+  display: none !important;
+}
