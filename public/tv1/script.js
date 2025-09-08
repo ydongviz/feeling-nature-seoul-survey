@@ -10,6 +10,22 @@
     - If your app created dev buttons (“Landing”, “Show result”), we hide them here.
 */
 
+console.log("[TV1] kiosk poller loaded");
+window.kioskDebug = {
+  note: (m="Test overlay") => (document.getElementById("kioskOverlay").style.display="flex",
+                               document.getElementById("kioskMsg").textContent=m,
+                               document.getElementById("kioskCount").style.display="none"),
+  countdown: (m="Loading…", secs=3) => {
+    const ov = document.getElementById("kioskOverlay");
+    const msg = document.getElementById("kioskMsg");
+    const cnt = document.getElementById("kioskCount");
+    ov.style.display="flex"; msg.textContent=m; cnt.style.display="block";
+    const t = Date.now()+secs*1000;
+    const h = setInterval(()=>{ const s=Math.max(0,Math.ceil((t-Date.now())/1000)); cnt.textContent=String(s); if(s<=0) clearInterval(h);}, 200);
+  }
+};
+
+
 // ============= Small helpers =============
 const STATE_URL  = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 const RESULT_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";

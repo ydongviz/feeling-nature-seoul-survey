@@ -1581,6 +1581,14 @@ async function initializeApplication() {
   }
 }
 
+// Make key functions available to the TV-1 poller
+window.setMode = typeof setMode === "function" ? setMode : undefined;
+window.updateTopElements = typeof updateTopElements === "function" ? updateTopElements : undefined;
+window.updateBarChart = typeof updateBarChart === "function" ? updateBarChart : undefined;
+window.updateDistributionChart = typeof updateDistributionChart === "function" ? updateDistributionChart : undefined;
+
+
+
 /* ========== EVENT LISTENERS ========== */
 document.addEventListener('DOMContentLoaded', () => {
   initializeApplication();
