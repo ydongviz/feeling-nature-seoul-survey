@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8"><title>Control Pad</title>
+<style>body{font:16px system-ui;margin:24px;max-width:720px}fieldset{margin:16px 0;padding:12px}button{padding:10px 14px;margin:8px 8px 0 0;border-radius:8px;border:1px solid #ccc;cursor:pointer}</style>
+<h1>Control Pad</h1>
+<p>Posts to <code>/api/state</code> so TVs react. Open this on the iPad.</p>
+
+<fieldset>
+  <legend>Idle</legend>
+  <button onclick="send({stage:'idle', ttl_seconds:300})">Set idle</button>
+</fieldset>
+
+<fieldset>
+  <legend>In progress</legend>
+  <label>Note message <input id="noteMsg" value="Please complete your survey questions." size="50"></label><br>
+  <button onclick="send({stage:'in_progress', overlay:{type:'note', message:noteMsg.value}, ttl_seconds:180})">Show note</button>
+</fieldset>
+
+<fieldset>
+  <legend>Countdown</legend>
+  <label>Message <input id="cdMsg" value="Loading your result..." size="40"></label>
+  <label>Seconds <input id="cdSec" type="number" value="3" min="1" max="10" style="width:60px"></label><br>
+  <button onclick="countdown()">Show countdown</button>
+</fieldset>
+
+<fieldset>
+  <legend>Result</legend>
+  <button onclick="send({stage:'show_result', ttl_seconds:300})">Show result</button>
+</fieldset>
+
+<pre id="out" style="background:#f6f8fa;border:1px solid #e1e4e8;padding:12px;border-radius:6px;white-space:pre-wrap"></pre>
+
+<script>
+async function send(body){
+  const r = await fetch('/api/state',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  const j = await r.json(); out.textContent = JSON.stringify(j,null,2);
+}
+function countdown(){
+  const secs = Math.max(1, parseInt(cdSec.value||'3',10));
+  const nb = new Date(Date.now()+secs*1000).toISOString();
+  send({ stage:'in_progress', overlay:{ type:'countdown', message: cdMsg.value, countdown_secs: secs, not_before: nb }, ttl_seconds:180 });
+}
+</script>
