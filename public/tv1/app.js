@@ -235,7 +235,10 @@ async function loadDashboardData() {
         if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
         if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
         if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
-        if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
+        if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
+          window.updateDistributionChart(bp, cur.distribution || []);
+        }
+        
 
         return app.data.dashboardData;
       }
@@ -1212,6 +1215,7 @@ function updateDistributionChart(userBpValue) {
       histogram[binIndex]++;
     });
   
+  
     const maxCount = Math.max(...histogram);
     const normalizedData = histogram.map(count => (count / maxCount) * 100);
     const labels = Array.from({length: bins}, (_, i) => (i * binSize).toFixed(1));
@@ -1625,116 +1629,3 @@ document.addEventListener('DOMContentLoaded', () => {
 if (document.readyState !== 'loading') {
   setTimeout(initializeApplication, 100);
 }
-
-
-/* =========================================================
-   TV1 runtime adapter (non-destructive)
-   - reads S3 /public/runtime/current.json
-   - updates the BP number
-   - sets highlight window so the map dots highlight around BP
-   - updates the line/distribution chart marker
-   - leaves all existing charts/animations/styles intact
-   ========================================================= */
-
-/* ===== TV1 runtime adapter (safe, waits for result DOM) ===== */
-(function () {
-  const RUNTIME_BASE =
-    window.RUNTIME_BASE ||
-    "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/";
-  const RUNTIME_CURRENT_URL = (window.RUNTIME_CURRENT_URL || (RUNTIME_BASE + "current.json"));
-
-  const waitFor = (sel, timeout = 4000) => new Promise((resolve) => {
-    const start = performance.now();
-    (function tick() {
-      const el = typeof sel === "string" ? document.querySelector(sel) : sel();
-      if (el) return resolve(el);
-      if (performance.now() - start > timeout) return resolve(null);
-      requestAnimationFrame(tick);
-    })();
-  });
-
-  async function fetchRuntimeCurrent() {
-    try {
-      const res = await fetch(RUNTIME_CURRENT_URL + `?t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      console.warn("[TV1] failed to load runtime current:", err);
-      return null;
-    }
-  }
-
-  function applyBPToUI(bp) {
-    const el = document.getElementById("bpValueNumber");
-    if (el) el.textContent = bp.toFixed(2);
-
-    // tighten/loosen as you like
-    const span = 0.02;
-    window.HIGHLIGHT_MIN = Math.max(0, bp - span);
-    window.HIGHLIGHT_MAX = Math.min(1, bp + span);
-    if (window.app && window.app.state) window.app.state.isHighlightMode = true;
-
-    if (typeof window.updateVisualizationCanvas === "function") {
-      try { window.updateVisualizationCanvas(false); } catch {}
-    }
-  }
-
-  async function applyRuntimeCurrent(current) {
-    if (!current) return;
-
-    // 1) BP + map highlight
-    if (Number.isFinite(current.bp)) applyBPToUI(Number(current.bp));
-
-    // 2) Top categories text (optional)
-    if (Array.isArray(current.intensity_top) && current.intensity_top.length) {
-      const topEl = document.getElementById("topCategoryText");
-      if (topEl) topEl.textContent = current.intensity_top.join(", ");
-    }
-
-    // 3) Distribution curve marker (wait until the canvas exists)
-    if (Array.isArray(current.distribution) && Number.isFinite(current.bp)) {
-      const canvas = await waitFor("#lineChart", 4000);
-      if (canvas && typeof window.animateDistributionCurve === "function") {
-        try {
-          const values = [];
-          for (const b of current.distribution) {
-            const n = Math.max(0, (b && b.count) | 0);
-            for (let i = 0; i < n; i++) values.push(Number(b.bin) || 0);
-          }
-          window.animateDistributionCurve(values, current.bp);
-        } catch (e) {
-          console.warn("[TV1] distribution animate error:", e);
-        }
-      }
-    }
-
-    console.log("[TV1] applied runtime current:", current);
-  }
-
-  window.tv1ApplyResults = async function () {
-    const current = await fetchRuntimeCurrent();
-    await applyRuntimeCurrent(current);
-    return current;
-  };
-
-  const _origSetMode = window.setMode;
-  if (typeof _origSetMode === "function") {
-    window.setMode = async function (mode) {
-      const ret = await _origSetMode.apply(this, arguments);
-      if (mode === "result") {
-        // give the result UI a tick to render
-        setTimeout(() => { window.tv1ApplyResults(); }, 50);
-      }
-      return ret;
-    };
-  }
-
-  document.addEventListener("DOMContentLoaded", async () => {
-    const bodyMode = (document.body && document.body.getAttribute("data-mode")) || "";
-    if (bodyMode === "result") {
-      // ensure result DOM exists first
-      await waitFor("#lineChart", 4000);
-      window.tv1ApplyResults();
-    }
-  });
-})();
