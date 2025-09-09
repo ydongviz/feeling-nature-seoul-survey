@@ -236,7 +236,7 @@ async function loadDashboardData() {
         if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
         if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
         if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
-          window.updateDistributionChart(bp, cur.distribution || []);
+          window.updateDistributionChart(bp);
         }
         
 
@@ -1237,7 +1237,8 @@ function updateDistributionChart(userBpValue) {
         if (!elements.length) return false;
         const element = elements[0];
         return { x: element.element.x, y: element.element.y + 35 };
-      };
+        };
+      } 
   
       window.lineChart = new Chart(lineCtx, {
         type: 'line',
