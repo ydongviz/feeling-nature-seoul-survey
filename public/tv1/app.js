@@ -1194,61 +1194,134 @@ function updateTopElements(topElements) {
   
 
 /* ========== DISTRIBUTION CHART - INTEGRATED FROM SCRIPT3 ========== */
-function updateDistributionChart(currentBpValue = null) {
-  const canvas = document.getElementById('lineChart');
-  if (!canvas) return;
+function updateDistributionChart(userBpValue) {
+  // Prefer distribution from current.json if Lambda provided it
+  let dist = (window.app && app.runtimeCurrent && Array.isArray(app.runtimeCurrent.distribution))
+    ? app.runtimeCurrent.distribution
+    : null;
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  const lineCanvas = document.getElementById('lineChart');
+  if (!lineCanvas) return;
 
-  // ensure custom tooltip positioner exists once
-  if (!Chart.Tooltip.positioners) Chart.Tooltip.positioners = {};
-  if (!Chart.Tooltip.positioners.below) {
-    Chart.Tooltip.positioners.below = function (elements, eventPosition) {
-      return { x: eventPosition.x, y: eventPosition.y + 10 };
-    };
+  const lineCtx = lineCanvas.getContext('2d');
+  if (!lineCtx) return;
+
+  let labels = [];
+  let histogram = [];
+
+  if (dist) {
+    // dist is [{bin:0.0,count:...}, ...]
+    labels = dist.map(d => Number(d.bin).toFixed(1));
+    histogram = dist.map(d => Number(d.count) || 0);
+  } else {
+    // Fallback: build from app.data.allParticipantsData
+    if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
+    const bins = 11;
+    const binSize = 1 / (bins - 1);
+    histogram = new Array(bins).fill(0);
+    app.data.allParticipantsData.forEach(value => {
+      const v = Number(value) || 0;
+      const binIndex = Math.min(Math.round(v / binSize), bins - 1);
+      histogram[binIndex]++;
+    });
+    labels = Array.from({ length: bins }, (_, i) => (i * binSize).toFixed(1));
   }
 
-  // DESTROY before (re)creating to avoid “fullSize” errors
+  const maxCount = Math.max(...histogram, 1);
+  const normalizedData = histogram.map(count => (count / maxCount) * 100);
+
+  // Clean up existing chart instance
   if (window.lineChart && typeof window.lineChart.destroy === 'function') {
-    try { window.lineChart.destroy(); } catch {}
+    try { window.lineChart.destroy(); } catch (e) {}
     window.lineChart = null;
   }
 
-  // build your labels + data here (same as before) …
-  const labels = [...Array(101)].map((_, i) => (i/100).toFixed(2));
-  const values = app.data.allParticipantsData || generateSampleDistribution();
+  // Ensure the custom tooltip positioner exists (even if tooltips are disabled)
+  if (!Chart.Tooltip.positioners) Chart.Tooltip.positioners = {};
+  if (!Chart.Tooltip.positioners.below) {
+    Chart.Tooltip.positioners.below = function (elements, eventPosition) {
+      if (!elements.length) return false;
+      const element = elements[0];
+      return { x: element.element.x, y: element.element.y + 35 };
+    };
+  }
 
   try {
-    window.lineChart = new Chart(ctx, {
+    window.lineChart = new Chart(lineCtx, {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          label: 'City BP distribution',
-          data: values,
-          borderWidth: 1,
+          label: 'All Participants',
+          data: normalizedData,
+          borderColor: '#666666',
+          backgroundColor: 'rgba(102, 102, 102, 0.1)',
+          tension: 0.4,
+          fill: true,
           pointRadius: 0,
-          tension: 0.35
+          borderWidth: 1
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: 'nearest', intersect: false },
-        plugins: { legend: { display: false }, tooltip: { position: 'below' } },
-        scales: { x: { display: false }, y: { display: false } }
+        layout: { padding: { bottom: 15, right: 40 } },
+        // No hover tooltips
+        interaction: { intersect: false, mode: 'none' },
+        onHover: null,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: false,
+            position: 'below',
+            displayColors: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            titleColor: 'white',
+            bodyColor: 'white',
+            borderColor: '#444',
+            borderWidth: 1,
+            cornerRadius: 6,
+            caretPadding: 10,
+            callbacks: {
+              title: () => `Your BiP Value: ${Number(userBpValue).toFixed(2)}`,
+              label: (context) => {
+                const binIndex = context.dataIndex;
+                const count = histogram[binIndex];
+                const pct = ((count / histogram.reduce((a,b)=>a+b,0)) * 100).toFixed(1);
+                return `Among Seoul locations: ${pct}% (${count} locations)`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            display: true,
+            position: 'bottom',
+            grid: { display: false, drawBorder: true },
+            ticks: {
+              display: true,
+              color: '#888',
+              font: { size: 11, weight: 'normal' },
+              padding: 5,
+              callback: function(value, index, ticks) {
+                if (index === 0) return '0';
+                if (index === ticks.length - 1) return '1';
+                if (index === Math.floor(ticks.length / 2)) return '0.5';
+                return '';
+              }
+            },
+            border: { display: true, color: '#444' }
+          },
+          y: { display: false, min: 0, grid: { display: false } }
+        },
+        animation: { duration: 1000 }
       }
     });
-
-    // draw your vertical marker for currentBpValue if provided…
-    if (Number.isFinite(currentBpValue)) {
-      // add a simple marker (implementation can be yours)
-    }
-  } catch (err) {
-    console.error('Error creating distribution chart:', err);
+  } catch (error) {
+    console.error('Error creating distribution chart:', error);
   }
 }
+
 
 
 /* ========== DISTRIBUTION ANIMATION - INTEGRATED FROM SCRIPT3 ========== */
