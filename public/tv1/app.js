@@ -1627,3 +1627,111 @@ if (document.readyState !== 'loading') {
 }
 
 
+/* =========================================================
+   TV1 runtime adapter (non-destructive)
+   - reads S3 /public/runtime/current.json
+   - updates the BP number
+   - sets highlight window so the map dots highlight around BP
+   - updates the line/distribution chart marker
+   - leaves all existing charts/animations/styles intact
+   ========================================================= */
+
+   (function () {
+    // Derive the runtime base once. If you later change buckets, adjust here.
+    const RUNTIME_BASE =
+      window.RUNTIME_BASE ||
+      "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/";
+    const RUNTIME_CURRENT_URL = (window.RUNTIME_CURRENT_URL || (RUNTIME_BASE + "current.json"));
+  
+    // Helper: fetch current.json with no-cache
+    async function fetchRuntimeCurrent() {
+      try {
+        const res = await fetch(RUNTIME_CURRENT_URL + `?t=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        console.warn("[TV1] failed to load runtime current:", err);
+        return null;
+      }
+    }
+  
+    // Helper: apply BP/ints/distribution into existing UI without changing your code paths
+    function applyRuntimeCurrent(current) {
+      if (!current) return;
+  
+      // 1) BP number
+      const bp = Number(current.bp);
+      if (Number.isFinite(bp)) {
+        const el = document.getElementById("bpValueNumber");
+        if (el) el.textContent = bp.toFixed(2);
+  
+        // 2) Map highlight window around BP (±0.02 by default)
+        const span = 0.02;
+        // These globals already exist in your file and are used by isHighlighted()
+        window.HIGHLIGHT_MIN = Math.max(0, bp - span);
+        window.HIGHLIGHT_MAX = Math.min(1, bp + span);
+        // Turn on highlight mode so getDotColor()/getDotOpacity() use the window
+        if (window.app && window.app.state) window.app.state.isHighlightMode = true;
+  
+        // Repaint immediately (your draw loop will also keep it updated)
+        if (typeof window.updateVisualizationCanvas === "function") {
+          try { window.updateVisualizationCanvas(false); } catch {}
+        }
+      }
+  
+      // 3) Top categories text (if provided by Lambda)
+      if (Array.isArray(current.intensity_top) && current.intensity_top.length) {
+        const topEl = document.getElementById("topCategoryText");
+        if (topEl) topEl.textContent = current.intensity_top.join(", ");
+        // (We intentionally do not rebuild your bar chart here since your
+        //  existing code already computes and draws it from your loaded data.
+        //  If/when Lambda returns full per-class intensities, we can thread
+        //  those into updateBarChart() directly.)
+      }
+  
+      // 4) Distribution curve marker
+      if (Array.isArray(current.distribution) && Number.isFinite(current.bp)) {
+        // If your animateDistributionCurve accepts (values, sampleBP) this will place the marker.
+        if (typeof window.animateDistributionCurve === "function") {
+          try {
+            const values = [];
+            for (const b of current.distribution) {
+              const n = Math.max(0, (b && b.count) | 0);
+              for (let i = 0; i < n; i++) values.push(Number(b.bin) || 0);
+            }
+            window.animateDistributionCurve(values, current.bp);
+          } catch (e) { console.warn("[TV1] distribution animate error:", e); }
+        }
+      }
+  
+      console.log("[TV1] applied runtime current:", current);
+    }
+  
+    // Public hook so your control pad (tv1/script.js) or DevTools can force a refresh:
+    window.tv1ApplyResults = async function () {
+      const current = await fetchRuntimeCurrent();
+      applyRuntimeCurrent(current);
+      return current;
+    };
+  
+    // Wrap setMode so whenever the external poller flips to 'result',
+    // we pull current.json once and apply it.
+    const _origSetMode = window.setMode;
+    if (typeof _origSetMode === "function") {
+      window.setMode = async function (mode) {
+        // preserve original behavior
+        const ret = await _origSetMode.apply(this, arguments);
+        if (mode === "result") {
+          window.tv1ApplyResults(); // fire and forget
+        }
+        return ret;
+      };
+    }
+  
+    // Also run once after DOM ready if the page is already in "result" state.
+    document.addEventListener("DOMContentLoaded", () => {
+      const bodyMode = (document.body && document.body.getAttribute("data-mode")) || "";
+      if (bodyMode === "result") window.tv1ApplyResults();
+    });
+  })();
+  
