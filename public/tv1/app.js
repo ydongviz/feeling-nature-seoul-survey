@@ -7,10 +7,30 @@
 
 /* ========== CONFIGURATION ========== */
 const MAX_DISTANCE_METERS = 15000;
-const HIGHLIGHT_MIN = 0.70, HIGHLIGHT_MAX = 0.75;
+window.HIGHLIGHT_MIN = window.HIGHLIGHT_MIN ?? 0.70;
+window.HIGHLIGHT_MAX = window.HIGHLIGHT_MAX ?? 0.75;
+
 const HIGHLIGHT_COLOR = '#92C043', NON_HIGHLIGHT_GRAY = '#666666';
+const userBp = (window.app?.data?.userBp ?? 0.5);  // default only if not set yet
+
 
 window.USE_CURRENT_JSON = true;
+
+// Single source of truth for user BP pushed in from TV adapter
+window.setUserBp = function setUserBp(bp) {
+  if (!window.app) window.app = { data: {} };
+  window.app.data.userBp = bp;
+
+  // Update any numeric label if you also set it inside app.js
+  const n = document.getElementById("bpValueNumber");
+  if (n) n.textContent = bp.toFixed(2);
+
+  // Repaint the center visualization using the new threshold
+  // (rename these calls to match your actual draw/refresh functions)
+  if (typeof window.refreshDotLayer === "function") window.refreshDotLayer();
+  if (typeof window.updateLegend === "function") window.updateLegend();
+  if (typeof window.updateCenterViz === "function") window.updateCenterViz();
+};
 
 const BP_GROUPS = [
   { min: 0.00, max: 0.25, color: '#92C043', name: 'Very Low (0-0.25)' },
@@ -133,7 +153,9 @@ function wait(ms) {
 
 function isHighlighted(d) {
   const v = d.biophilia_norm;
-  return v >= HIGHLIGHT_MIN && v <= HIGHLIGHT_MAX;
+  const lo = (window.HIGHLIGHT_MIN ?? 0.70);
+  const hi = (window.HIGHLIGHT_MAX ?? 0.75);
+  return v >= lo && v <= hi;
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -215,13 +237,53 @@ async function loadSeoulData(dataType) {
   return app.data.cache[cacheKey];
 }
 
+// --- fetch helpers (no-cache) ---
+async function fetchJSONNoCache(url) {
+  const withTs = url + (url.includes('?') ? '&' : '?') + 'ts=' + Date.now();
+  const res = await fetch(withTs, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    }
+  });
+  if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${url}`);
+  return res.json();
+}
+
+// Optional: small retry if S3 propagation lags a split second
+async function loadFreshCurrentWithRetry(maxTries = 3) {
+  const prevTs = app?.data?.current?.meta?.computed_at || '';
+  for (let i = 0; i < maxTries; i++) {
+    const cur = await fetchJSONNoCache(`${RUNTIME_BASE}/current.json`);
+    const curTs = cur?.meta?.computed_at || '';
+    if (curTs && curTs !== prevTs) return cur;
+    await new Promise(r => setTimeout(r, 350 + i * 200));
+  }
+  // last attempt
+  return fetchJSONNoCache(`${RUNTIME_BASE}/current.json`);
+}
+
+// Called when the system should show results on TV1
+async function tv1ApplyResults() {
+  // 1) fetch the newest data first (prevents showing stale BP)
+  const latest = await loadFreshCurrentWithRetry();
+
+  // 2) set as the single source of truth
+  app.data.current = latest;
+
+  // 3) render everything from one place
+  updateDashboardDisplay(latest);     // <-- your existing centralized renderer
+}
+
+
 // Prefer current.json written by Lambda; fall back to CSV if unavailable
 async function loadDashboardData() {
   if (app.data.dashboardData) return app.data.dashboardData;
 
   if (window.USE_CURRENT_JSON) {
     try {
-      const r = await fetch("https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json", { cache: "no-cache" });
+      const r = await fetchJSONNoCache("https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json");
       if (r.ok) {
         const cur = await r.json();
 
