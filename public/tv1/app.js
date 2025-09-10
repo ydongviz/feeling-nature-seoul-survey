@@ -228,16 +228,24 @@ async function loadDashboardData() {
         // Normalize to a simple object we can re-use
         const bp = Number(cur?.bp ?? NaN);
         const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
-        app.data.dashboardData = { source: "current.json", bp, top, distribution: cur?.distribution || null };
+        //app.data.dashboardData = { source: "current.json", bp, top, distribution: cur?.distribution || null };
+        app.runtimeCurrent = cur; // so updateDistributionChart() can see it
++        app.data.dashboardData = {
++          source: "current.json",
++          bp,
++          top,
++          distribution: cur?.distribution || null,
++          intensities: cur?.intensities || null
++        };
 
         // Update the UI immediately (keeps all your existing rendering)
         const num = document.getElementById("bpValueNumber");
-        if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
-        if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
-        if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
-        if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
-          window.updateDistributionChart(bp);
-        }
+        //if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
+        //if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
+        //if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
+        //if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
+          //window.updateDistributionChart(bp);
+        //}
         
 
         return app.data.dashboardData;
@@ -1536,28 +1544,46 @@ async function updateDashboardDisplay() {
 
   // If we’re using current.json
   if (data && data.source === 'current.json') {
+
     const bp = Number(data.bp);
-    if (Number.isFinite(bp)) {
-      const num = document.getElementById('bpValueNumber');
-      if (num) num.textContent = bp.toFixed(2);
-      // keep your green dot lit, etc.
-    }
+     if (Number.isFinite(bp)) {
+       const num = document.getElementById('bpValueNumber');
+       if (num) num.textContent = bp.toFixed(2);
+       if (typeof window.updateDistributionChart === 'function') {
+         window.updateDistributionChart(bp);
+       }
+     }
 
-    // “top” is an array of names from current.json
-    const topNames = Array.isArray(data.top) ? data.top.slice(0, 3) : [];
-    const topForWidgets = topNames.map(n => ({ name: n, value: 1 }));
+   // Prefer full intensities if present; fall back to top names
+  const intens = data.intensities && typeof data.intensities === 'object' ? data.intensities : null;
+     if (intens) {
+      // object -> sorted array for bars/icons
+      const arr = Object.entries(intens)
+         .map(([k,v]) => ({ name: k, value: Number(v) || 0 }))
+         .sort((a,b) => b.value - a.value);
 
-    if (typeof window.updateTopElements === 'function') {
-      window.updateTopElements(topForWidgets);
-    }
-    if (typeof window.updateBarChart === 'function') {
-      window.updateBarChart(topForWidgets);
-    }
+      // top text uses labels
+      if (typeof topCategoryText === 'function') topCategoryText(intens);
 
-    // distribution line
-    if (typeof window.updateDistributionChart === 'function') {
-      window.updateDistributionChart(bp);
-    }
+     // icons need nice display names
+       const LABEL = { sky:'Sky', tree:'Tree', grass:'Grass', person:'Person', ground:'Earth/Ground',
+         mountain:'Mountain', plant:'Plant/Flora', water:'Water', sea:'Sea', river:'River', lake:'Lake',
+         waterfall:'Waterfall', swimming:'Swimming Pool', rock:'Rock/Stone', sand:'Sand', light:'Light/Sunlight',
+         animal:'Animal/Fauna', flower:'Flower', palm:'Palmtree', land:'Land/Soil', fountain:'Fountain',
+         field:'Field', fireplace:'Fireplace', food:'Natural Food', hill:'Hill' };
+
+       const top3ForIcons = arr.slice(0,3).map(d => ({ name: LABEL[d.name] || d.name, value: d.value }));
+       if (typeof window.updateTopElements === 'function') window.updateTopElements(top3ForIcons);
+
+       if (typeof window.updateBarChart === 'function') window.updateBarChart(arr.slice(0,10));
+      } else {
+     // Only names available (no values) – show icons and leave bars minimal
+       const topNames = Array.isArray(data.top) ? data.top.slice(0,3) : [];
+       const topForWidgets = topNames.map(n => ({ name: n, value: 1 }));
+       if (typeof window.updateTopElements === 'function') window.updateTopElements(topForWidgets);
+       if (typeof window.updateBarChart === 'function') window.updateBarChart(topForWidgets);
+   }
+
     return;
   }
 
@@ -1640,3 +1666,20 @@ document.addEventListener('DOMContentLoaded', () => {
 if (document.readyState !== 'loading') {
   setTimeout(initializeApplication, 100);
 }
+
+function topCategoryText(intensities) {
+  if (!intensities) return;
+  const top3 = Object.entries(intensities)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0,3)
+    .map(([k]) => ({
+      sky:'Sky', tree:'Tree', grass:'Grass', person:'Person', ground:'Earth/Ground',
+      mountain:'Mountain', plant:'Plant/Flora', water:'Water', sea:'Sea', field:'Field',
+      rock:'Rock/Stone', sand:'Sand', fireplace:'Fireplace', river:'River', flower:'Flower',
+      hill:'Hill', palm:'Palmtree', light:'Light/Sunlight', land:'Land/Soil', fountain:'Fountain',
+      swimming:'Swimming Pool', waterfall:'Waterfall', food:'Natural Food', animal:'Animal/Fauna', lake:'Lake'
+    }[k] || k));
+  document.getElementById('topCategoryText').textContent = top3.join(', ');
+}
+
+
