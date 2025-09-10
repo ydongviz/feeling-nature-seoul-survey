@@ -276,6 +276,36 @@ async function tv1ApplyResults() {
   updateDashboardDisplay(latest);     // <-- your existing centralized renderer
 }
 
+// --- helpers to normalize/label categories and get values from intensities ---
+const CATEGORY_LABELS = {
+  sky: "Sky", tree: "Tree", grass: "Grass", person: "Person",
+  ground: "Earth/Ground", mountain: "Mountain", plant: "Plant/Flora",
+  water: "Water", sea: "Sea", field: "Field", rock: "Rock/Stone",
+  sand: "Sand", fireplace: "Fireplace", river: "River", flower: "Flower",
+  hill: "Hill", palm: "Palmtree", light: "Light/Sunlight",
+  land: "Land/Soil", fountain: "Fountain", swimming: "Swimming Pool",
+  waterfall: "Waterfall", food: "Natural Food", animal: "Animal/Fauna",
+  lake: "Lake"
+};
+
+function toKey(s) {
+  if (!s) return "";
+  const raw = String(s).toLowerCase().replace(/[^a-z]/g, "");
+  // a couple of simple aliases so names match your CSV/Lambda keys
+  const alias = { plantflora: "plant", earthground: "ground", naturalfood: "food", palmtree: "palm" };
+  return alias[raw] || raw;
+}
+function labelFromKey(k) { return CATEGORY_LABELS[k] || k; }
+
+// Force the BP value everywhere in the UI (prevents the "flip back" to default)
+function enforceBpValue(bp) {
+  const num = document.getElementById("bpValueNumber");
+  if (num) num.textContent = bp.toFixed(2);
+  // if your radial viz exposes a setter, call it too (noop if not present)
+  if (window.setBiPValue) try { window.setBiPValue(bp); } catch {}
+}
+
+
 
 // Prefer current.json written by Lambda; fall back to CSV if unavailable
 async function loadDashboardData() {
@@ -290,7 +320,7 @@ async function loadDashboardData() {
         // Normalize to a simple object we can re-use
         const bp = Number(cur?.bp ?? NaN);
         const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
-        //app.data.dashboardData = { source: "current.json", bp, top, distribution: cur?.distribution || null };
+       
         app.runtimeCurrent = cur; // so updateDistributionChart() can see it
         app.data.dashboardData = {
            source: "current.json",
