@@ -230,13 +230,13 @@ async function loadDashboardData() {
         const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
         //app.data.dashboardData = { source: "current.json", bp, top, distribution: cur?.distribution || null };
         app.runtimeCurrent = cur; // so updateDistributionChart() can see it
-+        app.data.dashboardData = {
-+          source: "current.json",
-+          bp,
-+          top,
-+          distribution: cur?.distribution || null,
-+          intensities: cur?.intensities || null
-+        };
+        app.data.dashboardData = {
+           source: "current.json",
+           bp,
+           top,
+           distribution: cur?.distribution || null,
+           intensities: cur?.intensities || null
+         };
 
         // Update the UI immediately (keeps all your existing rendering)
         const num = document.getElementById("bpValueNumber");
