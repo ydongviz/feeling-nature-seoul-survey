@@ -239,15 +239,8 @@ async function loadDashboardData() {
          };
 
         // Update the UI immediately (keeps all your existing rendering)
-        const num = document.getElementById("bpValueNumber");
-        //if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
-        //if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
-        //if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
-        //if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
-          //window.updateDistributionChart(bp);
-        //}
+        const num = document.getElementById("bpValueNumber");      
         
-
         return app.data.dashboardData;
       }
     } catch (e) {
