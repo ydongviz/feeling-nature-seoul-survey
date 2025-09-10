@@ -263,7 +263,8 @@ async function loadDashboardData() {
       'Landscape': '0.6',
       'Waterscape': '0.5',
       'Living Being': '0.4',
-      'Waterfall': '0.3'
+      'Waterfall': '0.3',
+      'Sky': '0.1'
     }];
   }
   return app.data.dashboardData;
@@ -369,47 +370,6 @@ function initializeMapbox() {
   return app.map;
 }
 
-
-/* ========== CONTROL BUTTONS ========== */
-/*function createAndSetupButtons() {
-  let controlContainer = document.getElementById('control-buttons');
-
-  if (!controlContainer) {
-    controlContainer = document.createElement('div');
-    controlContainer.id = 'control-buttons';
-    controlContainer.className = 'control-buttons';
-
-    const leftColumnTop = app.elements.leftTop ||
-                         document.querySelector('.left-column-top') ||
-                         document.querySelector('.left-column');
-
-    if (leftColumnTop) {
-      leftColumnTop.appendChild(controlContainer);
-    } else {
-      document.body.appendChild(controlContainer);
-    }
-  }
-
-  controlContainer.innerHTML = `
-    <button id="landing-button" class="control-button landing-button">Landing</button>
-    <button id="show-result-button" class="control-button show-result-button">Show Result</button>
-  `;
-
-  controlContainer.style.display = 'flex';
-  controlContainer.style.flexDirection = 'column';
-  controlContainer.style.gap = '10px';
-  controlContainer.style.zIndex = '999';
-
-  document.getElementById('landing-button').addEventListener('click', () => {
-    setMode(Modes.LANDING);
-  });
-
-  document.getElementById('show-result-button').addEventListener('click', () => {
-    setMode(Modes.RESULT);
-  });
-
-  app.elements.buttons = controlContainer;
-} */
 
 /* ========== CLEANUP FUNCTIONS ========== */
 function clearAllTimersAndAnimations() {
