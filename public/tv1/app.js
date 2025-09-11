@@ -1135,42 +1135,47 @@ function iconPathFor(key) {
   return [`img/classes/${k}.png`, `img/classes/${k}.webp`];
 }
 
+
 function updateTopElements(top3Names) {
-  // 1) Update the text
+  // Normalize incoming strings (e.g., "Plant/Flora" -> "plant")
+  const keys = (top3Names || []).map(toKey).filter(Boolean);
+
+  // 1) Update the text with pretty labels
   const textEl = document.getElementById('topCategoryText');
-  if (textEl) textEl.textContent = top3Names.join(', ');
+  if (textEl) textEl.textContent = keys.map(labelFromKey).join(', ');
 
   // 2) Update the icons row
   const wrap = document.getElementById('topElements');
   if (!wrap) return;
   wrap.innerHTML = '';
 
-  top3Names.forEach((name) => {
-    const key = String(name || '').toLowerCase();
-    // skip unknown keys to avoid "undefined"
-    if (!CATEGORY_LABELS.hasOwnProperty(key)) return;
+  keys.forEach((key) => {
+    if (!CATEGORY_LABELS[key]) return; // skip unknowns
 
-    const candidates = iconPathFor(key);
+    const [png, webp] = iconPathFor(key);
+
     const card = document.createElement('div');
     card.className = 'top-element';
 
     const img = document.createElement('img');
-    img.alt = CATEGORY_LABELS[key] || key;
+    img.alt = labelFromKey(key);
     img.style.maxWidth = '100%';
     img.style.maxHeight = '100%';
     img.style.objectFit = 'contain';
 
+    // try .png then .webp; if both fail, drop the card (no "undefined")
     let i = 0;
-    const tryNext = () => {
-      if (i < candidates.length) img.src = candidates[i++];
-      else { img.onerror = null; wrap.removeChild(card); } // if no asset, drop the card
+    const sources = [png, webp];
+    img.onerror = () => {
+      i += 1;
+      if (i < sources.length) img.src = sources[i];
+      else { img.onerror = null; card.remove(); }
     };
-    img.onerror = tryNext;
-    tryNext();
+    img.src = sources[0];
 
     const label = document.createElement('div');
     label.className = 'element-name';
-    label.textContent = CATEGORY_LABELS[key] || key;
+    label.textContent = labelFromKey(key);
 
     card.appendChild(img);
     card.appendChild(label);
@@ -1689,7 +1694,7 @@ if (document.readyState !== 'loading') {
   setTimeout(initializeApplication, 100);
 }
 
-function topCategoryText(intensities) {
+/*function topCategoryText(intensities) {
   if (!intensities) return;
   const top3 = Object.entries(intensities)
     .sort((a,b) => b[1]-a[1])
@@ -1702,6 +1707,6 @@ function topCategoryText(intensities) {
       swimming:'Swimming Pool', waterfall:'Waterfall', food:'Natural Food', animal:'Animal/Fauna', lake:'Lake'
     }[k] || k));
   document.getElementById('topCategoryText').textContent = top3.join(', ');
-}
+}*/
 
 
