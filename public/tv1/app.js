@@ -171,6 +171,7 @@ function startPulseLoop() {
   if (pe.raf) return;               // already running
   pe.active = true;
   pe.t0 = performance.now();
+  pe.last = pe.t0; 
   const tick = () => {
     if (!pe.active) { pe.raf = null; return; }
     const now = performance.now();
@@ -180,7 +181,7 @@ function startPulseLoop() {
       pe.last = now;
     }
     pe.raf = requestAnimationFrame(tick);
-    app.cleanup.animations.add(pe.raf);
+    if (app.cleanup?.animations) app.cleanup.animations.add(pe.raf); // guard
   };
   pe.raf = requestAnimationFrame(tick);
 }
@@ -193,7 +194,9 @@ function stopPulseLoop() {
 }
 
 function ensureHighlightHasSamples(minCount = 400) {
-  const data = app.data.cache['seoul_BP'] || [];
+  const key = `seoul_${app.state.currentDataType || 'BP'}`;
+  const data = app.data.cache[key] || [];
+
   if (!data.length || !Number.isFinite(app.state.bpValue)) return;
 
   let lo = app.state.highlightMin;
