@@ -1173,7 +1173,6 @@ function updateTopElements(top3Names) {
 }
 
 
-
   function updateBarChart(intensityData) {
     const barChart  = document.getElementById('barChart');
     const barLabels = document.getElementById('barLabels');
@@ -1227,21 +1226,6 @@ function updateTopElements(top3Names) {
       label.style.pointerEvents = 'none';  // Disable pointer events
       barLabels.appendChild(label);
     });
-  
-    // (Re)create the simple x-axis "0 … 1"
-    let axis = document.getElementById('barAxis');
-    if (!axis) {
-      axis = document.createElement('div');
-      axis.id = 'barAxis';
-      axis.className = 'bar-xaxis';
-      // insert right after labels
-      barLabels.insertAdjacentElement('afterend', axis);
-    }
-    axis.innerHTML = `
-      <div class="bar-xaxis-line"></div>
-      <span class="x0">0</span>
-      <span class="x1">1</span>
-    `;
   }
   
 
@@ -1684,19 +1668,6 @@ if (document.readyState !== 'loading') {
   setTimeout(initializeApplication, 100);
 }
 
-/*function topCategoryText(intensities) {
-  if (!intensities) return;
-  const top3 = Object.entries(intensities)
-    .sort((a,b) => b[1]-a[1])
-    .slice(0,3)
-    .map(([k]) => ({
-      sky:'Sky', tree:'Tree', grass:'Grass', person:'Person', ground:'Earth/Ground',
-      mountain:'Mountain', plant:'Plant/Flora', water:'Water', sea:'Sea', field:'Field',
-      rock:'Rock/Stone', sand:'Sand', fireplace:'Fireplace', river:'River', flower:'Flower',
-      hill:'Hill', palm:'Palmtree', light:'Light/Sunlight', land:'Land/Soil', fountain:'Fountain',
-      swimming:'Swimming Pool', waterfall:'Waterfall', food:'Natural Food', animal:'Animal/Fauna', lake:'Lake'
-    }[k] || k));
-  document.getElementById('topCategoryText').textContent = top3.join(', ');
-}*/
+
 
 
