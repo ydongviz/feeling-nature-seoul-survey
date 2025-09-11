@@ -1663,7 +1663,7 @@ function updateDashboardDisplay() {
        if (typeof window.updateBarChart === 'function') window.updateBarChart(topForWidgets);
    }
 
-    return;
+    //return;
   
 
   // Else fall back to your original CSV one-row logic
