@@ -142,12 +142,25 @@ function getPulsePeriodByBp(bp) {
 // radius helper (only expands highlighted dots while pulsing)
 function radiusWithPulse(d, baseR) {
   const pe = app.effects.pulse;
-  if (!pe.active || !app.state.isHighlightMode || !isHighlighted(d)) return baseR;
+
+  // --- static size boost for low BP (up to +20% at BP→0) ---
+  let sizeBoost = 0;
+  if (bp < 0.45) {
+    const t = (0.45 - bp) / 0.45;    // 0..1 as BP drops
+    sizeBoost = 0.20 * t;            // max +20% at very low BP
+  }
+  const boostedBaseR = baseR * (1 + sizeBoost);
+
+  //if (!pe.active || !app.state.isHighlightMode || !isHighlighted(d)) return baseR;
   const now = performance.now();
   const phase = ((now - pe.t0) % pe.period) / pe.period; // [0..1)
-  const amp = getPulseAmplitudeByBp(app.state.bpValue);
+  //const amp = getPulseAmplitudeByBp(app.state.bpValue);
+  //const k = 1.0 + amp * Math.sin(2 * Math.PI * phase);
+  //return Math.max(1.5, baseR * k);
+
+  const amp = getPulseAmplitudeByBp(bp);
   const k = 1.0 + amp * Math.sin(2 * Math.PI * phase);
-  return Math.max(1.5, baseR * k);
+  return Math.max(1.5, boostedBaseR * k);
 }
 
 function startPulseLoop() {
