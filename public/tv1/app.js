@@ -1,3 +1,8 @@
+// === RUNTIME BASE SHIM (injected) ==========================================
+window.RUNTIME_BASE = window.RUNTIME_BASE || 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
+window.APP_CONFIG  = window.APP_CONFIG  || { RUNTIME_BASE_URL: window.RUNTIME_BASE };
+// ==========================================================================
+
 /* EVENT-OPTIMIZED BIOPHILIC VISUALIZATION - INTEGRATED WITH SCRIPT3 FEATURES
    Complete integration of:
    1. Geo map to circular layout transition with polar coordinates
@@ -325,28 +330,32 @@ function enforceBpValue(bp) {
 
 async function loadDashboardData() {
   try {
-    const url = (APP_CONFIG && APP_CONFIG.RUNTIME_BASE_URL)
-      ? `${APP_CONFIG.RUNTIME_BASE_URL}/current.json`
-      : "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
-    // fetchJSONNoCache returns parsed JSON
-    const cur = await fetchJSONNoCache(url);
-    if (!cur || typeof cur !== 'object') throw new Error('current.json empty/invalid');
-
+    const base = (window.APP_CONFIG && window.APP_CONFIG.RUNTIME_BASE_URL) ? window.APP_CONFIG.RUNTIME_BASE_URL : (window.RUNTIME_BASE || '');
+    const url = `${base}/current.json`;
+    const cur = await (typeof fetchJSONNoCache === 'function' ? fetchJSONNoCache(url) : (await fetch(url + '?ts=' + Date.now(), {cache: 'no-store'})).json());
     const normalized = {
-      bp: Number(cur.bp ?? cur.BP ?? cur.value ?? 0),
-      intensities: cur.intensities ?? cur.classes ?? {},
-      intensity_top: cur.intensity_top ?? cur.top ?? [],
-      distribution: cur.distribution ?? [],
-      meta: cur.meta ?? {}
+      bp: Number(cur?.bp ?? cur?.BP ?? cur?.value ?? 0),
+      intensities: cur?.intensities ?? cur?.classes ?? {},
+      intensity_top: Array.isArray(cur?.intensity_top) ? cur.intensity_top : (Array.isArray(cur?.top) ? cur.top : []),
+      distribution: Array.isArray(cur?.distribution) ? cur.distribution : [],
+      meta: cur?.meta ?? {}
     };
+    window.app = window.app || { data: {} };
     app.runtimeCurrent = normalized;
     app.data.dashboardData = { source: 'current.json', ...normalized };
+    if (typeof window.setUserBp === 'function') window.setUserBp(normalized.bp);
+    else {
+      const EPS = 0.01;
+      window.HIGHLIGHT_MIN = Math.max(0, normalized.bp - EPS);
+      window.HIGHLIGHT_MAX = Math.min(1, normalized.bp + EPS);
+    }
     return normalized;
   } catch (err) {
     console.error('[loadDashboardData] failed:', err);
     return null;
   }
 }
+
 
 
 
@@ -1718,3 +1727,36 @@ function topCategoryText(intensities) {
 }
 
 
+
+function isElementVisibleAndSized(el) {
+  if (!el) return false;
+  const style = getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden') return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+function guardedFooterUpdate(fn) {
+  const footer = document.getElementById('footer');
+  if (!footer) { try { fn(); } catch(_){}; return; }
+  if (isElementVisibleAndSized(footer)) {
+    fn();
+  } else {
+    requestAnimationFrame(() => guardedFooterUpdate(fn));
+  }
+}
+
+async function renderResultFromCurrent(useExisting=false){
+  let cur = useExisting ? (window.app && (app.runtimeCurrent || app.data?.dashboardData)) : null;
+  if (!cur) cur = await loadDashboardData();
+  if (!cur) return;
+  if (typeof window.setMode === 'function') await window.setMode('result');
+  requestAnimationFrame(() => {
+    guardedFooterUpdate(() => {
+      try {
+        if (typeof window.updateDashboardDisplay === 'function') window.updateDashboardDisplay();
+        if (typeof window.executeResultSequence === 'function') window.executeResultSequence();
+      } catch(e){ console.error('[renderResultFromCurrent] render error', e); }
+    });
+  });
+}
+window.renderResultFromCurrent = renderResultFromCurrent;

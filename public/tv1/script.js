@@ -134,3 +134,117 @@ TV1 ADAPTER (fixed) — polls state.json, loads current.json, and renders
       startPoller, stopPoller, checkStateOnce
     });
   })();
+
+/* === Adapter (patched) =====================================================
+   - Baselines computed_at on first poll (stay in Landing)
+   - On change: fetch current.json, apply once
+   - Waits for footer visibility before charts to avoid Chart.js errors
+============================================================================= */
+(function(){
+  const DEFAULT_RUNTIME_BASE = window.RUNTIME_BASE || 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
+  window.RUNTIME_BASE = DEFAULT_RUNTIME_BASE;
+  window.APP_CONFIG = window.APP_CONFIG || { RUNTIME_BASE_URL: window.RUNTIME_BASE };
+
+  const POLL_MS = 2000;
+  let pollTimer = null;
+  let baselineComputedAt = null;
+  let lastRenderedComputedAt = null;
+
+  async function fetchJSONNoCache(url){
+    const res = await fetch(url + (url.includes('?')?'&':'?') + 'ts=' + Date.now(), {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status+' for '+url);
+    return res.json();
+  }
+
+  function isElementVisibleAndSized(el) {
+    if (!el) return false;
+    const s = getComputedStyle(el);
+    if (s.display==='none' || s.visibility==='hidden') return false;
+    const r = el.getBoundingClientRect();
+    return r.width>0 && r.height>0;
+  }
+  function waitForVisibleAndSized(sel, tries=20){
+    return new Promise(resolve=>{
+      (function tick(n){
+        const el = document.querySelector(sel);
+        if (isElementVisibleAndSized(el) || n<=0) return resolve(el);
+        requestAnimationFrame(()=>tick(n-1));
+      })(tries);
+    });
+  }
+
+  async function applyCurrentFromNetwork(){
+    const current = await fetchJSONNoCache(`${window.RUNTIME_BASE}/current.json`);
+    const normalized = {
+      bp: Number(current?.bp ?? current?.BP ?? 0),
+      intensities: current?.intensities ?? current?.classes ?? {},
+      intensity_top: Array.isArray(current?.intensity_top) ? current.intensity_top : [],
+      distribution: Array.isArray(current?.distribution) ? current.distribution : [],
+      meta: current?.meta ?? {}
+    };
+    window.app = window.app || { data:{} };
+    app.runtimeCurrent = normalized;
+    app.data.dashboardData = { source:'current.json', ...normalized };
+    if (typeof window.setUserBp === 'function') window.setUserBp(normalized.bp);
+    else {
+      const EPS=0.01;
+      window.HIGHLIGHT_MIN = Math.max(0, normalized.bp - EPS);
+      window.HIGHLIGHT_MAX = Math.min(1, normalized.bp + EPS);
+    }
+    if (typeof window.setMode === 'function') await window.setMode('result');
+    await waitForVisibleAndSized('#footer', 20);
+    if (typeof window.updateDashboardDisplay === 'function') window.updateDashboardDisplay();
+    if (typeof window.executeResultSequence === 'function') window.executeResultSequence();
+  }
+
+  async function checkStateOnce(){
+    try{
+      const state = await fetchJSONNoCache(`${window.RUNTIME_BASE}/state.json`);
+      const computedAt = state?.meta?.computed_at || state?.computed_at || null;
+      if (baselineComputedAt===null){
+        baselineComputedAt = computedAt;
+        return;
+      }
+      const changed = computedAt && computedAt !== lastRenderedComputedAt && computedAt !== baselineComputedAt;
+      if (changed){
+        await applyCurrentFromNetwork();
+        lastRenderedComputedAt = computedAt;
+      }
+    }catch(e){
+      console.warn('[adapter] state poll failed:', e);
+    }
+  }
+
+  function startPoller(){
+    if (pollTimer) return;
+    pollTimer = setInterval(checkStateOnce, POLL_MS);
+  }
+  function stopPoller(){
+    if (pollTimer){ clearInterval(pollTimer); pollTimer=null; }
+  }
+
+  function wireDevButtons(){
+    const bLanding = document.getElementById('btn-landing');
+    const bResult  = document.getElementById('btn-show-result');
+    if (bLanding && typeof window.setMode === 'function'){
+      bLanding.addEventListener('click', ()=>window.setMode('landing'));
+    }
+    if (bResult){
+      bResult.addEventListener('click', async ()=>{
+        try{
+          await applyCurrentFromNetwork();
+          lastRenderedComputedAt = 'manual';
+        }catch(e){ console.error('[adapter] manual show-result failed:', e); }
+      });
+    }
+  }
+
+  function boot(){
+    wireDevButtons();
+    startPoller();
+  }
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  window.__tv1 = Object.assign(window.__tv1 || {}, { startPoller, stopPoller, checkStateOnce });
+})();
