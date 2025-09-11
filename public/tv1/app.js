@@ -1,8 +1,7 @@
-// === RUNTIME BASE SHIM (add at very top) =================================
+// === RUNTIME BASE SHIM (injected) ==========================================
 window.RUNTIME_BASE = window.RUNTIME_BASE || 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
 window.APP_CONFIG  = window.APP_CONFIG  || { RUNTIME_BASE_URL: window.RUNTIME_BASE };
-// =========================================================================
-
+// ==========================================================================
 /* EVENT-OPTIMIZED BIOPHILIC VISUALIZATION - INTEGRATED WITH SCRIPT3 FEATURES
    Complete integration of:
    1. Geo map to circular layout transition with polar coordinates
@@ -18,37 +17,29 @@ window.HIGHLIGHT_MAX = window.HIGHLIGHT_MAX ?? 0.75;
 const HIGHLIGHT_COLOR = '#92C043', NON_HIGHLIGHT_GRAY = '#666666';
 const userBp = (window.app?.data?.userBp ?? 0.5);  // default only if not set yet
 
+
 window.USE_CURRENT_JSON = true;
 
 // Single source of truth for user BP pushed in from TV adapter
 window.setUserBp = function setUserBp(bp) {
-  if (!window.app) window.app = { data: {}, state: {} };
   
   const v = Number(bp) || 0;
-  window.app.data.userBp = v;
-
-  // Center the highlight band around the live BP (±0.01), clamped to [0,1]
   const EPS = 0.01;
-  const lo = Math.max(0, v - EPS);
-  const hi = Math.min(1, v + EPS);
-  
-  app.state = app.state || {};
+  window.app = window.app || { state:{} };
   app.state.bpValue = v;
-  app.state.highlightMin = lo;
-  app.state.highlightMax = hi;
-  
-  // keep legacy globals in sync if used elsewhere
-  window.HIGHLIGHT_MIN = lo;
-  window.HIGHLIGHT_MAX = hi;
+  app.state.highlightMin = Math.max(0, v - EPS);
+  app.state.highlightMax = Math.min(1, v + EPS);
+  window.HIGHLIGHT_MIN = app.state.highlightMin;
+  window.HIGHLIGHT_MAX = app.state.highlightMax;
+if (!window.app) window.app = { data: {} };
+  window.app.data.userBp = bp;
 
-  // Update numeric label if present
+  // Update any numeric label if you also set it inside app.js
   const n = document.getElementById("bpValueNumber");
-  if (n && Number.isFinite(v)) n.textContent = v.toFixed(2);
+  if (n) n.textContent = bp.toFixed(2);
 
-  // Request a repaint of the center visualization
-  if (typeof window.updateVisualizationCanvas === "function") {
-    try { window.updateVisualizationCanvas(); } catch {}
-  }
+  // Repaint the center visualization using the new threshold
+  // (rename these calls to match your actual draw/refresh functions)
   if (typeof window.refreshDotLayer === "function") window.refreshDotLayer();
   if (typeof window.updateLegend === "function") window.updateLegend();
   if (typeof window.updateCenterViz === "function") window.updateCenterViz();
@@ -175,27 +166,9 @@ function wait(ms) {
 
 function isHighlighted(d) {
   const v = d.biophilia_norm;
-  const lo = (app && app.state && typeof app.state.highlightMin === 'number') ? app.state.highlightMin : (window.HIGHLIGHT_MIN ?? 0.70);
-  const hi = (app && app.state && typeof app.state.highlightMax === 'number') ? app.state.highlightMax : (window.HIGHLIGHT_MAX ?? 0.75);
+  const lo = (window.HIGHLIGHT_MIN ?? 0.70);
+  const hi = (window.HIGHLIGHT_MAX ?? 0.75);
   return v >= lo && v <= hi;
-}
-
-function isElementVisibleAndSized(el) {
-  if (!el) return false;
-  const s = getComputedStyle(el);
-  if (s.display === 'none' || s.visibility === 'hidden') return false;
-  const r = el.getBoundingClientRect();
-  return r.width > 0 && r.height > 0;
-}
-
-async function waitForVisibleAndSized(selector, tries = 20) {
-  return new Promise(resolve => {
-    (function tick(n){
-      const el = document.querySelector(selector);
-      if (isElementVisibleAndSized(el) || n <= 0) return resolve(el);
-      requestAnimationFrame(() => tick(n - 1));
-    })(tries);
-  });
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -345,47 +318,63 @@ function enforceBpValue(bp) {
   if (window.setBiPValue) try { window.setBiPValue(bp); } catch {}
 }
 
+
+
+// Prefer current.json written by Lambda; fall back to CSV if unavailable
 async function loadDashboardData() {
-  try {
-    const base = (window.APP_CONFIG && window.APP_CONFIG.RUNTIME_BASE_URL)
-      ? window.APP_CONFIG.RUNTIME_BASE_URL
-      : window.RUNTIME_BASE;
-    const url = `${base}/current.json`;
-    // Use your fetch helper if it exists; otherwise raw fetch
-    const cur = (typeof fetchJSONNoCache === 'function')
-      ? await fetchJSONNoCache(url)
-      : await (await fetch(url + '?ts=' + Date.now(), { cache: 'no-store' })).json();
+  if (app.data.dashboardData) return app.data.dashboardData;
 
-    const normalized = {
-      bp: Number(cur?.bp ?? cur?.BP ?? cur?.value ?? 0),
-      intensities: cur?.intensities ?? cur?.classes ?? {},
-      intensity_top: Array.isArray(cur?.intensity_top) ? cur.intensity_top : (Array.isArray(cur?.top) ? cur.top : []),
-      distribution: Array.isArray(cur?.distribution) ? cur.distribution : [],
-      meta: cur?.meta ?? {}
-    };
+  if (window.USE_CURRENT_JSON) {
+    try {
+      const r = await fetchJSONNoCache("https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json");
+      if (r.ok) {
+        const cur = await r.json();
 
-    window.app = window.app || { state:{}, data:{} };
-    app.runtimeCurrent = normalized;
-    app.data.dashboardData = { source: 'current.json', ...normalized };
+        // Normalize to a simple object we can re-use
+        const bp = Number(cur?.bp ?? NaN);
+        const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
+       
+        app.runtimeCurrent = cur; // so updateDistributionChart() can see it
+        app.data.dashboardData = {
+           source: "current.json",
+           bp,
+           top,
+           distribution: cur?.distribution || null,
+           intensities: cur?.intensities || null
+         };
 
-    // keep BP + highlight centered on live value (bp ± 0.01)
-    if (typeof window.setUserBp === 'function') {
-      window.setUserBp(normalized.bp);
-    } else {
-      const EPS = 0.01;
-      app.state.bpValue = normalized.bp;
-      app.state.highlightMin = Math.max(0, normalized.bp - EPS);
-      app.state.highlightMax = Math.min(1, normalized.bp + EPS);
-      window.HIGHLIGHT_MIN = app.state.highlightMin;
-      window.HIGHLIGHT_MAX = app.state.highlightMax;
+        // Update the UI immediately (keeps all your existing rendering)
+        const num = document.getElementById("bpValueNumber");      
+        
+        return app.data.dashboardData;
+      }
+    } catch (e) {
+      console.warn("current.json not available yet; falling back to CSV", e);
     }
-
-    return normalized;
-  } catch (err) {
-    console.error('[loadDashboardData] failed:', err);
-    return null;
   }
+
+  // Fallback: your existing CSV
+  try {
+    app.data.dashboardData = await d3.csv(seoulData.dashboardDataPath);
+  } catch (error) {
+    console.error('Error loading dashboard data:', error);
+    app.data.dashboardData = [{
+      'BP_Weighted_Norm': '0.72',
+      'Animal/Fauna': '0.1',
+      'Grass': '0.85',
+      'Trees': '0.9',
+      'Plant/Flora': '0.95',
+      'Greenscape': '0.7',
+      'Landscape': '0.6',
+      'Waterscape': '0.5',
+      'Living Being': '0.4',
+      'Waterfall': '0.3',
+      'Sky': '0.1'
+    }];
+  }
+  return app.data.dashboardData;
 }
+
 
 async function loadAllParticipantsData() {
   if (app.data.allParticipantsData) return app.data.allParticipantsData;
@@ -485,6 +474,7 @@ function initializeMapbox() {
   }
   return app.map;
 }
+
 
 /* ========== CLEANUP FUNCTIONS ========== */
 function clearAllTimersAndAnimations() {
@@ -759,7 +749,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
       if (p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height) {
         ctx.beginPath();
         const baseR = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
-        const r = radiusWithPulse(d, baseR); // <– pulse only highlighted
+        const r = radiusWithPulse(d, baseR); // <— pulse only highlighted
         ctx.arc(p.x, p.y, Math.max(1, r), 0, 2 * Math.PI);
         ctx.fillStyle = getDotColor(d);
         ctx.globalAlpha = getDotOpacity(d);
@@ -1192,7 +1182,8 @@ function updateTopElements(topElements) {
     });
   }
 
-function updateBarChart(intensityData) {
+
+  function updateBarChart(intensityData) {
     const barChart  = document.getElementById('barChart');
     const barLabels = document.getElementById('barLabels');
     if (!barChart || !barLabels) return;
@@ -1261,6 +1252,12 @@ function updateBarChart(intensityData) {
       <span class="x1">1</span>
     `;
   }
+  
+
+  
+
+
+  
 
 /* ========== DISTRIBUTION CHART - INTEGRATED FROM SCRIPT3 ========== */
 function updateDistributionChart(userBpValue) {
@@ -1271,9 +1268,6 @@ function updateDistributionChart(userBpValue) {
 
   const lineCanvas = document.getElementById('lineChart');
   if (!lineCanvas) return;
-
-  const rect = lineCanvas.getBoundingClientRect();
-  if ((rect.width|0) === 0 || (rect.height|0) === 0) { requestAnimationFrame(() => updateDistributionChart(userBpValue)); return; }
 
   const lineCtx = lineCanvas.getContext('2d');
   if (!lineCtx) return;
@@ -1394,6 +1388,8 @@ function updateDistributionChart(userBpValue) {
   }
 }
 
+
+
 /* ========== DISTRIBUTION ANIMATION - INTEGRATED FROM SCRIPT3 ========== */
 function animateDistributionCurve(userBpValue) {
   if (!window.lineChart) {
@@ -1443,11 +1439,6 @@ function animateDistributionCurve(userBpValue) {
       const stepDuration = animationDuration / Math.max(1, userBinIndex);
 
       function animateStep() {
-        // Add Chart.js crash protection
-        if (!window.lineChart || !window.lineChart.canvas || !window.lineChart.canvas.isConnected || !window.lineChart.canvas.ownerDocument) {
-          return; // canvas detached/hidden → skip this frame to avoid ownerDocument error
-        }
-        
         if (currentIndex <= userBinIndex && app.mode === Modes.RESULT) {
           animatedDotDataset.data.fill(null);
           const yValue = chart.data.datasets[0].data[currentIndex];
@@ -1550,19 +1541,20 @@ function animateDistributionCurve(userBpValue) {
 
         document.body.appendChild(tooltip);
 
-        // Measure after attaching, then clamp within the viewport
-        const tipW = tooltip.offsetWidth;
-        const tipH = tooltip.offsetHeight;
-        let left = rect.left + point.x - tipW / 2;
-        let top  = rect.top  + point.y + 25;
+// Measure after attaching, then clamp within the viewport
+const tipW = tooltip.offsetWidth;
+const tipH = tooltip.offsetHeight;
+let left = rect.left + point.x - tipW / 2;
+let top  = rect.top  + point.y + 25;
 
-        // clamp horizontally with 8px padding
-        left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
-        // clamp vertically if needed
-        top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
+// clamp horizontally with 8px padding
+left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+// clamp vertically if needed
+top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
 
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top  = `${top}px`;
+tooltip.style.left = `${left}px`;
+tooltip.style.top  = `${top}px`;
+
 
         document.body.appendChild(tooltip);
       }
@@ -1578,6 +1570,7 @@ function animateDistributionCurve(userBpValue) {
     runFullAnimation();
   });
 }
+
 
 /* --- Icon preload helpers (prevents first-time icon pop in Result mode) --- */
 function _iconKey(name) {
@@ -1604,67 +1597,79 @@ function preloadTopElementIcons(names) {
   app.assets.topIconsPreloaded = true;
 }
 
-function buildDistributionIfReady(distribution, bp) {
-  const footer = document.getElementById('footer');
-  if (!isElementVisibleAndSized(footer)) {
-    requestAnimationFrame(() => buildDistributionIfReady(distribution, bp));
+function updateDashboardDisplay() {
+  const data = (window.app && (app.runtimeCurrent || app.data?.dashboardData)) || null;
+  if (!data) return;
+
+  const bpValue = Number(data.bp) || 0;
+  const numEl = document.getElementById('bpValueNumber');
+  if (numEl) numEl.textContent = bpValue.toFixed(2);
+
+  const top3 = (Array.isArray(data.intensity_top) && data.intensity_top.length)
+    ? data.intensity_top.slice(0,3)
+    : Object.entries(data.intensities || {}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>k);
+  if (typeof updateTopElements === 'function') { try { updateTopElements(top3); } catch(e){} }
+
+  const top10 = Object.entries(data.intensities || {})
+    .map(([k,v]) => ({ name: k, value: Number(v)||0 }))
+    .sort((a,b) => b.value - a.value)
+    .slice(0,10);
+  if (typeof updateBarChart === 'function') { try { updateBarChart(top10); } catch(e){} }
+
+  if (typeof updateDistributionChart === 'function') { try { updateDistributionChart(bpValue); } catch(e){} }
+}
+     }
+
+   // Prefer full intensities if present; fall back to top names
+  const intens = data.intensities && typeof data.intensities === 'object' ? data.intensities : null;
+     if (intens) {
+      // object -> sorted array for bars/icons
+      const arr = Object.entries(intens)
+         .map(([k,v]) => ({ name: k, value: Number(v) || 0 }))
+         .sort((a,b) => b.value - a.value);
+
+      // top text uses labels
+      if (typeof topCategoryText === 'function') topCategoryText(intens);
+
+     // icons need nice display names
+       const LABEL = { sky:'Sky', tree:'Tree', grass:'Grass', person:'Person', ground:'Earth/Ground',
+         mountain:'Mountain', plant:'Plant/Flora', water:'Water', sea:'Sea', river:'River', lake:'Lake',
+         waterfall:'Waterfall', swimming:'Swimming Pool', rock:'Rock/Stone', sand:'Sand', light:'Light/Sunlight',
+         animal:'Animal/Fauna', flower:'Flower', palm:'Palmtree', land:'Land/Soil', fountain:'Fountain',
+         field:'Field', fireplace:'Fireplace', food:'Natural Food', hill:'Hill' };
+
+       const top3ForIcons = arr.slice(0,3).map(d => ({ name: LABEL[d.name] || d.name, value: d.value }));
+       if (typeof window.updateTopElements === 'function') window.updateTopElements(top3ForIcons);
+
+       if (typeof window.updateBarChart === 'function') window.updateBarChart(arr.slice(0,10));
+      } else {
+     // Only names available (no values) – show icons and leave bars minimal
+       const topNames = Array.isArray(data.top) ? data.top.slice(0,3) : [];
+       const topForWidgets = topNames.map(n => ({ name: n, value: 1 }));
+       if (typeof window.updateTopElements === 'function') window.updateTopElements(topForWidgets);
+       if (typeof window.updateBarChart === 'function') window.updateBarChart(topForWidgets);
+   }
+
     return;
   }
-  const canvas = document.getElementById('lineChart');
-  if (!canvas || !isElementVisibleAndSized(canvas)) return;
 
-  if (window.lineChart && typeof window.lineChart.destroy === 'function') {
-    try { window.lineChart.destroy(); } catch {}
-  }
-  if (typeof updateDistributionChart === 'function') {
-    try { updateDistributionChart(bp); } catch(e){ console.error('[distribution] build error', e); }
-  }
-  if (typeof animateDistributionCurve === 'function') {
-    try { animateDistributionCurve(bp); } catch(e){ console.error('[distribution] animate error', e); }
-  }
+  // Else fall back to your original CSV one-row logic
+  const row = (Array.isArray(data) && data.length) ? data[0] : {};
+  const bpValue = parseFloat(row['BP_Weighted_Norm']) || 0.72;
+  document.getElementById('bpValueNumber').textContent = bpValue.toFixed(2);
+
+  const top10 = [
+    { name: 'Plant/Flora', value: parseFloat(row['Plant/Flora']) || 0 },
+    { name: 'Water', value: parseFloat(row['Waterscape']) || 0 },
+    { name: 'Sky', value: parseFloat(row['Landscape']) || 0 },
+    // …keep the rest of your mapping…
+  ].sort((a, b) => b.value - a.value).slice(0, 10);
+
+  updateTopElements(top10.slice(0, 3));
+  updateBarChart(top10);
+  updateDistributionChart(bpValue);
 }
 
-async function updateDashboardDisplay() {
-  const cur = (app && (app.runtimeCurrent || app.data?.dashboardData)) || null;
-  if (!cur) return;
-
-  // BP number
-  const el = document.getElementById('bpValueNumber');
-  if (el) el.textContent = (Number(cur.bp) || 0).toFixed(2);
-
-  // Prefer full intensities if present; fall back to top names
-  const intens = cur.intensities && typeof cur.intensities === 'object' ? cur.intensities : null;
-  if (intens) {
-    // object -> sorted array for bars/icons
-    const arr = Object.entries(intens)
-      .map(([k,v]) => ({ name: k, value: Number(v) || 0 }))
-      .sort((a,b) => b.value - a.value);
-
-    // top text uses labels
-    if (typeof topCategoryText === 'function') topCategoryText(intens);
-
-    // icons need nice display names
-    const LABEL = { sky:'Sky', tree:'Tree', grass:'Grass', person:'Person', ground:'Earth/Ground',
-      mountain:'Mountain', plant:'Plant/Flora', water:'Water', sea:'Sea', river:'River', lake:'Lake',
-      waterfall:'Waterfall', swimming:'Swimming Pool', rock:'Rock/Stone', sand:'Sand', light:'Light/Sunlight',
-      animal:'Animal/Fauna', flower:'Flower', palm:'Palmtree', land:'Land/Soil', fountain:'Fountain',
-      field:'Field', fireplace:'Fireplace', food:'Natural Food', hill:'Hill' };
-
-    const top3ForIcons = arr.slice(0,3).map(d => ({ name: LABEL[d.name] || d.name, value: d.value }));
-    if (typeof window.updateTopElements === 'function') window.updateTopElements(top3ForIcons);
-
-    if (typeof window.updateBarChart === 'function') window.updateBarChart(arr.slice(0,10));
-  } else {
-    // Only names available (no values) — show icons and leave bars minimal
-    const topNames = Array.isArray(cur.intensity_top) ? cur.intensity_top.slice(0,3) : [];
-    const topForWidgets = topNames.map(n => ({ name: n, value: 1 }));
-    if (typeof window.updateTopElements === 'function') window.updateTopElements(topForWidgets);
-    if (typeof window.updateBarChart === 'function') window.updateBarChart(topForWidgets);
-  }
-
-  // Distribution (guard Chart.js creation until visible/sized)
-  buildDistributionIfReady(cur.distribution || [], Number(cur.bp) || 0);
-}
 
 /* ========== INITIALIZATION ========== */
 async function initializeApplication() {
@@ -1697,13 +1702,8 @@ async function initializeApplication() {
     }
 
     app.initialized = true;
-    app._initializing = false;
 
-    // Optional dev auto-demo (gated)
-    if (window.__DEV_FORCE_RESULT__ === true) {
-      setMode('result');
-      executeResultSequence();
-    }
+    app._initializing = false;
 
   } catch (error) {
     console.error('CRITICAL: Application initialization failed:', error);
@@ -1722,6 +1722,7 @@ window.setMode = typeof setMode === "function" ? setMode : undefined;
 window.updateTopElements = typeof updateTopElements === "function" ? updateTopElements : undefined;
 window.updateBarChart = typeof updateBarChart === "function" ? updateBarChart : undefined;
 window.updateDistributionChart = typeof updateDistributionChart === "function" ? updateDistributionChart : undefined;
+
 
 /* ========== EVENT LISTENERS ========== */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1747,36 +1748,4 @@ function topCategoryText(intensities) {
   document.getElementById('topCategoryText').textContent = top3.join(', ');
 }
 
-function isElementVisibleAndSized(el) {
-  if (!el) return false;
-  const style = getComputedStyle(el);
-  if (style.display === 'none' || style.visibility === 'hidden') return false;
-  const rect = el.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
-}
 
-function guardedFooterUpdate(fn) {
-  const footer = document.getElementById('footer');
-  if (!footer) { try { fn(); } catch(_){}; return; }
-  if (isElementVisibleAndSized(footer)) {
-    fn();
-  } else {
-    requestAnimationFrame(() => guardedFooterUpdate(fn));
-  }
-}
-
-async function renderResultFromCurrent(useExisting=false){
-  let cur = useExisting ? (window.app && (app.runtimeCurrent || app.data?.dashboardData)) : null;
-  if (!cur) cur = await loadDashboardData();
-  if (!cur) return;
-  if (typeof window.setMode === 'function') await window.setMode('result');
-  requestAnimationFrame(() => {
-    guardedFooterUpdate(() => {
-      try {
-        if (typeof window.updateDashboardDisplay === 'function') window.updateDashboardDisplay();
-        if (typeof window.executeResultSequence === 'function') window.executeResultSequence();
-      } catch(e){ console.error('[renderResultFromCurrent] render error', e); }
-    });
-  });
-}
-window.renderResultFromCurrent = renderResultFromCurrent;

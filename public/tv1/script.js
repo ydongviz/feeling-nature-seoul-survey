@@ -1,202 +1,86 @@
-/* ===================================================================
-TV1 ADAPTER (Revised) — polls state.json, loads current.json, and renders
-- Baseline + render-once guard (prevents Landing auto-jump & flashing)
-- Compatible with your existing app.js (no changes to visuals).
-- Sets highlight window to bp ± 0.01 and updates all widgets together.
-=================================================================== */
+/* TV-1 kiosk adapter + state poller (production) */
+const STATE_URL  = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
+const RESULT_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
 
-(function(){
-    // ---- CONFIG ----
-    const DEFAULT_RUNTIME_BASE = 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
-    // Expose globally so app.js helpers that reference RUNTIME_BASE can see it
-    window.RUNTIME_BASE = window.RUNTIME_BASE || DEFAULT_RUNTIME_BASE;
-    window.APP_CONFIG = window.APP_CONFIG || { RUNTIME_BASE_URL: window.RUNTIME_BASE };
+const ovEl = document.getElementById("kioskOverlay");
+const ovMsg = document.getElementById("kioskMsg");
+const ovCnt = document.getElementById("kioskCount");
+let timer = null, etag = null, stage = null;
+let baselineEt = null;
+let lastRenderedEt = null;
+let rendering = false;
 
-    const POLL_MS = 2000;
-    let pollTimer = null;
-    let baselineComputedAt = null;
-    let lastRenderedComputedAt = null;
-    let rendering = false;
+function hideOverlay(){ if(ovEl) ovEl.style.display="none"; if(ovCnt) ovCnt.style.display="none"; if(timer){clearInterval(timer); timer=null;} }
+function showNote(msg){ if(!ovEl) return; ovEl.style.display="flex"; ovMsg.textContent=msg||"Please complete your survey questions."; ovCnt.style.display="none"; }
+function showCountdown(msg, secs, notBeforeIso){
+  if(!ovEl) return; ovEl.style.display="flex"; ovMsg.textContent=msg||"Loading your result…"; ovCnt.style.display="block";
+  const target = notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000);
+  function tick(){ const r=Math.max(0,target-Date.now()); ovCnt.textContent=String(Math.ceil(r/1000)); if(r<=0&&timer){clearInterval(timer); timer=null;} }
+  if(timer) clearInterval(timer); tick(); timer=setInterval(tick,200);
+}
+function expired(s){ const t=Date.parse(s?.expires_at||""); return !Number.isFinite(t) || Date.now()>t; }
+async function fetchJSON(url, et){ const r=await fetch(url,{cache:"no-cache", headers: et?{"If-None-Match":et}:{}}); if(r.status===304) return {notModified:true, et}; return {json:await r.json(), et:r.headers.get("ETag")}; }
 
-    // ---- Helpers ----
-    async function fetchJSONNoCache(url){
-      const res = await fetch(url + (url.includes('?')?'&':'?') + 'ts=' + Date.now(), { cache:'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
-      return res.json();
-    }
-
-    function isElementVisibleAndSized(el) {
-      if (!el) return false;
-      const s = getComputedStyle(el);
-      if (s.display==='none' || s.visibility==='hidden') return false;
-      const r = el.getBoundingClientRect();
-      return r.width>0 && r.height>0;
-    }
-
-    function waitForVisibleAndSized(sel, tries=20){
-      return new Promise(resolve=>{
-        (function tick(n){
-          const el = document.querySelector(sel);
-          if (isElementVisibleAndSized(el) || n<=0) return resolve(el);
-          requestAnimationFrame(()=>tick(n-1));
-        })(tries);
-      });
-    }
-
-    function normalizeCurrent(cur) {
-      return {
-        bp: Number(cur?.bp ?? cur?.BP ?? 0),
-        intensities: cur?.intensities ?? cur?.classes ?? {},
-        intensity_top: Array.isArray(cur?.intensity_top) ? cur.intensity_top : [],
-        distribution: Array.isArray(cur?.distribution) ? cur.distribution : [],
-        meta: cur?.meta ?? {}
-      };
-    }
-
-    // ---- Core apply path (single source of truth) ----
-    async function applyCurrentFromNetwork(){
-      const base = (window.APP_CONFIG && window.APP_CONFIG.RUNTIME_BASE_URL) 
-        ? window.APP_CONFIG.RUNTIME_BASE_URL 
-        : window.RUNTIME_BASE;
-      const current = await fetchJSONNoCache(`${base}/current.json`);
-      const normalized = normalizeCurrent(current);
-
-      // Store to app globals so existing functions can access
-      window.app = window.app || { state:{}, data:{} };
-      app.runtimeCurrent = normalized;
-      app.data.dashboardData = { source:'current.json', ...normalized };
-
-      // Update BP and highlight window
-      if (typeof window.setUserBp === 'function') {
-        window.setUserBp(normalized.bp);
-      } else {
-        const EPS = 0.01;
-        app.state = app.state || {};
-        app.state.bpValue = normalized.bp;
-        app.state.highlightMin = Math.max(0, normalized.bp - EPS);
-        app.state.highlightMax = Math.min(1, normalized.bp + EPS);
-        window.HIGHLIGHT_MIN = app.state.highlightMin;
-        window.HIGHLIGHT_MAX = app.state.highlightMax;
+function applyCurrent(cur){
+  try{
+    const bp = Number(cur?.bp ?? 0);
+    if (typeof window.setUserBp === "function" && Number.isFinite(bp)) {
+        window.setUserBp(bp);
       }
+    const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
+    const num = document.getElementById("bpValueNumber");
+    if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
+    if (Number.isFinite(bp)) {
+           if (typeof window.setUserBp === "function") window.setUserBp(bp);
+           if (typeof window.applyBPToUI === "function") window.applyBPToUI(bp);
+         }      
+    if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
+    if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
+    if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
+  }catch(e){ /* noop */ }
+}
 
-      // Switch mode first so containers are visible/sized
-      if (typeof window.setMode === 'function') await window.setMode('result');
-      
-      // Wait for footer to be ready for Chart.js
-      await waitForVisibleAndSized('#footer', 20);
+async function poll(){
+  try{
+    const s = await fetchJSON(STATE_URL, etag);
+    if (s.notModified) return;
+    if (s.et) etag = s.et;
+    const curEt = s.et || null;
+    if (baselineEt === null) { baselineEt = curEt; return; }
+    const st = s.json || {};
+    if (expired(st)) { hideOverlay(); window.setMode?.("landing"); stage="idle"; return; }
 
-      // Build/rebuild sections if needed (app handles idempotence)
-      if (typeof window.buildAllContent === 'function') window.buildAllContent();
+    const ov = st.overlay || {};
+    stage = st.stage || "idle";
 
-      // Update visualization canvas with current data
-      if (typeof window.updateVisualizationCanvas === 'function') { 
-        try { window.updateVisualizationCanvas(); } catch {} 
-      }
-
-      // Unified dashboard update (numbers, icons, bars, distribution)
-      if (typeof window.updateDashboardDisplay === 'function') { 
-        try { window.updateDashboardDisplay(); } catch {} 
-      }
-
-      // Kick the result animation sequence (highlight → circular → highlight+pulse)
-      if (typeof window.executeResultSequence === 'function') { 
-        try { await window.executeResultSequence(); } catch {} 
-      }
+    if (stage === "idle"){
+      hideOverlay(); window.setMode?.("landing"); return;
     }
-
-    // ---- Polling for new state from Lambda ----
-    async function checkStateOnce(){
-      try{
-        const base = (window.APP_CONFIG && window.APP_CONFIG.RUNTIME_BASE_URL) 
-          ? window.APP_CONFIG.RUNTIME_BASE_URL 
-          : window.RUNTIME_BASE;
-        const state = await fetchJSONNoCache(`${base}/state.json`);
-        const computedAt = state?.meta?.computed_at || state?.computed_at || null;
-
-        // Set baseline on first poll (stay in Landing)
-        if (baselineComputedAt === null) { 
-          baselineComputedAt = computedAt; 
-          return; 
-        }
-
-        // Check for actual change and prevent concurrent renders
-        const changed = computedAt
-          && computedAt !== baselineComputedAt
-          && computedAt !== lastRenderedComputedAt;
-
-        if (changed && !rendering){
-          rendering = true;
-          try {
-            await applyCurrentFromNetwork();
-            lastRenderedComputedAt = computedAt;
-          } finally {
-            rendering = false;
-          }
-        }
-      } catch (e) {
-        rendering = false;
-        console.warn('[adapter] state poll failed:', e);
-      }
+    if (stage === "in_progress"){
+      if (ov.type === "countdown") showCountdown(ov.message, ov.countdown_secs, ov.not_before);
+      else showNote(ov.message);
+      window.setMode?.("landing"); return;
     }
-
-    function startPoller(){ 
-      if (!pollTimer) pollTimer = setInterval(checkStateOnce, POLL_MS); 
+    if (stage === "show_result"){
+      hideOverlay();
+      const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
+      if (!changed || rendering) { return; }
+      rendering = true;
+      const c = await fetchJSON(RESULT_URL);
+      window.setMode?.("result");
+      if (!c.notModified && c.json) applyCurrent(c.json);
+      lastRenderedEt = curEt;
+      rendering = false;
+      return;
     }
-    
-    function stopPoller(){ 
-      if (pollTimer){ 
-        clearInterval(pollTimer); 
-        pollTimer=null; 
-      } 
-    }
+    // fallback
+    hideOverlay(); window.setMode?.("landing");
+  }catch(e){ /* network hiccup -> keep last view */ }
+}
 
-    // ---- Dev buttons (optional) ----
-    function wireDevButtons() {
-      const bLanding = document.getElementById('btn-landing');
-      const bResult = document.getElementById('btn-show-result');
-
-      if (bLanding && typeof window.setMode === 'function') {
-        bLanding.addEventListener('click', () => {
-          window.setMode('landing');
-        });
-      }
-
-      if (bResult) {
-        bResult.addEventListener('click', async () => {
-          if (rendering) return; // Prevent concurrent renders
-          rendering = true;
-          try {
-            await applyCurrentFromNetwork();
-            lastRenderedComputedAt = 'manual';
-          } catch (e) {
-            console.error('[adapter] manual show-result failed:', e);
-          } finally {
-            rendering = false;
-          }
-        });
-      }
-    }
-
-    // ---- Boot ----
-    function bootAdapter() {
-      wireDevButtons();
-      startPoller();
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bootAdapter);
-    } else {
-      bootAdapter();
-    }
-
-    // Expose some controls for debugging
-    window.__tv1 = Object.assign(window.__tv1 || {}, {
-      startPoller, 
-      stopPoller, 
-      checkStateOnce,
-      applyCurrentFromNetwork,
-      isRendering: () => rendering,
-      getBaselineComputedAt: () => baselineComputedAt,
-      getLastRenderedComputedAt: () => lastRenderedComputedAt
-    });
-})();
+window.addEventListener("load", () => {
+  window.renderLanding   = async () => { hideOverlay(); window.setMode?.("landing"); };
+  window.renderDashboard = async (c)  => { hideOverlay(); window.setMode?.("result"); applyCurrent(c||{}); };
+  window.renderLanding?.();
+  setInterval(poll, 2000);
+});
