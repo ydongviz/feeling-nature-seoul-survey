@@ -21,7 +21,8 @@ const userBp = (window.app?.data?.userBp ?? 0.5);  // default only if not set ye
 window.USE_CURRENT_JSON = true;
 
 // Single source of truth for user BP pushed in from TV adapter
-window.setUserBp = function setUserBp(bp) {const v = Number(bp) || 0;
+window.setUserBp = function setUserBp(bp) {// normalized BP -> center highlight band and repaint
+const v = Number(bp) || 0;
 const EPS = 0.01;
 window.app = window.app || { state:{}, data:{} };
 app.state.bpValue = v;
@@ -30,29 +31,14 @@ app.state.highlightMax = Math.min(1, v + EPS);
 window.HIGHLIGHT_MIN = app.state.highlightMin;
 window.HIGHLIGHT_MAX = app.state.highlightMax;
 
+// footer number
 const n = document.getElementById('bpValueNumber');
 if (n) n.textContent = v.toFixed(2);
 
-const v = Number(bp) || 0;
-  const EPS = 0.01;
-  window.app = window.app || { state:{} };
-  app.state.bpValue = v;
-  app.state.highlightMin = Math.max(0, v - EPS);
-  app.state.highlightMax = Math.min(1, v + EPS);
-  window.HIGHLIGHT_MIN = app.state.highlightMin;
-  window.HIGHLIGHT_MAX = app.state.highlightMax;
-if (!window.app) window.app = { data: {} };
-  window.app.data.userBp = bp;
-
-  // Update any numeric label if you also set it inside app.js
-  const n = document.getElementById("bpValueNumber");
-  if (n) n.textContent = bp.toFixed(2);
-
-  // Repaint the center visualization using the new threshold
-  // (rename these calls to match your actual draw/refresh functions)
-  if (typeof window.refreshDotLayer === "function") window.refreshDotLayer();
-  if (typeof window.updateLegend === "function") window.updateLegend();
-  if (typeof window.updateCenterViz === "function") window.updateCenterViz();
+// repaint center viz layers if available
+if (typeof window.refreshDotLayer === 'function') { try { window.refreshDotLayer(); } catch(_){} }
+if (typeof window.updateLegend    === 'function') { try { window.updateLegend(); } catch(_){} }
+if (typeof window.updateCenterViz === 'function') { try { window.updateCenterViz(); } catch(_){} }
 };
 
 const BP_GROUPS = [
