@@ -1137,20 +1137,18 @@ function iconPathFor(key) {
 
 
 function updateTopElements(top3Names) {
-  // Normalize incoming strings (e.g., "Plant/Flora" -> "plant")
   const keys = (top3Names || []).map(toKey).filter(Boolean);
 
-  // 1) Update the text with pretty labels
+  // keep the text line
   const textEl = document.getElementById('topCategoryText');
   if (textEl) textEl.textContent = keys.map(labelFromKey).join(', ');
 
-  // 2) Update the icons row
   const wrap = document.getElementById('topElements');
   if (!wrap) return;
   wrap.innerHTML = '';
 
   keys.forEach((key) => {
-    if (!CATEGORY_LABELS[key]) return; // skip unknowns
+    if (!CATEGORY_LABELS[key]) return;
 
     const [png, webp] = iconPathFor(key);
 
@@ -1163,25 +1161,17 @@ function updateTopElements(top3Names) {
     img.style.maxHeight = '100%';
     img.style.objectFit = 'contain';
 
-    // try .png then .webp; if both fail, drop the card (no "undefined")
     let i = 0;
     const sources = [png, webp];
-    img.onerror = () => {
-      i += 1;
-      if (i < sources.length) img.src = sources[i];
-      else { img.onerror = null; card.remove(); }
-    };
+    img.onerror = () => { i += 1; if (i < sources.length) img.src = sources[i]; else { img.onerror = null; card.remove(); } };
     img.src = sources[0];
 
-    const label = document.createElement('div');
-    label.className = 'element-name';
-    label.textContent = labelFromKey(key);
-
+    // NOTE: no label created/appended here
     card.appendChild(img);
-    card.appendChild(label);
     wrap.appendChild(card);
   });
 }
+
 
 
   function updateBarChart(intensityData) {
