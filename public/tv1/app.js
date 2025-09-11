@@ -17,20 +17,34 @@ const userBp = (window.app?.data?.userBp ?? 0.5);  // default only if not set ye
 window.USE_CURRENT_JSON = true;
 
 // Single source of truth for user BP pushed in from TV adapter
+
 window.setUserBp = function setUserBp(bp) {
-  if (!window.app) window.app = { data: {} };
+  if (!window.app) window.app = { data: {}, state: {} };
   window.app.data.userBp = bp;
 
-  // Update any numeric label if you also set it inside app.js
-  const n = document.getElementById("bpValueNumber");
-  if (n) n.textContent = bp.toFixed(2);
+  // Center the highlight band around the live BP (±0.01), clamped to [0,1]
+  const EPS = 0.01;
+  const lo = Math.max(0, (Number(bp) || 0) - EPS);
+  const hi = Math.min(1, (Number(bp) || 0) + EPS);
+  window.HIGHLIGHT_MIN = lo;
+  window.HIGHLIGHT_MAX = hi;
+  if (window.app.state) {
+    window.app.state.highlightMin = lo;
+    window.app.state.highlightMax = hi;
+    window.app.state.bpValue = Number(bp) || 0;
+  }
 
-  // Repaint the center visualization using the new threshold
-  // (rename these calls to match your actual draw/refresh functions)
+  // Update numeric label if present
+  const n = document.getElementById("bpValueNumber");
+  if (n && Number.isFinite(Number(bp))) n.textContent = Number(bp).toFixed(2);
+
+  // Request a repaint of the center visualization
+  if (typeof window.updateVisualizationCanvas === "function") window.updateVisualizationCanvas();
   if (typeof window.refreshDotLayer === "function") window.refreshDotLayer();
   if (typeof window.updateLegend === "function") window.updateLegend();
   if (typeof window.updateCenterViz === "function") window.updateCenterViz();
 };
+;
 
 const BP_GROUPS = [
   { min: 0.00, max: 0.25, color: '#92C043', name: 'Very Low (0-0.25)' },
@@ -153,8 +167,8 @@ function wait(ms) {
 
 function isHighlighted(d) {
   const v = d.biophilia_norm;
-  const lo = (window.HIGHLIGHT_MIN ?? 0.70);
-  const hi = (window.HIGHLIGHT_MAX ?? 0.75);
+  const lo = (app && app.state && typeof app.state.highlightMin === 'number') ? app.state.highlightMin : (window.HIGHLIGHT_MIN ?? 0.70);
+  const hi = (app && app.state && typeof app.state.highlightMax === 'number') ? app.state.highlightMax : (window.HIGHLIGHT_MAX ?? 0.75);
   return v >= lo && v <= hi;
 }
 
@@ -308,59 +322,32 @@ function enforceBpValue(bp) {
 
 
 // Prefer current.json written by Lambda; fall back to CSV if unavailable
+
 async function loadDashboardData() {
-  if (app.data.dashboardData) return app.data.dashboardData;
-
-  if (window.USE_CURRENT_JSON) {
-    try {
-      const r = await fetchJSONNoCache("https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json");
-      if (r.ok) {
-        const cur = await r.json();
-
-        // Normalize to a simple object we can re-use
-        const bp = Number(cur?.bp ?? NaN);
-        const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
-       
-        app.runtimeCurrent = cur; // so updateDistributionChart() can see it
-        app.data.dashboardData = {
-           source: "current.json",
-           bp,
-           top,
-           distribution: cur?.distribution || null,
-           intensities: cur?.intensities || null
-         };
-
-        // Update the UI immediately (keeps all your existing rendering)
-        const num = document.getElementById("bpValueNumber");      
-        
-        return app.data.dashboardData;
-      }
-    } catch (e) {
-      console.warn("current.json not available yet; falling back to CSV", e);
-    }
-  }
-
-  // Fallback: your existing CSV
   try {
-    app.data.dashboardData = await d3.csv(seoulData.dashboardDataPath);
-  } catch (error) {
-    console.error('Error loading dashboard data:', error);
-    app.data.dashboardData = [{
-      'BP_Weighted_Norm': '0.72',
-      'Animal/Fauna': '0.1',
-      'Grass': '0.85',
-      'Trees': '0.9',
-      'Plant/Flora': '0.95',
-      'Greenscape': '0.7',
-      'Landscape': '0.6',
-      'Waterscape': '0.5',
-      'Living Being': '0.4',
-      'Waterfall': '0.3',
-      'Sky': '0.1'
-    }];
+    const url = (APP_CONFIG && APP_CONFIG.RUNTIME_BASE_URL)
+      ? `${APP_CONFIG.RUNTIME_BASE_URL}/current.json`
+      : "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
+    // fetchJSONNoCache returns parsed JSON
+    const cur = await fetchJSONNoCache(url);
+    if (!cur || typeof cur !== 'object') throw new Error('current.json empty/invalid');
+
+    const normalized = {
+      bp: Number(cur.bp ?? cur.BP ?? cur.value ?? 0),
+      intensities: cur.intensities ?? cur.classes ?? {},
+      intensity_top: cur.intensity_top ?? cur.top ?? [],
+      distribution: cur.distribution ?? [],
+      meta: cur.meta ?? {}
+    };
+    app.runtimeCurrent = normalized;
+    app.data.dashboardData = { source: 'current.json', ...normalized };
+    return normalized;
+  } catch (err) {
+    console.error('[loadDashboardData] failed:', err);
+    return null;
   }
-  return app.data.dashboardData;
 }
+
 
 
 async function loadAllParticipantsData() {
@@ -1255,6 +1242,9 @@ function updateDistributionChart(userBpValue) {
 
   const lineCanvas = document.getElementById('lineChart');
   if (!lineCanvas) return;
+
+  const rect = lineCanvas.getBoundingClientRect();
+  if ((rect.width|0) === 0 || (rect.height|0) === 0) { requestAnimationFrame(() => updateDistributionChart(userBpValue)); return; }
 
   const lineCtx = lineCanvas.getContext('2d');
   if (!lineCtx) return;
