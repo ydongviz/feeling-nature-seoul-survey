@@ -109,13 +109,44 @@ const app = {
 app.effects = app.effects || {};
 app.effects.pulse = { active: false, raf: null, t0: 0, last: 0, period: 1200 };
 
+// keep these in one place near the pulse engine
+const PULSE_BASE_AMP    = 0.35;   // set this to your CURRENT amplitude
+const PULSE_BASE_PERIOD = 1200;   // set this to your CURRENT period (ms)
+
+// amplitude by BP
+function getPulseAmplitudeByBp(bp) {
+  const v = Math.max(0, Math.min(1, Number(bp) || 0));
+  if (v < 0.45) {
+    // stronger as BP drops below 0.45 (up to +0.20 at v≈0)
+    const t = (0.45 - v) / 0.45;      // 0..1
+    return PULSE_BASE_AMP + 0.20 * t; // max ~0.55 if base=0.35
+  }
+  if (v >= 0.70) {
+    // mild boost at high BP (up to +0.06 near 1.0)
+    const t = (v - 0.70) / 0.30;      // 0..1 on [0.70,1.0]
+    return PULSE_BASE_AMP + 0.06 * t; // max ~0.41 if base=0.35
+  }
+  return PULSE_BASE_AMP;              // 0.45..0.70 => current settings
+}
+
+// period by BP (longer only at high BP → feels smoother)
+function getPulsePeriodByBp(bp) {
+  const v = Math.max(0, Math.min(1, Number(bp) || 0));
+  if (v >= 0.70) {
+    const t = (v - 0.70) / 0.30;      // 0..1 on [0.70,1.0]
+    return Math.round(PULSE_BASE_PERIOD + 200 * t); // 1200..1400 ms
+  }
+  return PULSE_BASE_PERIOD;           // same as current for < 0.70
+}
+
 // radius helper (only expands highlighted dots while pulsing)
 function radiusWithPulse(d, baseR) {
   const pe = app.effects.pulse;
   if (!pe.active || !app.state.isHighlightMode || !isHighlighted(d)) return baseR;
   const now = performance.now();
   const phase = ((now - pe.t0) % pe.period) / pe.period; // [0..1)
-  const k = 1.0 + 0.5 * Math.sin(2 * Math.PI * phase);  // ~0.65x..1.35x
+  const amp = getPulseAmplitudeByBp(app.state.bpValue);
+  const k = 1.0 + amp * Math.sin(2 * Math.PI * phase);
   return Math.max(1.5, baseR * k);
 }
 
@@ -1084,6 +1115,12 @@ async function executeResultSequence() {
     app.state.isHighlightMode = true;
     ensureHighlightHasSamples();    
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+
+    // set period from BP just before starting pulse
+    app.effects = app.effects || {};
+    app.effects.pulse = app.effects.pulse || { period: PULSE_BASE_PERIOD };
+    app.effects.pulse.period = getPulsePeriodByBp(app.state.bpValue);
+
     startPulseLoop();                 // start pulsing highlighted dots (map)
     await wait(3000);                 // keep pulsing for 3s
 
@@ -1115,6 +1152,11 @@ async function executeResultSequence() {
     // Step 3: Activate highlight on circular view AND RESUME PULSE (persist after)
     app.state.isHighlightMode = true;
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+
+    // set period from BP just before (re)starting pulse
+    app.effects = app.effects || {};
+    app.effects.pulse = app.effects.pulse || { period: PULSE_BASE_PERIOD };
+    app.effects.pulse.period = getPulsePeriodByBp(app.state.bpValue);
     startPulseLoop();                 // pulse continues on circular highlighted dots
     await wait(1000);
 
