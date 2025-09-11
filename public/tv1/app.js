@@ -115,7 +115,7 @@ function radiusWithPulse(d, baseR) {
   if (!pe.active || !app.state.isHighlightMode || !isHighlighted(d)) return baseR;
   const now = performance.now();
   const phase = ((now - pe.t0) % pe.period) / pe.period; // [0..1)
-  const k = 1.0 + 0.35 * Math.sin(2 * Math.PI * phase);  // ~0.65x..1.35x
+  const k = 1.0 + 0.5 * Math.sin(2 * Math.PI * phase);  // ~0.65x..1.35x
   return Math.max(1.5, baseR * k);
 }
 
@@ -144,6 +144,27 @@ function stopPulseLoop() {
   if (pe.raf) cancelAnimationFrame(pe.raf);
   pe.raf = null;
 }
+
+function ensureHighlightHasSamples(minCount = 400) {
+  const data = app.data.cache['seoul_BP'] || [];
+  if (!data.length || !Number.isFinite(app.state.bpValue)) return;
+
+  let lo = app.state.highlightMin;
+  let hi = app.state.highlightMax;
+  let widen = 0;
+  const countInBand = () => data.reduce((a, d) => a + (d.biophilia_norm >= lo && d.biophilia_norm <= hi ? 1 : 0), 0);
+
+  let count = countInBand();
+  while (count < minCount && widen < 0.05) {
+    widen += 0.005; // widen by 0.5% each step
+    lo = Math.max(0, app.state.bpValue - (0.01 + widen));
+    hi = Math.min(1, app.state.bpValue + (0.01 + widen));
+    count = countInBand();
+  }
+  window.HIGHLIGHT_MIN = lo;
+  window.HIGHLIGHT_MAX = hi;
+}
+
 
 /* ========== UTILITY FUNCTIONS ========== */
 function debounce(func, delay) {
@@ -1061,6 +1082,7 @@ async function executeResultSequence() {
 
     // Step 1: Activate highlight on map view WITH PULSE
     app.state.isHighlightMode = true;
+    ensureHighlightHasSamples();    
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     startPulseLoop();                 // start pulsing highlighted dots (map)
     await wait(3000);                 // keep pulsing for 3s
@@ -1073,7 +1095,7 @@ async function executeResultSequence() {
 
     // Step 2: Switch to circular view (no pulse during transition)
     app.state.isCircularView = true;
-
+    ensureHighlightHasSamples();  
     const mapContainer = document.getElementById('map');
     if (mapContainer) mapContainer.classList.add('hidden-map');
 
@@ -1602,10 +1624,6 @@ if (typeof updateDistributionChart === 'function') {
   try { updateDistributionChart(bpValue); } catch (e) { console.error('[updateDashboardDisplay] updateDistributionChart', e); }
 }
 }
-
-
-
-   
 
 
 
