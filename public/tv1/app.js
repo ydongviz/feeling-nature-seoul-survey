@@ -1107,58 +1107,54 @@ async function executeResultSequence() {
 }
 
 /* ========== DASHBOARD FUNCTIONS ========== */
-// REPLACE the whole function
-// REPLACE your current updateTopElements with this:
-function updateTopElements(topElements) {
-    const container = document.getElementById('topElements');
-    if (!container) return;
-  
-    container.innerHTML = '';
-    container.style.display = 'flex';
-    container.style.alignItems = 'flex-end';
-    container.style.gap = '12px';
-  
-    // normalize: "Plant/Flora" -> "plant-flora"
-    const toKey = (s) =>
-      String(s || '')
-        .toLowerCase()
-        .replace(/&/g, 'and')
-        .replace(/[^a-z0-9]+/g, '-')   // non-alnum -> hyphen
-        .replace(/^-+|-+$/g, '');      // trim hyphens
-  
-    topElements.forEach(el => {
-      const card = document.createElement('div');
-      card.className = 'top-element';
-      card.style.cssText = 'display:flex;align-items:flex-end;justify-content:center;width:100px;height:100px;';
-  
-      const img = document.createElement('img');
-      const key = toKey(el.name);
-  
-      const base = `img/classes/${key}`;
-      const candidates = [`${base}.svg`, `${base}.png`, `${base}.webp`];
-  
-      let i = 0;
-      const tryNext = () => {
-        if (i < candidates.length) {
-          img.src = candidates[i++];
-        } else {
-          img.onerror = null;
-          // tiny neutral placeholder
-          img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiM1OTlBNjMiPjxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjI4Ii8+PC9zdmc+';
-        }
-      };
-      img.onerror = tryNext;
-      tryNext();
-  
-      img.alt = el.name;
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '100%';
-      img.style.objectFit = 'contain';
-  
-      card.appendChild(img);
-      container.appendChild(card);
-    });
-  }
+function iconPathFor(key) {
+  const k = String(key || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g,'');
+  // Try .png first, then .webp
+  return [`img/classes/${k}.png`, `img/classes/${k}.webp`];
+}
+
+function updateTopElements(top3Names) {
+  // 1) Update the text
+  const textEl = document.getElementById('topCategoryText');
+  if (textEl) textEl.textContent = top3Names.join(', ');
+
+  // 2) Update the icons row
+  const wrap = document.getElementById('topElements');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  top3Names.forEach((name) => {
+    const key = String(name || '').toLowerCase();
+    // skip unknown keys to avoid "undefined"
+    if (!CATEGORY_LABELS.hasOwnProperty(key)) return;
+
+    const candidates = iconPathFor(key);
+    const card = document.createElement('div');
+    card.className = 'top-element';
+
+    const img = document.createElement('img');
+    img.alt = CATEGORY_LABELS[key] || key;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '100%';
+    img.style.objectFit = 'contain';
+
+    let i = 0;
+    const tryNext = () => {
+      if (i < candidates.length) img.src = candidates[i++];
+      else { img.onerror = null; wrap.removeChild(card); } // if no asset, drop the card
+    };
+    img.onerror = tryNext;
+    tryNext();
+
+    const label = document.createElement('div');
+    label.className = 'element-name';
+    label.textContent = CATEGORY_LABELS[key] || key;
+
+    card.appendChild(img);
+    card.appendChild(label);
+    wrap.appendChild(card);
+  });
+}
 
 
   function updateBarChart(intensityData) {
@@ -1595,6 +1591,7 @@ if (typeof updateTopElements === 'function') {
 
 const top10 = Object.entries(data.intensities || {})
   .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
+  .filter(d => d.value > 0)
   .sort((a, b) => b.value - a.value)
   .slice(0, 10);
 if (typeof updateBarChart === 'function') {
