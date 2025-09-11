@@ -143,7 +143,7 @@ function getPulsePeriodByBp(bp) {
 function radiusWithPulse(d, baseR) {
   const pe = app.effects?.pulse || {};
   const bp = Number(app.state?.bpValue) || 0;
-
+  
   // Only affect highlighted dots while the pulse is active
   if (!pe.active || !app.state?.isHighlightMode || !isHighlighted(d)) {
     return baseR;
@@ -165,7 +165,6 @@ function radiusWithPulse(d, baseR) {
 
   return Math.max(1.5, boostedBaseR * k);
 }
-
 
 function startPulseLoop() {
   const pe = app.effects.pulse;
