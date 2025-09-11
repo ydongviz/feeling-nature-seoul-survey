@@ -72,34 +72,7 @@ export const ProgressPage = () => {
                 <div>
                     <h1>Seoul Survey Progress</h1>
                     
-                    {/* Show error if exists */}
-                    {error && (
-                        <div style={{
-                            backgroundColor: '#ffebee',
-                            color: '#c62828',
-                            padding: '15px',
-                            marginBottom: '20px',
-                            borderRadius: '4px',
-                            border: '1px solid #e57373'
-                        }}>
-                            <h3>Unable to load progress data</h3>
-                            <p>There's a backend issue that needs to be fixed.</p>
-                            <button 
-                                onClick={fetchData}
-                                style={{
-                                    marginTop: '10px',
-                                    padding: '8px 16px',
-                                    backgroundColor: '#1976d2',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Retry
-                            </button>
-                        </div>
-                    )}
+
 
                     {/* Show data */}
                     <div style={{
