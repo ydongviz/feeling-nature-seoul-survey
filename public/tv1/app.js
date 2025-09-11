@@ -1257,7 +1257,7 @@ function updateTopElements(topElements) {
   
 
 
-  
+
 
 /* ========== DISTRIBUTION CHART - INTEGRATED FROM SCRIPT3 ========== */
 function updateDistributionChart(userBpValue) {
@@ -1664,7 +1664,7 @@ function updateDashboardDisplay() {
    }
 
     return;
-  }
+  
 
   // Else fall back to your original CSV one-row logic
   const row = (Array.isArray(data) && data.length) ? data[0] : {};
@@ -1681,7 +1681,7 @@ function updateDashboardDisplay() {
   updateTopElements(top10.slice(0, 3));
   updateBarChart(top10);
   updateDistributionChart(bpValue);
-}
+
 
 
 /* ========== INITIALIZATION ========== */
