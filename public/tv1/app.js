@@ -21,9 +21,19 @@ const userBp = (window.app?.data?.userBp ?? 0.5);  // default only if not set ye
 window.USE_CURRENT_JSON = true;
 
 // Single source of truth for user BP pushed in from TV adapter
-window.setUserBp = function setUserBp(bp) {
-  
-  const v = Number(bp) || 0;
+window.setUserBp = function setUserBp(bp) {const v = Number(bp) || 0;
+const EPS = 0.01;
+window.app = window.app || { state:{}, data:{} };
+app.state.bpValue = v;
+app.state.highlightMin = Math.max(0, v - EPS);
+app.state.highlightMax = Math.min(1, v + EPS);
+window.HIGHLIGHT_MIN = app.state.highlightMin;
+window.HIGHLIGHT_MAX = app.state.highlightMax;
+
+const n = document.getElementById('bpValueNumber');
+if (n) n.textContent = v.toFixed(2);
+
+const v = Number(bp) || 0;
   const EPS = 0.01;
   window.app = window.app || { state:{} };
   app.state.bpValue = v;
@@ -322,58 +332,40 @@ function enforceBpValue(bp) {
 
 // Prefer current.json written by Lambda; fall back to CSV if unavailable
 async function loadDashboardData() {
-  if (app.data.dashboardData) return app.data.dashboardData;
+try {
+  const base = (window.APP_CONFIG && window.APP_CONFIG.RUNTIME_BASE_URL) ? window.APP_CONFIG.RUNTIME_BASE_URL : window.RUNTIME_BASE;
+  const url  = `${base}/current.json`;
+  const cur  = (typeof fetchJSONNoCache === 'function') ? await fetchJSONNoCache(url) : await (await fetch(url + '?ts=' + Date.now(), {cache:'no-store'})).json();
 
-  if (window.USE_CURRENT_JSON) {
-    try {
-      const r = await fetchJSONNoCache("https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json");
-      if (r.ok) {
-        const cur = await r.json();
+  const normalized = {
+    bp: Number(cur?.bp ?? cur?.BP ?? 0),
+    intensities: cur?.intensities ?? cur?.classes ?? null,
+    intensity_top: Array.isArray(cur?.intensity_top) ? cur.intensity_top : (Array.isArray(cur?.top) ? cur.top : []),
+    distribution: Array.isArray(cur?.distribution) ? cur.distribution : null,
+    meta: cur?.meta ?? {}
+  };
 
-        // Normalize to a simple object we can re-use
-        const bp = Number(cur?.bp ?? NaN);
-        const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
-       
-        app.runtimeCurrent = cur; // so updateDistributionChart() can see it
-        app.data.dashboardData = {
-           source: "current.json",
-           bp,
-           top,
-           distribution: cur?.distribution || null,
-           intensities: cur?.intensities || null
-         };
+  window.app = window.app || { state:{}, data:{} };
+  app.runtimeCurrent = normalized;
+  app.data.dashboardData = { source:'current.json', ...normalized };
 
-        // Update the UI immediately (keeps all your existing rendering)
-        const num = document.getElementById("bpValueNumber");      
-        
-        return app.data.dashboardData;
-      }
-    } catch (e) {
-      console.warn("current.json not available yet; falling back to CSV", e);
-    }
+  if (typeof window.setUserBp === 'function') window.setUserBp(normalized.bp);
+  else {
+    const EPS = 0.01;
+    app.state.bpValue = normalized.bp;
+    app.state.highlightMin = Math.max(0, normalized.bp - EPS);
+    app.state.highlightMax = Math.min(1, normalized.bp + EPS);
+    window.HIGHLIGHT_MIN = app.state.highlightMin;
+    window.HIGHLIGHT_MAX = app.state.highlightMax;
   }
 
-  // Fallback: your existing CSV
-  try {
-    app.data.dashboardData = await d3.csv(seoulData.dashboardDataPath);
-  } catch (error) {
-    console.error('Error loading dashboard data:', error);
-    app.data.dashboardData = [{
-      'BP_Weighted_Norm': '0.72',
-      'Animal/Fauna': '0.1',
-      'Grass': '0.85',
-      'Trees': '0.9',
-      'Plant/Flora': '0.95',
-      'Greenscape': '0.7',
-      'Landscape': '0.6',
-      'Waterscape': '0.5',
-      'Living Being': '0.4',
-      'Waterfall': '0.3',
-      'Sky': '0.1'
-    }];
-  }
-  return app.data.dashboardData;
+  return normalized;
+} catch (err) {
+  console.error('[loadDashboardData] failed:', err);
+  return null;
 }
+}
+
 
 
 async function loadAllParticipantsData() {
@@ -1598,89 +1590,39 @@ function preloadTopElementIcons(names) {
 }
 
 function updateDashboardDisplay() {
-  const data = (window.app && (app.runtimeCurrent || (app.data && app.data.dashboardData))) || null;
-  if (!data) return;
+const data = (window.app && (app.runtimeCurrent || (app.data && app.data.dashboardData))) || null;
+if (!data) return;
 
-  // BP number
-  const bpValue = Number(data.bp) || 0;
-  const numEl = document.getElementById('bpValueNumber');
-  if (numEl) numEl.textContent = bpValue.toFixed(2);
+const bpValue = Number(data.bp) || 0;
+const numEl = document.getElementById('bpValueNumber');
+if (numEl) numEl.textContent = bpValue.toFixed(2);
 
-  // Top-3 icons
-  const top3 = (Array.isArray(data.intensity_top) && data.intensity_top.length)
-    ? data.intensity_top.slice(0, 3)
-    : Object.entries(data.intensities || {})
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([k]) => k);
-  if (typeof updateTopElements === 'function') {
-    try { updateTopElements(top3); } catch (e) { console.error('[updateDashboardDisplay] updateTopElements', e); }
-  }
+const top3 = (Array.isArray(data.intensity_top) && data.intensity_top.length)
+  ? data.intensity_top.slice(0, 3)
+  : Object.entries(data.intensities || {})
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([k]) => k);
+if (typeof updateTopElements === 'function') {
+  try { updateTopElements(top3); } catch (e) { console.error('[updateDashboardDisplay] updateTopElements', e); }
+}
 
-  // Top-10 bars
-  const top10 = Object.entries(data.intensities || {})
-    .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
-  if (typeof updateBarChart === 'function') {
-    try { updateBarChart(top10); } catch (e) { console.error('[updateDashboardDisplay] updateBarChart', e); }
-  }
+const top10 = Object.entries(data.intensities || {})
+  .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
+  .sort((a, b) => b.value - a.value)
+  .slice(0, 10);
+if (typeof updateBarChart === 'function') {
+  try { updateBarChart(top10); } catch (e) { console.error('[updateDashboardDisplay] updateBarChart', e); }
+}
 
-  // Distribution chart (guarded inside)
-  if (typeof updateDistributionChart === 'function') {
-    try { updateDistributionChart(bpValue); } catch (e) { console.error('[updateDashboardDisplay] updateDistributionChart', e); }
-  }
+if (typeof updateDistributionChart === 'function') {
+  try { updateDistributionChart(bpValue); } catch (e) { console.error('[updateDashboardDisplay] updateDistributionChart', e); }
+}
 }
 
 
-   // Prefer full intensities if present; fall back to top names
-  const intens = data.intensities && typeof data.intensities === 'object' ? data.intensities : null;
-     if (intens) {
-      // object -> sorted array for bars/icons
-      const arr = Object.entries(intens)
-         .map(([k,v]) => ({ name: k, value: Number(v) || 0 }))
-         .sort((a,b) => b.value - a.value);
 
-      // top text uses labels
-      if (typeof topCategoryText === 'function') topCategoryText(intens);
-
-     // icons need nice display names
-       const LABEL = { sky:'Sky', tree:'Tree', grass:'Grass', person:'Person', ground:'Earth/Ground',
-         mountain:'Mountain', plant:'Plant/Flora', water:'Water', sea:'Sea', river:'River', lake:'Lake',
-         waterfall:'Waterfall', swimming:'Swimming Pool', rock:'Rock/Stone', sand:'Sand', light:'Light/Sunlight',
-         animal:'Animal/Fauna', flower:'Flower', palm:'Palmtree', land:'Land/Soil', fountain:'Fountain',
-         field:'Field', fireplace:'Fireplace', food:'Natural Food', hill:'Hill' };
-
-       const top3ForIcons = arr.slice(0,3).map(d => ({ name: LABEL[d.name] || d.name, value: d.value }));
-       if (typeof window.updateTopElements === 'function') window.updateTopElements(top3ForIcons);
-
-       if (typeof window.updateBarChart === 'function') window.updateBarChart(arr.slice(0,10));
-      } else {
-     // Only names available (no values) – show icons and leave bars minimal
-       const topNames = Array.isArray(data.top) ? data.top.slice(0,3) : [];
-       const topForWidgets = topNames.map(n => ({ name: n, value: 1 }));
-       if (typeof window.updateTopElements === 'function') window.updateTopElements(topForWidgets);
-       if (typeof window.updateBarChart === 'function') window.updateBarChart(topForWidgets);
-   }
-
-    //return;
-  
-
-  // Else fall back to your original CSV one-row logic
-  const row = (Array.isArray(data) && data.length) ? data[0] : {};
-  const bpValue = parseFloat(row['BP_Weighted_Norm']) || 0.72;
-  document.getElementById('bpValueNumber').textContent = bpValue.toFixed(2);
-
-  const top10 = [
-    { name: 'Plant/Flora', value: parseFloat(row['Plant/Flora']) || 0 },
-    { name: 'Water', value: parseFloat(row['Waterscape']) || 0 },
-    { name: 'Sky', value: parseFloat(row['Landscape']) || 0 },
-    // …keep the rest of your mapping…
-  ].sort((a, b) => b.value - a.value).slice(0, 10);
-
-  updateTopElements(top10.slice(0, 3));
-  updateBarChart(top10);
-  updateDistributionChart(bpValue);
+   
 
 
 
