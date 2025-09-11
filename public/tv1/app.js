@@ -56,8 +56,8 @@ const seoulData = {
     BS: "./data/SCL/Seoul_biophilic_setting_cleaned.csv",
     BP: "./data/SCL/Seoul_biophilic_setting_cleaned.csv"
   },
-  BSDescription: 'The map locates how you perceive and value urban nature by quantifying your Biophilic Individual Perceptions (BiP) value in the city.',
-  BPDescription: 'The map locates how you perceive and value urban nature by quantifying your Biophilic Individual Perceptions (BiP) value in the city.',
+  BSDescription: 'The map shows how you perceive and value urban nature by quantifying and locating your Biophilic Individual Perceptions (BiP) value in the city.',
+  BPDescription: 'The map shows how you perceive and value urban nature by quantifying and locating your Biophilic Individual Perceptions (BiP) value in the city.',
   dashboardDataPath: "./data/SCL/test_FNdashbaord.csv" 
 };
 
