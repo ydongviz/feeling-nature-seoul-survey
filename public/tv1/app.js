@@ -1598,27 +1598,40 @@ function preloadTopElementIcons(names) {
 }
 
 function updateDashboardDisplay() {
-  const data = (window.app && (app.runtimeCurrent || app.data?.dashboardData)) || null;
+  const data = (window.app && (app.runtimeCurrent || (app.data && app.data.dashboardData))) || null;
   if (!data) return;
 
+  // BP number
   const bpValue = Number(data.bp) || 0;
   const numEl = document.getElementById('bpValueNumber');
   if (numEl) numEl.textContent = bpValue.toFixed(2);
 
+  // Top-3 icons
   const top3 = (Array.isArray(data.intensity_top) && data.intensity_top.length)
-    ? data.intensity_top.slice(0,3)
-    : Object.entries(data.intensities || {}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>k);
-  if (typeof updateTopElements === 'function') { try { updateTopElements(top3); } catch(e){} }
+    ? data.intensity_top.slice(0, 3)
+    : Object.entries(data.intensities || {})
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([k]) => k);
+  if (typeof updateTopElements === 'function') {
+    try { updateTopElements(top3); } catch (e) { console.error('[updateDashboardDisplay] updateTopElements', e); }
+  }
 
+  // Top-10 bars
   const top10 = Object.entries(data.intensities || {})
-    .map(([k,v]) => ({ name: k, value: Number(v)||0 }))
-    .sort((a,b) => b.value - a.value)
-    .slice(0,10);
-  if (typeof updateBarChart === 'function') { try { updateBarChart(top10); } catch(e){} }
+    .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+  if (typeof updateBarChart === 'function') {
+    try { updateBarChart(top10); } catch (e) { console.error('[updateDashboardDisplay] updateBarChart', e); }
+  }
 
-  if (typeof updateDistributionChart === 'function') { try { updateDistributionChart(bpValue); } catch(e){} }
+  // Distribution chart (guarded inside)
+  if (typeof updateDistributionChart === 'function') {
+    try { updateDistributionChart(bpValue); } catch (e) { console.error('[updateDashboardDisplay] updateDistributionChart', e); }
+  }
 }
-     }
+
 
    // Prefer full intensities if present; fall back to top names
   const intens = data.intensities && typeof data.intensities === 'object' ? data.intensities : null;
