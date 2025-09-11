@@ -1,172 +1,136 @@
-
-/* TV-1 kiosk adapter + state poller (revised, complete)
-   - Polls state.json for stage changes
-   - Fetches current.json and updates dashboard via app.js APIs
-   - Ensures the same unified path for poller + control pad
-*/
+/* ===================================================================
+TV1 ADAPTER (fixed) — polls state.json, loads current.json, and renders
+- Compatible with your existing app-9:10.js (no changes to visuals).
+- Sets highlight window to bp ± 0.01 and updates all widgets together.
+=================================================================== */
 
 (function(){
-    const STATE_URL  = (window.APP_CONFIG && APP_CONFIG.RUNTIME_BASE_URL)
-      ? `${APP_CONFIG.RUNTIME_BASE_URL}/state.json`
-      : "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
+    // ---- CONFIG ----
+    const DEFAULT_RUNTIME_BASE = 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
+    // Expose globally so app-9:10.js helpers that reference RUNTIME_BASE can see it
+    window.RUNTIME_BASE = window.RUNTIME_BASE || DEFAULT_RUNTIME_BASE;
   
-    const RESULT_URL = (window.APP_CONFIG && APP_CONFIG.RUNTIME_BASE_URL)
-      ? `${APP_CONFIG.RUNTIME_BASE_URL}/current.json`
-      : "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
-  
-    const ovEl  = document.getElementById("kioskOverlay");
-    const ovMsg = document.getElementById("kioskMsg");
-    const ovCnt = document.getElementById("kioskCount");
-  
+    const POLL_MS = 2000; // cadence for checking state.json
     let pollTimer = null;
-    let resultEtag = null;
-    let lastComputed = null;
+    let lastComputedAt = null;
   
-    function hideOverlay(){
-      if (ovEl)  ovEl.style.display = "none";
-      if (ovCnt) ovCnt.style.display = "none";
+    // ---- Helpers ----
+    async function fetchJSONNoCache(url) {
+      const withTs = url + (url.includes('?') ? '&' : '?') + 'ts=' + Date.now();
+      const res = await fetch(withTs, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }});
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return res.json();
     }
-    function showNote(msg){
-      if (!ovEl) return;
-      ovEl.style.display = "flex";
-      if (ovMsg) ovMsg.textContent = msg || "Please complete your survey…";
-      if (ovCnt) ovCnt.style.display = "none";
+  
+    function normalizeCurrent(cur) {
+      return {
+        bp: Number(cur?.bp ?? cur?.BP ?? 0),
+        intensities: cur?.intensities || cur?.classes || {},
+        intensity_top: Array.isArray(cur?.intensity_top) ? cur.intensity_top : [],
+        distribution: Array.isArray(cur?.distribution) ? cur.distribution : null,
+        meta: cur?.meta || {}
+      };
     }
-    function showCountdown(msg, seconds){
-      if (!ovEl) return;
-      ovEl.style.display = "flex";
-      if (ovMsg) ovMsg.textContent = msg || "Loading your result…";
-      if (ovCnt) {
-        ovCnt.style.display = "block";
-        const target = Date.now() + (Number(seconds)||3)*1000;
-        const t = setInterval(() => {
-          const r = Math.max(0, target - Date.now());
-          ovCnt.textContent = String(Math.ceil(r/1000));
-          if (r <= 0) { clearInterval(t); ovCnt.textContent = "0"; }
-        }, 200);
+  
+    function setHighlightFromBp(bp) {
+      const EPS = 0.01;
+      window.HIGHLIGHT_MIN = Math.max(0, bp - EPS);
+      window.HIGHLIGHT_MAX = Math.min(1, bp + EPS);
+    }
+  
+    // ---- Core apply path (single source of truth) ----
+    async function applyCurrent(curRaw) {
+      const cur = normalizeCurrent(curRaw);
+  
+      // Store to app globals so existing functions can access
+      window.app = window.app || { data: {} };
+      app.runtimeCurrent = cur;
+      app.data.current = cur;
+      app.data.dashboardData = { source: 'current.json', ...cur };
+  
+      // Update BP and highlight window
+      setHighlightFromBp(cur.bp);
+      if (typeof window.setUserBp === 'function') window.setUserBp(cur.bp);
+  
+      // Switch mode first so containers are visible/sized
+      if (typeof window.setMode === 'function') await window.setMode('result');
+  
+      // Build/rebuild sections if needed (app handles idempotence)
+      if (typeof window.buildAllContent === 'function') window.buildAllContent();
+  
+      // Unified dashboard update (numbers, icons, bars, distribution)
+      if (typeof window.updateDashboardDisplay === 'function') {
+        await window.updateDashboardDisplay();
+      }
+  
+      // Kick the result animation sequence (highlight → circular → highlight+pulse)
+      if (typeof window.executeResultSequence === 'function') {
+        await window.executeResultSequence();
       }
     }
   
-    async function fetchNoCache(url, et) {
-      const res = await fetch(url + (url.includes("?")?"&":"?") + "ts=" + Date.now(), {
-        cache: "no-store",
-        headers: et ? { "If-None-Match": et } : {}
-      });
-      if (res.status === 304) return { json: null, etag: et, notModified: true, res };
-      const json = await res.json().catch(()=>null);
-      return { json, etag: res.headers.get("ETag"), notModified: false, res };
-    }
+    // ---- Polling for new state from Lambda ----
+    async function checkStateOnce() {
+      try {
+        const state = await fetchJSONNoCache(`${window.RUNTIME_BASE}/state.json`);
+        const computedAt = state?.meta?.computed_at || state?.computed_at || null;
   
-    function applyCurrent(cur){
-      try{
-        if (!cur || typeof cur !== "object") return;
+        // Initial run or new computation detected
+        if (!lastComputedAt || (computedAt && computedAt !== lastComputedAt)) {
+          lastComputedAt = computedAt;
   
-        // Persist for other modules
-        window.app = window.app || { data:{}, state:{} };
-        window.app.runtimeCurrent = cur;
-  
-        // Mode: ensure result UI is visible before we render charts
-        if (typeof window.setMode === "function") window.setMode("result");
-  
-        const bp = Number(cur.bp ?? 0);
-        if (Number.isFinite(bp) && typeof window.setUserBp === "function") {
-          window.setUserBp(bp);
+          // Fetch the matched current.json and render
+          const current = await fetchJSONNoCache(`${window.RUNTIME_BASE}/current.json`);
+          await applyCurrent(current);
         }
-        const num = document.getElementById("bpValueNumber");
-        if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
-  
-        // Top elements + Bars
-        const intens = cur.intensities || {};
-        let top10 = Object.entries(intens).map(([k,v]) => ({ name:k, value: Number(v)||0 }));
-        top10.sort((a,b) => b.value - a.value);
-        top10 = top10.slice(0,10);
-  
-        let top3names = Array.isArray(cur.intensity_top) ? cur.intensity_top.slice(0,3) : top10.slice(0,3).map(d=>d.name);
-        if (typeof window.updateTopElements === "function") window.updateTopElements(top3names);
-        if (typeof window.updateBarChart   === "function") window.updateBarChart(top10);
-  
-        // Distribution chart + animation (guarded in app.js for visibility)
-        if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
-          window.updateDistributionChart(bp);
-          if (typeof window.animateDistributionCurve === "function") window.animateDistributionCurve(bp);
-        }
-  
-        // Kick result visual sequence (highlight -> circular -> highlight+pulse)
-        if (typeof window.executeResultSequence === "function") window.executeResultSequence();
-      }catch(e){
-        console.error("[applyCurrent] error:", e);
+      } catch (err) {
+        console.warn('[adapter] state poll failed:', err);
       }
     }
   
-    async function pollOnce(){
-      try{
-        // 1) read state
-        const { json: state } = await fetchNoCache(STATE_URL, null);
-        const stage = state && state.stage || "landing";
-  
-        if (stage === "landing") {
-          hideOverlay();
-          if (typeof window.setMode === "function") window.setMode("landing");
-          return;
-        }
-  
-        if (stage === "started") {
-          showNote("Please complete your survey…");
-          if (typeof window.setMode === "function") window.setMode("landing");
-          return;
-        }
-  
-        if (stage === "loading") {
-          showCountdown("Loading your result…", 3);
-          if (typeof window.setMode === "function") window.setMode("landing");
-          return;
-        }
-  
-        if (stage === "ready") {
-          // 2) fetch current.json (with ETag to avoid work if unchanged)
-          const { json: cur, etag } = await fetchNoCache(RESULT_URL, resultEtag);
-          if (!cur) { hideOverlay(); return; }
-  
-          // Skip if computed_at unchanged (extra guard)
-          const computed = (cur.meta && cur.meta.computed_at) || null;
-          if (computed && computed === lastComputed) { hideOverlay(); return; }
-  
-          resultEtag = etag || resultEtag;
-          lastComputed = computed || lastComputed;
-  
-          hideOverlay();
-          applyCurrent(cur);
-          return;
-        }
-  
-        // Unknown stage: keep landing
-        hideOverlay();
-        if (typeof window.setMode === "function") window.setMode("landing");
-      }catch(e){
-        // network hiccup: do nothing
-      }
-    }
-  
-    function startPoller(){
+    function startPoller() {
       if (pollTimer) return;
-      pollTimer = setInterval(pollOnce, 1500);
-      pollOnce();
+      pollTimer = setInterval(checkStateOnce, POLL_MS);
     }
   
-    // Dev control buttons, if present
+    function stopPoller() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+  
+    // ---- Dev buttons (optional) ----
     function wireDevButtons() {
-      const btnLanding = document.getElementById('btn-landing');
-      const btnResult  = document.getElementById('btn-show-result');
-      if (btnLanding) btnLanding.addEventListener('click', () => { if (typeof window.setMode === "function") window.setMode('landing'); });
-      if (btnResult)  btnResult.addEventListener('click', async () => {
-        const { json: cur } = await fetchNoCache(RESULT_URL, null);
-        if (cur) { hideOverlay(); applyCurrent(cur); }
-      });
+      const bLanding = document.getElementById('btn-landing');
+      const bResult  = document.getElementById('btn-show-result');
+  
+      if (bLanding && typeof window.setMode === 'function') {
+        bLanding.addEventListener('click', () => window.setMode('landing'));
+      }
+      if (bResult) {
+        bResult.addEventListener('click', async () => {
+          try {
+            const current = await fetchJSONNoCache(`${window.RUNTIME_BASE}/current.json`);
+            await applyCurrent(current);
+          } catch (e) {
+            console.error('[adapter] manual show-result failed:', e);
+          }
+        });
+      }
     }
   
-    window.addEventListener("load", () => {
+    // ---- Boot ----
+    function bootAdapter() {
       wireDevButtons();
       startPoller();
+    }
+  
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootAdapter);
+    } else {
+      bootAdapter();
+    }
+  
+    // Expose some controls for debugging
+    window.__tv1 = Object.assign(window.__tv1 || {}, {
+      startPoller, stopPoller, checkStateOnce
     });
   })();
-  
