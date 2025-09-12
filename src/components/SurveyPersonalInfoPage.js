@@ -1,4 +1,5 @@
-import {React} from "react";
+//import {React} from "react";
+import React from "react";
 import {useStateMachine} from "little-state-machine";
 import {Link, useNavigate, useParams} from "react-router-dom";
 import {useForm} from 'react-hook-form';

@@ -1,6 +1,7 @@
-import {React, useState, useEffect, useRef} from "react";
+//import {React, useState, useEffect, useRef} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {useStateMachine} from "little-state-machine";
-import {Link} from "react-router-dom";
+//import {Link} from "react-router-dom";
 import './theme.css';
 import './HomePage.css';
 import {languages, locale_text} from "./lang";
