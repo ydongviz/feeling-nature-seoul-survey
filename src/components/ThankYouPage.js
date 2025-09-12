@@ -33,22 +33,16 @@ export function ThankYouPage() {
                     <p className="thank-you-description-text">
                         {locale_text(lang, 'thank-you-not-eligible-description')}
                     </p>
-                    <Link to="/">
-                        <button className="button-generic button-stick-to-center thankyou-button">
-                            {locale_text(lang, 'thank-you-button-start-again')}
-                        </button>
-                    </Link>
-                    <button
-               className="button-generic button-stick-to-center thankyou-button"
-         onClick={async () => {
-           try { await tvState.resetLanding(sessionId); } finally {
-             // Navigate back to home after we write the state
-             window.location.assign('/');
-           }
-         }}
-         >
-         {locale_text(lang, 'thank-you-button-start-again')}
-       </button>
+                    <button className="button-generic button-stick-to-center thankyou-button"
+                      onClick={async () => {
+                        try { await tvState.resetLanding(sessionId); } finally {
+                         // Navigate back to home after we write the state
+                        window.location.assign('/');
+                       }
+                      }}
+                    >
+                     {locale_text(lang, 'thank-you-button-start-again')}
+                   </button>
 
                 </div>
             </div>
@@ -62,12 +56,16 @@ export function ThankYouPage() {
                 <h1 className="title-text title-text-h1 thank-you-title-text-h1">
                     {locale_text(lang, 'thank-you-title')}
                 </h1>
+                <button  className="button-generic button-stick-to-center thankyou-button"
+                   onClick={async () => {
+                   try { await tvState.resetLanding(sessionId); } finally {
+                   window.location.assign('/');
+                   }
+                 }}
+                >
+                {locale_text(lang, 'thank-you-button-start-again')}
+               </button>
                 
-                <Link to="/">
-                    <button className="button-generic button-stick-to-center thankyou-button">
-                        {locale_text(lang, 'thank-you-button-start-again')}
-                    </button>
-                </Link>
             </div>
         </div>
     );

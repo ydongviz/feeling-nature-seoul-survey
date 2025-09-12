@@ -4,6 +4,7 @@ import {Link} from "react-router-dom";
 import './theme.css';
 import './HomePage.css';
 import {languages, locale_text} from "./lang";
+import { tvState, getSessionId } from '../stateApi';
 
 export function HomePage({setGlobalLanguage}) {
     const {actions, state} = useStateMachine({
@@ -15,6 +16,22 @@ export function HomePage({setGlobalLanguage}) {
 
     const [currentLanguageState, setLanguageState] = useState(state['language']);
     const lang = currentLanguageState;
+
+    const sessionId = React.useMemo(
+             () => (window.localStorage.getItem('fn_session_id') || (crypto?.randomUUID?.() || `s-${Date.now()}`)),
+             []
+           );
+
+    React.useEffect(() => {
+            window.localStorage.setItem('fn_session_id', sessionId);
+           }, [sessionId]);
+        
+    const onStart = async (e) => {
+             e.preventDefault(); // stop Link’s default nav
+             try { await tvState.inProgress(sessionId); } catch (err) { console.error('[tv] in_progress failed', err); }
+            // navigate after we’ve told the TVs
+            window.location.assign('/surveycity'); // or use react-router history.push('/surveycity')
+            };
 
     // Handle clicks on logo and title
     const handleProjectLinkClick = () => {
@@ -136,8 +153,9 @@ export function HomePage({setGlobalLanguage}) {
            return cleanup;
     }, []);
 
- 
 
+
+ 
 
 
     return (
@@ -200,11 +218,11 @@ export function HomePage({setGlobalLanguage}) {
                     {locale_text(lang, 'home-page-description')}
                 </p>
 
-                <Link to="/surveycity">
-                    <button className="homepage-button">
-                        {locale_text(lang, 'home-page-button-start-survey')}
-                    </button>
-                </Link>
+                <a href="/surveycity" onClick={onStart}>
+                   <button className="homepage-button">
+                    {locale_text(lang, 'home-page-button-start-survey')}
+                  </button>
+                </a>
             </div>
 
             {/* Footer with clickable logos */}

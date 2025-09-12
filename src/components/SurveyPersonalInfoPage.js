@@ -177,9 +177,9 @@ export function SurveyPersonalInfoPage() {
         };
         
         sendSurveyData(surveyid, sendingData, success);
-        
+
         // Tell TV1 to show the countdown overlay while backend recomputes
-        tvState.countdown(sessionId, 3).catch(console.error);
+        tvState.countdown(sessionId, 3).catch(err => console.error('[tv] countdown failed', err));
 
         navigate(`/thankyou/${surveyid}`);
     });
