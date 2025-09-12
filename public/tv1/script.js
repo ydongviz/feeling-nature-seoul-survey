@@ -30,7 +30,13 @@ function showCountdown(msg, secs, notBeforeIso){
    if(timer) clearInterval(timer); tick(); timer=setInterval(tick,200);
 }
 
-function expired(s){ const t=Date.parse(s?.expires_at||""); return !Number.isFinite(t) || Date.now()>t; }
+function expired(s){ 
+    const v = s && s.expires_at;
+    if (!v) return false;                
+    const t = Date.parse(v);
+    return Number.isFinite(t) && Date.now() > t;
+}
+
 async function fetchJSON(url, et){ const r=await fetch(url,{cache:"no-cache", headers: et?{"If-None-Match":et}:{}}); if(r.status===304) return {notModified:true, et}; return {json:await r.json(), et:r.headers.get("ETag")}; }
 
 function applyCurrent(cur){

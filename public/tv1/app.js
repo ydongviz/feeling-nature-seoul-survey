@@ -1454,6 +1454,10 @@ function animateDistributionCurve(userBpValue) {
       while (chart.data.datasets.length > 1) {
         chart.data.datasets.pop();
       }
+
+      
+      if (!chart || !chart.canvas || !chart.canvas.ownerDocument) return;
+
       chart.update('none');
 
       // Create animated dot dataset
