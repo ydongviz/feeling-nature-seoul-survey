@@ -7,6 +7,7 @@ import axios from 'axios';
 import './theme.css';
 import './SurveyPersonalInfoPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";
+import { tvState, getSessionId } from '../stateApi';
 
 
 // Reusable Progress Bar Component (same as other pages)
@@ -145,6 +146,8 @@ export function SurveyPersonalInfoPage() {
     const optionsAgeGroup = ["18-25", "26-40", "41-55", ">55"];
     const optionsGenderGroup = ["Male", "Female", "Other", "Prefer not to answer"];
 
+    const sessionId = getSessionId();
+
     const buttonSubmitOnClick = handleSubmit((_data) => {
         // Map each key value pair in _data to a new variable data, with key adding prefix surveyID
         let data = {};
@@ -174,6 +177,10 @@ export function SurveyPersonalInfoPage() {
         };
         
         sendSurveyData(surveyid, sendingData, success);
+        
+        // Tell TV1 to show the countdown overlay while backend recomputes
+        tvState.countdown(sessionId, 3).catch(console.error);
+
         navigate(`/thankyou/${surveyid}`);
     });
 
