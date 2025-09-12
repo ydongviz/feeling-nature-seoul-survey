@@ -1304,6 +1304,7 @@ function updateDistributionChart(userBpValue) {
 
   const lineCanvas = document.getElementById('lineChart');
   if (!lineCanvas) return;
+  if (!document.body.contains(lineCanvas)) return; 
 
   const lineCtx = lineCanvas.getContext('2d');
   if (!lineCtx) return;
