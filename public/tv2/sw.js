@@ -4,7 +4,7 @@ const ASSETS = [
   '/tv2/index.html',
   '/tv2/styles.css',
   '/tv2/script.js',
-  '/tv2/img/FN-draft.mov'
+  '/tv2/img/fn-draft2.mp4'
 ];
 
 self.addEventListener('install', (e) => {
