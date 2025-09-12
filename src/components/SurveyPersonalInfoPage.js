@@ -8,6 +8,7 @@ import './theme.css';
 import './SurveyPersonalInfoPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";
 
+
 // Reusable Progress Bar Component (same as other pages)
 const ProgressBar = ({ currentStep, totalSteps }) => {
     return (
