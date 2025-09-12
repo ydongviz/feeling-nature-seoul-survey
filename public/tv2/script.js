@@ -364,13 +364,17 @@ function calcVolumeProxy(){
 
 // ===== Transitions =====
 function startLanding(){
-  if (currentMode === 'video'){ location.reload(); return; } // simplest reset back to 3D
+  if (currentMode === 'video' || isTransformed) {
+     location.reload();
+     return;
+   }
   currentMode = 'landing';
   isPlaying = true;
   veil.style.display = "none";
   try { backgroundMusic.load(); } catch {}
   playBackgroundMusic();
 }
+
 function toBiomeDots(){
   if (isTransformed) return;
   fadeOutMusic(3000);
@@ -440,7 +444,7 @@ async function tick(){
 
   // If state is expired or explicitly landing/idle → ensure landing
   if (isExpired(s) || stage === 'landing' || stage === 'idle') {
-    if (currentMode !== 'landing') startLanding();
+    startLanding();
     return;
   }
 
