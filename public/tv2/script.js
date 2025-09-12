@@ -430,21 +430,40 @@ async function fetchState(){
     lastETag = res.headers.get('ETag'); return await res.json();
   }catch(e){ return null; }
 }
+
 async function tick(){
-  const s = await fetchState(); if (!s) return;
-  if (!s.stage || isExpired(s)){
-    if (currentMode!=='landing') startLanding();
+  const s = await fetchState(); 
+  if (!s) return;
+
+  // Accept either {stage} or {state} from the runtime file
+  const stage = (s.stage || s.state || 'idle');
+
+  // If state is expired or explicitly landing/idle → ensure landing
+  if (isExpired(s) || stage === 'landing' || stage === 'idle') {
+    if (currentMode !== 'landing') startLanding();
     return;
   }
-  if (s.stage === 'show_result'){
-    if (currentMode !== 'video'){
+
+  // Only show video on show_result; ignore in_progress/countdown on TV2
+  if (stage === 'show_result') {
+    if (currentMode !== 'video') {
       toBiomeDots();
-      setTimeout(()=>{ fadeDots(2000, ()=>{ teardownThree(); fadeOutMusic(1200); showVideo(); currentMode='video'; }); }, 5000);
+      setTimeout(() => {
+        fadeDots(2000, () => {
+          teardownThree();
+          fadeOutMusic(1200);
+          showVideo();
+          currentMode = 'video';
+        });
+      }, 5000);
     }
-  } else {
-    if (currentMode !== 'landing') startLanding();
+    return;
   }
+
+  // Any other stage (e.g., in_progress, countdown) → stay/return to landing
+  if (currentMode !== 'landing') startLanding();
 }
+
 
 // ===== Boot =====
 (function main(){
