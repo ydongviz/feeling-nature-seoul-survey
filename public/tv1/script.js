@@ -47,11 +47,36 @@ async function poll(){
     if (s.et) etag = s.et;
     const curEt = s.et || null;
     if (baselineEt === null) { baselineEt = curEt; return; }
-    const st = s.json || {};
-    if (expired(st)) { hideOverlay(); window.setMode?.("landing"); stage="idle"; return; }
 
-    const ov = st.overlay || {};
-    stage = st.stage || "idle";
+    const st = s.json || {};
+if (expired(st)) { hideOverlay(); window.setMode?.("landing"); stage="idle"; return; }
+
+// ---- Back-compat: accept either {stage} or {state} + root fields ----
+let stage = st.stage || st.state || "idle";
+if (stage === "landing") stage = "idle";               // normalize
+if (stage === "countdown") stage = "in_progress";      // countdown is a kind of in_progress overlay
+
+let ov = st.overlay;
+if (!ov || typeof ov !== "object") {
+  // If overlay was a boolean or missing, synthesize it from legacy fields
+  if (st.state === "countdown") {
+    ov = {
+      type: "countdown",
+      message: st.message || "Loading your result…",
+      not_before: st.countdown_end // ISO timestamp
+    };
+  } else if (st.state === "in_progress") {
+    ov = {
+      type: "note",
+      message: st.message || "Please complete your survey questions!"
+    };
+  } else {
+    ov = {};
+  }
+}
+
+    
+    
 
     if (stage === "idle"){
       hideOverlay(); window.setMode?.("landing"); return;
