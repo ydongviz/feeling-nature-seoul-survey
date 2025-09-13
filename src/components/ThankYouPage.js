@@ -16,12 +16,50 @@ export function ThankYouPage() {
     const isNotEligible = surveyid === 'not-eligible';
 
     const sessionId = getSessionId();
-    React.useEffect(() => {
-              const t = setTimeout(() => {
-              tvState.resetLanding(sessionId).catch(console.error);
-            }, 5 * 60 * 1000);
-            return () => clearTimeout(t);
-          }, [sessionId]);
+    
+   // Auto-reset: stay in sync with TVs if we can read expires_at; else 5 min
+React.useEffect(() => {
+    let timer = null;
+    let didReset = false;
+    const STATE_URL = process.env.REACT_APP_STATE_URL; 
+    // e.g. REACT_APP_STATE_URL=https://<bucket>.s3.<region>.amazonaws.com/public/runtime/state.json
+  
+    async function schedule() {
+      // default 5 minutes
+      let ms = 5 * 60 * 1000;
+  
+      // try to sync with TVs
+      try {
+        if (STATE_URL) {
+          const res = await fetch(STATE_URL, { cache: 'no-store' });
+          if (res.ok) {
+            const st = await res.json();
+            const t = Date.parse(st?.expires_at || '');
+            if (Number.isFinite(t)) {
+              ms = Math.max(0, t - Date.now());
+            }
+          }
+        }
+      } catch {
+        // ignore -> keep default 5 min
+      }
+  
+      timer = setTimeout(async () => {
+        if (didReset) return;
+        didReset = true;
+        try {
+          await tvState.resetLanding(sessionId);
+        } finally {
+          // also reset the survey UI
+          window.location.assign('/');
+        }
+      }, ms);
+    }
+  
+    schedule();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [sessionId]);
+  
 
     // Handle not eligible case
     if (isNotEligible) {
