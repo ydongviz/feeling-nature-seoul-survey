@@ -110,68 +110,62 @@ app.effects = app.effects || {};
 app.effects.pulse = { active: false, raf: null, t0: 0, last: 0, period: 1200 };
 
 // keep these in one place near the pulse engine
-const PULSE_BASE_AMP    = 0.35;   // set this to your CURRENT amplitude
+//const PULSE_BASE_AMP    = 0.35;   // set this to your CURRENT amplitude
 const PULSE_BASE_PERIOD = 1200;   // set this to your CURRENT period (ms)
 
-// amplitude by BP
-function getPulseAmplitudeByBp(bp) {
-  const v = Math.max(0, Math.min(1, Number(bp) || 0));
-  if (v < 0.45) {
-    // stronger as BP drops below 0.45 (up to +0.20 at v≈0)
-    const t = (0.45 - v) / 0.45;      // 0..1
-    return PULSE_BASE_AMP + 0.20 * t; // max ~0.55 if base=0.35
-  }
-  if (v >= 0.70) {
-    // mild boost at high BP (up to +0.06 near 1.0)
-    const t = (v - 0.70) / 0.30;      // 0..1 on [0.70,1.0]
-    return PULSE_BASE_AMP + 0.06 * t; // max ~0.41 if base=0.35
-  }
-  return PULSE_BASE_AMP;              // 0.45..0.70 => current settings
-}
-
-// period by BP (longer only at high BP → feels smoother)
-function getPulsePeriodByBp(bp) {
-  const v = Math.max(0, Math.min(1, Number(bp) || 0));
-  if (v >= 0.70) {
-    const t = (v - 0.70) / 0.30;      // 0..1 on [0.70,1.0]
-    return Math.round(PULSE_BASE_PERIOD + 200 * t); // 1200..1400 ms
-  }
-  return PULSE_BASE_PERIOD;           // same as current for < 0.70
-}
-
-// radius helper (only expands highlighted dots while pulsing)
-function radiusWithPulse(d, baseR) {
+function colorWithPulse(d) {
   const pe = app.effects?.pulse || {};
   const bp = Number(app.state?.bpValue) || 0;
   
   // Only affect highlighted dots while the pulse is active
   if (!pe.active || !app.state?.isHighlightMode || !isHighlighted(d)) {
-    return baseR;
+    // Return normal color for non-highlighted or when pulse is inactive
+    if (!app.state.isHighlightMode) return colorScale(d.biophilia_norm);
+    return isHighlighted(d) ? HIGHLIGHT_COLOR : NON_HIGHLIGHT_GRAY;
   }
 
-  // --- static size boost for low BP (up to +20% at BP→0) ---
-  let sizeBoost = 0;
-  if (bp < 0.45) {
-    const t = (0.45 - bp) / 0.45;      // 0..1 as BP drops
-    sizeBoost = 0.20 * t;              // max +20% at very low BP
-  }
-  const boostedBaseR = baseR * (1 + sizeBoost);
-
-  // phase + amplitude shaping (you already added getPulseAmplitudeByBp)
+  // Calculate pulse phase (same timing as before)
   const now = performance.now();
   const phase = ((now - pe.t0) % pe.period) / pe.period; // [0..1)
-  const amp = getPulseAmplitudeByBp(bp);
-  const k = 1.0 + amp * Math.sin(2 * Math.PI * phase);
-
-  return Math.max(1.5, boostedBaseR * k);
+  
+  // Create sinusoidal interpolation between colors
+  const intensity = (1 + Math.sin(2 * Math.PI * phase)) / 2; // [0..1]
+  
+  // Interpolate between HIGHLIGHT_COLOR (#92C043) and NON_HIGHLIGHT_GRAY (#666666)
+  return interpolateColor(HIGHLIGHT_COLOR, NON_HIGHLIGHT_GRAY, intensity);
 }
+
+function interpolateColor(color1, color2, t) {
+  // Parse hex colors
+  const hex1 = color1.replace('#', '');
+  const hex2 = color2.replace('#', '');
+  
+  const r1 = parseInt(hex1.substr(0, 2), 16);
+  const g1 = parseInt(hex1.substr(2, 2), 16);
+  const b1 = parseInt(hex1.substr(4, 2), 16);
+  
+  const r2 = parseInt(hex2.substr(0, 2), 16);
+  const g2 = parseInt(hex2.substr(2, 2), 16);
+  const b2 = parseInt(hex2.substr(4, 2), 16);
+  
+  // Interpolate each channel
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  
+  // Convert back to hex
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
 
 function startPulseLoop() {
   const pe = app.effects.pulse;
   if (pe.raf) return;               // already running
   pe.active = true;
   pe.t0 = performance.now();
-  pe.last = pe.t0; 
+  pe.last = pe.t0;
+  pe.period = PULSE_BASE_PERIOD;    
+
   const tick = () => {
     if (!pe.active) { pe.raf = null; return; }
     const now = performance.now();
@@ -181,7 +175,7 @@ function startPulseLoop() {
       pe.last = now;
     }
     pe.raf = requestAnimationFrame(tick);
-    if (app.cleanup?.animations) app.cleanup.animations.add(pe.raf); // guard
+    if (app.cleanup?.animations) app.cleanup.animations.add(pe.raf);
   };
   pe.raf = requestAnimationFrame(tick);
 }
@@ -758,6 +752,12 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
   }
 
   function getDotColor(d) {
+    // If pulse is active and this is highlight mode, use color pulsation
+    if (app.effects?.pulse?.active && app.state.isHighlightMode) {
+      return colorWithPulse(d);
+    }
+    
+    // Otherwise use existing logic
     if (!app.state.isHighlightMode) return colorScale(d.biophilia_norm);
     return isHighlighted(d) ? HIGHLIGHT_COLOR : NON_HIGHLIGHT_GRAY;
   }
@@ -784,23 +784,22 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
       const p = app.state.isCircularView ? getCircularPosition(d) : getMapPosition(d);
       if (p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height) {
         ctx.beginPath();
-        const baseR = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
-        ctx.arc(p.x, p.y, Math.max(1, baseR), 0, 2 * Math.PI);
-        ctx.fillStyle = getDotColor(d);
+        const radius = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
+        ctx.arc(p.x, p.y, Math.max(1, radius), 0, 2 * Math.PI);
+        ctx.fillStyle = getDotColor(d); // This will handle the color logic
         ctx.globalAlpha = getDotOpacity(d);
         ctx.fill();
       }
-    });
+   });
 
     // Draw highlighted dots on top (with pulsation if active)
     highlighted.forEach(d => {
       const p = app.state.isCircularView ? getCircularPosition(d) : getMapPosition(d);
       if (p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height) {
         ctx.beginPath();
-        const baseR = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
-        const r = radiusWithPulse(d, baseR); // <— pulse only highlighted
-        ctx.arc(p.x, p.y, Math.max(1, r), 0, 2 * Math.PI);
-        ctx.fillStyle = getDotColor(d);
+        const radius = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
+        ctx.arc(p.x, p.y, Math.max(1, radius), 0, 2 * Math.PI);
+        ctx.fillStyle = getDotColor(d); // This will use color pulsation for highlighted dots
         ctx.globalAlpha = getDotOpacity(d);
         ctx.fill();
       }
@@ -1138,7 +1137,8 @@ async function executeResultSequence() {
     // set period from BP just before starting pulse
     app.effects = app.effects || {};
     app.effects.pulse = app.effects.pulse || { period: PULSE_BASE_PERIOD };
-    app.effects.pulse.period = getPulsePeriodByBp(app.state.bpValue);
+    //app.effects.pulse.period = getPulsePeriodByBp(app.state.bpValue);
+    app.effects.pulse.period = PULSE_BASE_PERIOD;
 
     startPulseLoop();                 // start pulsing highlighted dots (map)
     await wait(3000);                 // keep pulsing for 3s
