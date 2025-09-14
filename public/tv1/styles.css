@@ -342,7 +342,10 @@ footer {
 
 .footer-section:nth-child(2) {
   /* Width: 1fr (flexible, typically ~40-50% of remaining space) */
-  text-align: left; /* Left aligned */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center the content within the available space */
+  text-align: left; /* Keep text left-aligned within each element */
   min-width: 320px;
   padding-right: 12px;
 }
