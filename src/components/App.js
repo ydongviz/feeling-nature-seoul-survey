@@ -3,7 +3,7 @@ import React, { useState } from "react";
 //import {BrowserRouter, Route, Routes} from 'react-router-dom'
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { startIdleWatch } from "../idle";
-import { showIdlePrompt } from "../idlePrompt";
+import { showIdlePrompt, dismissIdlePrompt } from "../idlePrompt";
 import { tvState } from "../stateApi";
 import {HomePage} from "./HomePage";
 import {SurveyCitySelectPage} from "./SurveyCitySelectPage";
@@ -44,9 +44,15 @@ function IdleResetter() {
     
 
        const onForceReset = async () => {
-          try { await tvState.resetLanding(sessionId); } catch {}
-           navigate('/', { replace: true });
+          try {
+             // make sure the overlay disappears if user never clicked
+            dismissIdlePrompt();
+            await tvState.resetLanding(sessionId);
+            } finally {
+             navigate("/", { replace: true });
+          }
         };
+
          const stop = startIdleWatch({
           warnAfterMs: 2 * 60 * 1000,
           forceAfterMs: 1 * 60 * 1000,

@@ -1,6 +1,6 @@
 export function startIdleWatch({
-    warnAfterMs = 3 * 60 * 1000,
-    forceAfterMs = 2 * 60 * 1000,
+    warnAfterMs = 2 * 60 * 1000,
+    forceAfterMs = 1 * 60 * 1000,
     onWarn,          // () => Promise<boolean>  (true = leave, false = stay)
     onForceReset     // () => void
   } = {}) {
