@@ -21,30 +21,39 @@ export function startIdleWatch({
     };
   
     const schedule = () => {
-      clearTimers();
-  
-      warnTimer = setTimeout(async () => {
-        let leave = false;
-        try {
-          if (typeof onWarn === "function") {
-            // onWarn should resolve true (leave) or false (stay)
-            leave = Boolean(await onWarn());
-          }
-        } catch {
-          leave = false;
-        }
-  
-        if (leave) {
-          // user chose to leave now
-          if (typeof onForceReset === "function") onForceReset();
-          return;
-        }
-  
-        // user stayed or dialog dismissed → arm force timer
-        forceTimer = setTimeout(() => {
-          if (typeof onForceReset === "function") onForceReset();
-        }, forceAfterMs);
-      }, warnAfterMs);
+            clearTimers();
+            warnTimer = setTimeout(async () => {
+               let localForceTimer = null;
+        
+             // Arm the hard deadline RIGHT NOW so a non-response still forces reset.
+             localForceTimer = setTimeout(() => {
+                if (typeof onForceReset === "function") onForceReset();
+                }, forceAfterMs);
+               forceTimer = localForceTimer; // keep reference for cleanup
+        
+               let leave = false;
+               try {
+                 if (typeof onWarn === "function") {
+                   // onWarn should resolve true (leave) or false (stay)
+                   leave = Boolean(await onWarn());
+                 }
+               } catch {
+                leave = false;
+               }
+        
+               // If user answered, cancel the hard deadline
+               clearTimeout(localForceTimer);
+               forceTimer = null;
+        
+               if (leave) {
+                // user chose "Yes" → reset now
+                if (typeof onForceReset === "function") onForceReset();
+                return;
+               }
+        
+              // user chose "No" → simply reschedule idle watcher
+              schedule();
+            }, warnAfterMs);
     };
   
     const bump = () => schedule();
