@@ -49,7 +49,7 @@ function IdleResetter() {
         };
          const stop = startIdleWatch({
           warnAfterMs: 2 * 60 * 1000,
-          forceAfterMs: 2 * 60 * 1000,
+          forceAfterMs: 1 * 60 * 1000,
           //onWarn: async () => window.confirm("Do you want to leave the survey?"),
           onWarn: async () => showIdlePrompt("Do you want to leave the survey?"),
           onForceReset
