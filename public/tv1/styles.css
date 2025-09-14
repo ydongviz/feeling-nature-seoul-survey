@@ -314,7 +314,7 @@ footer {
   grid-template-columns: minmax(260px, 300px) minmax(640px, 1fr) minmax(360px, 420px);
   gap: 28px;
   align-items: start;
-  height: 22vh;
+  height: 26vh;
   position: relative;
   box-sizing: border-box;
 }
