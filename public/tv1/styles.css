@@ -46,7 +46,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 15px; /* Reduced from 20px to 15px */
+  padding: 20px 60px 0px 60px;
 }
 
 .overlay-container {
