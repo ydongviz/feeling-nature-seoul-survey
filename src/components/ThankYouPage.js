@@ -26,7 +26,7 @@ React.useEffect(() => {
   
     async function schedule() {
       // default 5 minutes
-      let ms = 5 * 60 * 1000;
+      let ms = 3 * 60 * 1000;
   
       // try to sync with TVs
       try {
