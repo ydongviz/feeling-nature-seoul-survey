@@ -317,7 +317,7 @@ footer {
   -webkit-backdrop-filter: blur(5px);
   padding: 20px 60px 25px 60px; /* Increased top padding, added bottom padding */
   display: grid;
-  grid-template-columns: 280px 1fr 400px; /* More explicit widths - Issue 2 answer */
+  grid-template-columns: minmax(260px, 300px) minmax(640px, 1fr) minmax(360px, 420px);
   gap: 32px; /* Slightly increased gap for better spacing */
   align-items: start;
   height: 24vh; /* Increased from 26vh to utilize the space gained from main-content */
@@ -328,6 +328,7 @@ footer {
 
 .footer-section {
   min-width: 0;
+  text-align: left;
   height: 100%;
   overflow: hidden;
 }
@@ -335,21 +336,19 @@ footer {
 /* ISSUE 2 ANSWER: Footer section widths and alignments */
 .footer-section:first-child {
   /* Width: 280px (fixed) */
-  text-align: left; /* Left aligned */
+  flex: 0 0 280px;
   max-width: 280px;
 }
 
 .footer-section:nth-child(2) {
-  /* Width: 1fr (flexible, typically ~40-50% of remaining space) */
-  text-align: left; /* Left aligned */
+  flex: 1 1 50%;
   min-width: 320px;
-  padding-right: 12px;
+  padding-right: 8px;
 }
 
 .footer-section:last-child {
-  /* Width: 400px (fixed) */
-  text-align: left; /* Left aligned */
-  max-width: 400px;
+  flex: 0 0 340px;
+  max-width: 420px;
   padding-left: 12px;
 }
 
