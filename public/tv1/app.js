@@ -1175,7 +1175,7 @@ async function executeResultSequence() {
     // set period from BP just before (re)starting pulse
     app.effects = app.effects || {};
     app.effects.pulse = app.effects.pulse || { period: PULSE_BASE_PERIOD };
-    app.effects.pulse.period = getPulsePeriodByBp(app.state.bpValue);
+    app.effects.pulse.period = PULSE_BASE_PERIOD; 
     startPulseLoop();                 // pulse continues on circular highlighted dots
     await wait(1000);
 
