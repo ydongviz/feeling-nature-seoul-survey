@@ -65,7 +65,6 @@ body {
 .left-column {
   position: absolute;
   top: 40px;
-  left: 40px;
   width: 300px;
   z-index: 10;
 }
@@ -342,30 +341,15 @@ footer {
 
 .footer-section:nth-child(2) {
   /* Width: 1fr (flexible, typically ~40-50% of remaining space) */
-  display: flex;
-  flex-direction: column;
-  align-items: center; /* Center the content within the available space */
-  text-align: left; /* Keep text left-aligned within each element */
+  text-align: left; /* Left aligned */
   min-width: 320px;
   padding-right: 12px;
-  justify-content: flex-start; /* Align content to top of container */
-}
-
-.footer-section:nth-child(2) .middle-section-title,
-.footer-section:nth-child(2) .plant-category {
-  align-self: center; /* Center these elements within the container */
-  text-align: left; /* Keep text left-aligned */
-}
-
-.footer-section:nth-child(2) .chart-content {
-  align-self: center; /* Center the chart content */
-  width: auto; /* Let it size naturally instead of taking full width */
 }
 
 .footer-section:last-child {
-  /* Width: 450px (fixed) - increased from 400px */
+  /* Width: 400px (fixed) */
   text-align: left; /* Left aligned */
-  max-width: 450px;
+  max-width: 400px;
   padding-left: 12px;
 }
 
