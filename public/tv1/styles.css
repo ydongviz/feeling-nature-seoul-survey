@@ -76,8 +76,8 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 5;
-  width: 70vh;
-  height: 70vh;
+  width: 73vh;
+  height: 73vh;
 }
 
 .right-column {
