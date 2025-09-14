@@ -348,12 +348,24 @@ footer {
   text-align: left; /* Keep text left-aligned within each element */
   min-width: 320px;
   padding-right: 12px;
+  justify-content: flex-start; /* Align content to top of container */
+}
+
+.footer-section:nth-child(2) .middle-section-title,
+.footer-section:nth-child(2) .plant-category {
+  align-self: center; /* Center these elements within the container */
+  text-align: left; /* Keep text left-aligned */
+}
+
+.footer-section:nth-child(2) .chart-content {
+  align-self: center; /* Center the chart content */
+  width: auto; /* Let it size naturally instead of taking full width */
 }
 
 .footer-section:last-child {
-  /* Width: 400px (fixed) */
+  /* Width: 450px (fixed) - increased from 400px */
   text-align: left; /* Left aligned */
-  max-width: 400px;
+  max-width: 450px;
   padding-left: 12px;
 }
 
