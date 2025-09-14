@@ -554,6 +554,10 @@ function showLandingLayout() {
     //createAndSetupButtons();
   }
 
+  // Add landing-mode class to body for solid overlays
+  document.body.classList.remove('result-mode');
+  document.body.classList.add('landing-mode');
+
   if (app.elements.rightCol) {
     app.elements.rightCol.style.display = 'none';
   }
@@ -620,6 +624,10 @@ function removeLandingText() {
 
 function showDashboardLayout() {
   removeLandingText();
+
+   // Add result-mode class to body for transparent overlays
+   document.body.classList.remove('landing-mode');
+   document.body.classList.add('result-mode');
 
   if (app.elements.rightCol) {
     app.elements.rightCol.style.display = 'block';
