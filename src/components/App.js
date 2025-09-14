@@ -3,6 +3,7 @@ import React, { useState } from "react";
 //import {BrowserRouter, Route, Routes} from 'react-router-dom'
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { startIdleWatch } from "../idle";
+import { showIdlePrompt } from "../idlePrompt";
 import { tvState } from "../stateApi";
 import {HomePage} from "./HomePage";
 import {SurveyCitySelectPage} from "./SurveyCitySelectPage";
@@ -47,10 +48,10 @@ function IdleResetter() {
            navigate('/', { replace: true });
         };
          const stop = startIdleWatch({
-          warnAfterMs: 3 * 60 * 1000,
+          warnAfterMs: 2 * 60 * 1000,
           forceAfterMs: 2 * 60 * 1000,
-          onWarn: async () => window.confirm("Do you want to leave the survey?"),
-          //onWarn: async () => (await import("../idlePrompt")).showIdlePrompt("Do you want to leave the survey?"),
+          //onWarn: async () => window.confirm("Do you want to leave the survey?"),
+          onWarn: async () => showIdlePrompt("Do you want to leave the survey?"),
           onForceReset
         });
       return stop;
