@@ -113,7 +113,7 @@ app.effects.pulse = { active: false, raf: null, t0: 0, last: 0, period: 1200 };
 //const PULSE_BASE_AMP    = 0.35;   // set this to your CURRENT amplitude
 const PULSE_BASE_PERIOD = 1200;   // set this to your CURRENT period (ms)
 
-function colorWithPulse(d) {
+/*function colorWithPulse(d) {
   const pe = app.effects?.pulse || {};
   const bp = Number(app.state?.bpValue) || 0;
   
@@ -133,6 +133,40 @@ function colorWithPulse(d) {
   
   // Interpolate between HIGHLIGHT_COLOR (#92C043) and NON_HIGHLIGHT_GRAY (#666666)
   return interpolateColor(HIGHLIGHT_COLOR, NON_HIGHLIGHT_GRAY, intensity);
+} */
+
+function colorWithPulse(d) {
+  const pe = app.effects?.pulse || {};
+  
+  // Only affect NON-highlighted dots while the pulse is active
+  if (!pe.active || !app.state?.isHighlightMode || isHighlighted(d)) {
+    // Return normal color for highlighted dots or when pulse is inactive
+    if (!app.state.isHighlightMode) return colorScale(d.biophilia_norm);
+    return isHighlighted(d) ? HIGHLIGHT_COLOR : NON_HIGHLIGHT_GRAY;
+  }
+
+  // Calculate pulse phase for NON-highlighted dots
+  const now = performance.now();
+  const phase = ((now - pe.t0) % pe.period) / pe.period; // [0..1)
+  
+  // Create sinusoidal interpolation between colors
+  const intensity = (1 + Math.sin(2 * Math.PI * phase)) / 2; // [0..1]
+  
+  // Interpolate between NON_HIGHLIGHT_GRAY (#666666) and HIGHLIGHT_COLOR (#92C043)
+  // This makes the background dots "breathe" between gray and green
+  return interpolateColor(NON_HIGHLIGHT_GRAY, HIGHLIGHT_COLOR, intensity);
+}
+
+// The getDotColor function stays the same - it already calls colorWithPulse
+function getDotColor(d) {
+  // If pulse is active and this is highlight mode, use color pulsation
+  if (app.effects?.pulse?.active && app.state.isHighlightMode) {
+    return colorWithPulse(d);
+  }
+  
+  // Otherwise use existing logic
+  if (!app.state.isHighlightMode) return colorScale(d.biophilia_norm);
+  return isHighlighted(d) ? HIGHLIGHT_COLOR : NON_HIGHLIGHT_GRAY;
 }
 
 function interpolateColor(color1, color2, t) {
