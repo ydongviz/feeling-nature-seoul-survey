@@ -17,6 +17,41 @@ const videoContainer = document.getElementById('videoContainer');
 const bgVideo = document.getElementById('bgVideo');
 const tapToPlay = document.getElementById('tapToPlay');
 
+// --- Tiny HUD (only if ?debug=1) ---
+const DEBUG = new URLSearchParams(location.search).get("debug") === "1";
+
+function ensureHUD() {
+  if (!DEBUG) return;
+  let hud = document.getElementById("hud");
+  if (!hud) {
+    hud = document.createElement("div");
+    hud.id = "hud";
+    hud.style.cssText = [
+      "position:fixed","top:10px","left:10px","z-index:9999",
+      "font:12px/1.4 system-ui,Arial","padding:8px 10px",
+      "background:rgba(0,0,0,.6)","color:#fff","border-radius:8px",
+      "pointer-events:none"
+    ].join(";");
+    hud.innerHTML = `
+      <div>Stage: <b id="hudStage">landing</b></div>
+      <div>ETag: <b id="hudETag">–</b></div>
+      <div>Volume: <b id="volumeValue">–</b></div>
+      <div>P90 Height: <b id="heightValue">–</b></div>
+      <div>Phase: <b id="phaseValue">–</b></div>
+    `;
+    document.body.appendChild(hud);
+  }
+}
+function setHUD(stage, etag) {
+  if (!DEBUG) return;
+  ensureHUD();
+  const s = document.getElementById("hudStage");
+  const e = document.getElementById("hudETag");
+  if (s) s.textContent = stage || "—";
+  if (e) e.textContent = etag || "—";
+}
+ensureHUD();
+
 /* ---------- Remote state (S3 poller) ---------- */
 const STATE_URL = 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json';
 let pollTimer = null;
@@ -26,16 +61,16 @@ let lastETag = null;
 let isTransformed = false;
 let isTransitioning = false;
 let isPlaying = false;
-let currentMode = 'landing'; // start on landing
+let currentMode = 'landing';
 let didPrimeAudio = false;
 
 // Dynamic Music Volume System — P90-driven
 let currentVolume = 1.0;
 let targetVolume = 1.0;
-const baseVolume = 1.0;        // FULL volume at peak
+const baseVolume = 1.0;
 const volumeTransitionSpeed = 0.02;
 
-// Preload audio & prime on first user gesture (browser policies)
+// Prime audio on first gesture (browser policies)
 backgroundMusic?.load();
 function primeAudioOnce() {
   if (didPrimeAudio || !backgroundMusic) return;
@@ -54,21 +89,25 @@ function playBackgroundMusic() {
 }
 
 function updateMusicVolume(p90Height, maxHeight, phase) {
-  // Map P90 height to [0..1] volume target
   let heightRatio = Math.max(0, Math.min(1, p90Height / maxHeight));
   if (heightRatio > 0.98) heightRatio = 1.0;
   targetVolume = Math.min(1.0, heightRatio * baseVolume);
 
-  // Smooth transitions
   if (Math.abs(currentVolume - targetVolume) > 0.005) {
-    if (currentVolume < targetVolume) currentVolume = Math.min(targetVolume, currentVolume + volumeTransitionSpeed);
-    else currentVolume = Math.max(targetVolume, currentVolume - volumeTransitionSpeed);
-    if (!backgroundMusic.paused) backgroundMusic.volume = currentVolume;
+    currentVolume += Math.sign(targetVolume - currentVolume) * volumeTransitionSpeed;
+    currentVolume = Math.max(0, Math.min(1, currentVolume));
+    if (!backgroundMusic?.paused) backgroundMusic.volume = currentVolume;
   }
-  // HUD
-  if (volumeValue) volumeValue.textContent = currentVolume.toFixed(3);
-  if (heightValue) heightValue.textContent = p90Height.toFixed(2);
-  if (phaseValue) phaseValue.textContent = phase;
+
+  // HUD updates (grab by id so it works when HUD is injected dynamically)
+  if (DEBUG) {
+    const vEl = document.getElementById('volumeValue');
+    const hEl = document.getElementById('heightValue');
+    const pEl = document.getElementById('phaseValue');
+    if (vEl) vEl.textContent = currentVolume.toFixed(3);
+    if (hEl) hEl.textContent = p90Height.toFixed(2);
+    if (pEl) pEl.textContent = phase;
+  }
 }
 
 function fadeOutMusic(ms = 1500) {
@@ -76,10 +115,9 @@ function fadeOutMusic(ms = 1500) {
   const steps = Math.max(1, Math.floor(ms / 50));
   const v0 = backgroundMusic.volume;
   let i = 0;
-  const it = setInterval(()=>{
+  const it = setInterval(()=> {
     i++;
-    const v = v0 * (1 - i/steps);
-    backgroundMusic.volume = Math.max(0, v);
+    backgroundMusic.volume = Math.max(0, v0 * (1 - i/steps));
     if (i >= steps) { clearInterval(it); backgroundMusic.pause(); }
   }, 50);
 }
@@ -94,7 +132,7 @@ let treeObject = null;
 const r = 4.8;
 const MAX_POINTS = 30000;
 let pointsCount = 0;
-let pointsGeom, pointsMat, circleTexture;
+let pointsGeom, pointsMat;
 let points = [], delay = [], speed = [], color = [];
 
 // Keep original landing positions/colors to allow SOFT RESET
@@ -121,25 +159,12 @@ const uniforms = {
   upperRatio: { value: 2.1 },
   spiralRadius: { value: 1.8 },
   spiralTurns: { value: 1.3 },
-  tex2020: { value: null },   // SEOUL texture
+  tex2020: { value: null },   // SEOUL texture (kept for style)
   azimuth: { value: 0 },
   transformProgress: { value: 0 },
   isTransformed: { value: 0 },
-  globalOpacity: { value: 1.0 } // fade dots → transparent
+  globalOpacity: { value: 1.0 }
 };
-
-function createCircleTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 32; canvas.height = 32;
-  const ctx = canvas.getContext('2d');
-  const center = 16, radius = 14;
-  const g = ctx.createRadialGradient(center, center, 0, center, center, radius);
-  g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.8, 'rgba(255,255,255,0.9)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = g; ctx.fillRect(0,0,32,32);
-  return new THREE.CanvasTexture(canvas);
-}
 
 function buildSeoulTexture(){
   const cnvs = document.createElement("canvas");
@@ -149,13 +174,7 @@ function buildSeoulTexture(){
   ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000"; ctx.lineWidth = 4;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.font = "900 80px 'Arial Black', Arial, sans-serif";
-  // layered strokes for stronger S/L
   ctx.strokeText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
-  ctx.lineWidth = 3; ctx.strokeText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
-  ctx.lineWidth = 2; ctx.strokeText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
-  ctx.lineWidth = 6; ctx.strokeText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
-  ctx.lineWidth = 8; ctx.strokeText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
-  ctx.shadowColor = "#000"; ctx.shadowBlur = 5; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3;
   ctx.fillText("SEOUL", cnvs.width * 0.5, cnvs.height * 0.5);
   return new THREE.CanvasTexture(cnvs);
 }
@@ -186,7 +205,7 @@ function initScene() {
   controls.target.set(0, 4, 0);
   controls.update();
 
-  // Ground — original vignette mix to background color
+  // Ground — vignette mix to background color
   baseGeom = new THREE.CircleBufferGeometry(6, 64);
   baseGeom.rotateX(-Math.PI * 0.5);
   baseMat = new THREE.MeshBasicMaterial({ color: 0x5A4218 });
@@ -291,16 +310,22 @@ function initScene() {
   pointsGeom.setAttribute("delay", new THREE.BufferAttribute(new Float32Array(delay), 1));
   pointsGeom.setAttribute("speed", new THREE.BufferAttribute(new Float32Array(speed), 2));
 
-  // Store initial landing arrays for SOFT RESET
+  // Snapshot landing arrays for soft reset
   initialPositions = new Float32Array(pointsGeom.attributes.position.array);
   initialColors = new Float32Array(pointsGeom.attributes.color.array);
 
-  // SEOUL text texture and circle sprite
   const texSeoul = buildSeoulTexture();
   uniforms.tex2020.value = texSeoul;
-  circleTexture = createCircleTexture();
 
-  pointsMat = new THREE.PointsMaterial({ size: 0.12, vertexColors: true, transparent: true, opacity: 0.9 });
+  // Points material with soft edges + no Z write (prevents halos)
+  pointsMat = new THREE.PointsMaterial({
+    size: 0.12,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.95,
+    depthWrite: false
+  });
+
   pointsMat.onBeforeCompile = shader => {
     shader.uniforms.time = uniforms.time;
     shader.uniforms.upperLimit = uniforms.upperLimit;
@@ -311,7 +336,7 @@ function initScene() {
     shader.uniforms.azimuth = uniforms.azimuth;
     shader.uniforms.transformProgress = uniforms.transformProgress;
     shader.uniforms.isTransformed = uniforms.isTransformed;
-    shader.uniforms.globalOpacity = uniforms.globalOpacity; // fade control
+    shader.uniforms.globalOpacity = uniforms.globalOpacity;
 
     shader.vertexShader = `
       uniform float time;
@@ -333,13 +358,10 @@ function initScene() {
 
     shader.vertexShader = shader.vertexShader.replace(`#include <begin_vertex>`, `#include <begin_vertex>
       if (isTransformed > 0.5) {
-        // Biome dots floating waves — lively but light
-        float waveSpeed1 = 0.3 + (position.x + position.z) * 0.02; 
-        float wavePhase1 = (position.x * 1.2 + position.z * 0.9);   
-        float wave1 = sin(time * waveSpeed1 + wavePhase1) * 0.8;
-        float waveSpeed2 = 0.5 + (position.x - position.z) * 0.015;
-        float wavePhase2 = (position.x * 0.7 + position.z * 1.3);
-        float wave2 = cos(time * waveSpeed2 + wavePhase2) * 0.4;
+        // Biome dots — float
+        float waveSpeed1 = 0.3 + (position.x + position.z) * 0.02;
+        float wave1 = sin(time * waveSpeed1 + (position.x * 1.2 + position.z * 0.9)) * 0.8;
+        float wave2 = cos(time * (0.5 + (position.x - position.z) * 0.015) + (position.x * 0.7 + position.z * 1.3)) * 0.4;
         float driftX = sin(time * 0.2 + position.z * 0.1) * 0.3;
         float driftZ = cos(time * 0.25 + position.x * 0.1) * 0.2;
         float globalRotationAngle = sin(time * 0.3) * 0.15;
@@ -348,21 +370,17 @@ function initScene() {
           0.0, 1.0, 0.0,
           -sin(globalRotationAngle), 0.0, cos(globalRotationAngle)
         );
-        float rotationSpeed = 0.1 + (position.x + position.y + position.z) * 0.01;
-        float rotationAngle = sin(time * rotationSpeed) * 0.1;
+        float rotationAngle = sin(time * (0.1 + (position.x + position.y + position.z) * 0.01)) * 0.1;
         mat3 rotY = mat3(
           cos(rotationAngle), 0.0, sin(rotationAngle),
           0.0, 1.0, 0.0,
           -sin(rotationAngle), 0.0, cos(rotationAngle)
-        );  
+        );
         transformed = globalRotY * (rotY * position + vec3(driftX, wave1 + wave2, driftZ));
-        vRatio = 0.0;
-        vSpeed = vec2(0.0);
-        vIsEffect = 0.0;
+        vRatio = 0.0; vSpeed = vec2(0.0); vIsEffect = 0.0;
       } else {
         // Petal rise/fall spiral with SEOUL letter effect
-        float t = time + delay;
-        t = t < 0. ? 0. : t;
+        float t = max(0.0, time + delay);
         float cycleTime = 40.0;
         float riseTime = 20.0;
         float fallTime = 6.0;
@@ -373,53 +391,40 @@ function initScene() {
         } else {
           float fallProgress = (loopT - riseTime) / fallTime;
           float individualFallDelay = (delay + 10.0) / 10.0;
-          float adjustedFallProgress = clamp(fallProgress - individualFallDelay * 0.3, 0.0, 1.0) / (1.0 - individualFallDelay * 0.3);
-          adjustedFallProgress = smoothstep(0.0, 1.0, adjustedFallProgress);
-          float maxHeightReached = mod(speed.y * riseTime, upperLimit);
-          h = maxHeightReached * (1.0 - adjustedFallProgress);
+          float adjusted = clamp(fallProgress - individualFallDelay * 0.3, 0.0, 1.0) / (1.0 - individualFallDelay * 0.3);
+          adjusted = smoothstep(0.0, 1.0, adjusted);
+          float maxH = mod(speed.y * riseTime, upperLimit);
+          h = maxH * (1.0 - adjusted);
         }
-        float hRatio = clamp(h / upperLimit, 0., 1.);
-        vRatio = hRatio;
-        vSpeed = speed;
-        transformed.y = h;
-        float a = atan(position.x, position.z);
-        a += speed.x * t;
-        float initLength = length(position.xz);
-        float finalLength = initLength * upperRatio;
-        float ratio = mix(initLength, finalLength, hRatio);
+        float hRatio = clamp(h / upperLimit, 0.0, 1.0);
+        vRatio = hRatio; vSpeed = speed; transformed.y = h;
+        float a = atan(position.x, position.z) + speed.x * t;
+        float initL = length(position.xz);
+        float finalL = initL * upperRatio;
+        float ratio = mix(initL, finalL, hRatio);
         transformed.x = cos(a) * ratio;
         transformed.z = sin(a) * -ratio;
         float sTurns = sin(time * 0.5) * 0.5 + spiralTurns;
-        float spiralA = hRatio * sTurns * PI * 2.;
-        float sRadius = mix(spiralRadius, 0., hRatio);
+        float spiralA = hRatio * sTurns * PI * 2.0;
+        float sRadius = mix(spiralRadius, 0.0, hRatio);
         transformed.x += cos(spiralA) * sRadius;
         transformed.z += sin(spiralA) * -sRadius;
 
-        // SEOUL letter sampling window
+        // SEOUL letter sampling window (rotated by azimuth)
         vec3 efcPos = vec3(0, 6, 0.5);
         vec3 efcClamp = vec3(2.0, 0.9, 0.25) * 3.5;
         vec3 efcMin = efcPos - efcClamp;
         vec3 efcMax = efcPos + efcClamp;
-        vec3 UVTransformed = vec3(transformed);
         mat2 R = rot(azimuth);
-        UVTransformed.xz *= R;
-        vec3 efcUV = (UVTransformed - efcMin) / (efcMax - efcMin);
+        vec3 UVT = transformed;
+        UVT.xz *= R;
+        vec3 efcUV = (UVT - efcMin) / (efcMax - efcMin);
         float isEffect = texture2D(tex2020, efcUV.xy).r;
         isEffect *= (efcUV.z > 0. && efcUV.z < 1.) ? 1. : 0.;
         vIsEffect = isEffect;
       }`);
 
-    shader.vertexShader = shader.vertexShader.replace(`gl_PointSize = size;`,
-      `if (isTransformed > 0.5) {
-        gl_PointSize = 0.3;
-      } else {
-        float hRatio = vRatio;
-        bool cond = floor(speed.y + 0.5) == 0.;
-        gl_PointSize = size * (cond ? 0.75 : ((1. - hRatio) * (smoothstep(0., 0.01, hRatio) * 0.25) + 0.75));
-        gl_PointSize = mix(gl_PointSize, size * 2.2, vIsEffect); /* larger for letters */
-      }`
-    );
-
+    // Keep size logic; AA handled in fragment
     shader.fragmentShader = `
       uniform float time;
       uniform float isTransformed;
@@ -427,80 +432,74 @@ function initScene() {
       varying float vRatio;
       varying vec2 vSpeed;
       varying float vIsEffect;
+      float aaCircle(vec2 p, float r){
+        float d = length(p);
+        float w = fwidth(d);
+        return 1.0 - smoothstep(r - w, r + w, d);
+      }
       mat2 rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
     ` + shader.fragmentShader;
 
+    // Replace hard discard with soft alpha (removes outlines)
     shader.fragmentShader = shader.fragmentShader.replace(`#include <clipping_planes_fragment>`, `
-      if (isTransformed < 0.5) {
-        if (vRatio == 1.) discard;
-        vec2 uv = gl_PointCoord - 0.5;
-        float a = (time * vSpeed.x + vSpeed.x) * 10.;
-        uv *= rot(a);
-        uv.y *= floor(a + 0.5) == 0. ? 1.25 : 2. + sin(a * PI);
-        if (length(uv) > 0.5) discard;
-      } else {
-        vec2 center = gl_PointCoord - 0.5;
-        if (length(center) > 0.5) discard;
-      }
+      vec2 uv = gl_PointCoord - 0.5;
+      float mask = aaCircle(uv, 0.5);
+      if (mask <= 0.001) discard;
       #include <clipping_planes_fragment>`);
 
+    // Compose color with soft mask & globalOpacity
     shader.fragmentShader = shader.fragmentShader.replace(`vec4 diffuseColor = vec4( diffuse, opacity );`, `
       vec4 diffuseColor;
       if (isTransformed > 0.5) {
-        diffuseColor = vec4(vColor, 0.95 * globalOpacity);
+        diffuseColor = vec4(vColor, 0.95 * mask * globalOpacity);
       } else {
         vec3 col = vec3(1., 0.95, 0.8);
-        vec2 uv = gl_PointCoord - 0.5;
-        float d = clamp(uv.x + .5, 0., 1.);
-        vec4 baseCol = vec4(mix(vColor, col, pow(d, 2.)), 1.0 * globalOpacity);
+        vec2 p = gl_PointCoord - 0.5;
+        float a = (time * vSpeed.x + vSpeed.x) * 10.;
+        p *= rot(a);
+        p.y *= floor(a + 0.5) == 0. ? 1.25 : 2. + sin(a * PI);
+        float petalMask = aaCircle(p, 0.5);
+        float m = mask * petalMask;
+        vec3 tint = mix(vColor, col, pow(clamp(p.x + 0.5, 0., 1.), 2.));
         vec3 seoulColor = vec3(0.95, 0.0, 0.45);
-        diffuseColor = vec4(mix(baseCol.rgb, seoulColor, vIsEffect), baseCol.a);
+        vec3 finalRGB = mix(tint, seoulColor, vIsEffect);
+        diffuseColor = vec4(finalRGB, 1.0 * m * globalOpacity);
       }`);
   };
 
-  const p = new THREE.Points(pointsGeom, pointsMat);
-  scene.add(p);
+  scene.add(new THREE.Points(pointsGeom, pointsMat));
 
-  // Start in Landing visually and sonically
+  // Start landing + poller
   startLandingExperience();
-  sequence(); // begin render loop
-  startStatePolling(); // begin S3 polling
+  sequence();
+  startStatePolling();
 }
 
 /* ---------- Landing / Video flows ---------- */
-function onDocumentClick(){ /* disabled */ return; }
-
 function startLandingExperience() {
-  // Ensure landing flags
   currentMode = 'landing';
   isPlaying = true;
   isTransformed = false;
   uniforms.globalOpacity.value = 1.0;
   veil && (veil.style.display = "none");
 
-  // Show base & tree
   if (treeObject) treeObject.visible = true;
   if (base) base.visible = true;
 
-  // Camera/controls
   controls.target.set(0, 4, 0);
   camera.position.set(0, 5, 10);
   controls.autoRotate = true;
   controls.minDistance = 5;
   controls.maxDistance = 12.5;
 
-  // Restart audio if needed
   playBackgroundMusic();
 }
 
-// (b) Video flow: dots 5s → fade dots → teardown → show video
 function startShowVideo() {
   if (currentMode === 'video') return;
   currentMode = 'video';
-  if (!isPlaying) { isPlaying = true; }
-
+  isPlaying = true;
   instructions && (instructions.textContent = 'Preparing video… dots will fade out.');
-
   if (!isTransformed) transformToBiomeDots();
 
   setTimeout(() => {
@@ -517,7 +516,6 @@ function transformToBiomeDots() {
   isTransitioning = true;
 
   fadeOutMusic(3000);
-
   if (treeObject) treeObject.visible = false;
   if (base) base.visible = false;
 
@@ -532,64 +530,82 @@ function transformToBiomeDots() {
   const colors = pointsGeom.attributes.color.array;
   for (let i = 0; i < targetPositions.length; i++) {
     const target = targetPositions[i];
-    const targetColor = targetColors[i];
+    const tcol = targetColors[i];
     positions[i * 3] = target.x;
     positions[i * 3 + 1] = target.y;
     positions[i * 3 + 2] = target.z;
-    colors[i * 3] = targetColor[0];
-    colors[i * 3 + 1] = targetColor[1];
-    colors[i * 3 + 2] = targetColor[2];
+    colors[i * 3] = tcol[0];
+    colors[i * 3 + 1] = tcol[1];
+    colors[i * 3 + 2] = tcol[2];
   }
   pointsGeom.attributes.position.needsUpdate = true;
   pointsGeom.attributes.color.needsUpdate = true;
 
   uniforms.isTransformed.value = 1.0;
-  if (!circleTexture) circleTexture = createCircleTexture();
-  pointsMat.map = circleTexture;
-  pointsMat.needsUpdate = true;
-
+  // no sprite map needed; AA is handled in shader
   isTransformed = true;
   isTransitioning = false;
   instructions && (instructions.textContent = 'Biome Dots are floating…');
 }
 
-// Fade helper
 function fadeDotsToTransparent(duration = 2000, onDone) {
   const start = performance.now();
   function step(now){
     const t = Math.min(1, (now - start) / duration);
     uniforms.globalOpacity.value = 1 - t;
     if (t < 1) requestAnimationFrame(step);
-    else { uniforms.globalOpacity.value = 0; if (typeof onDone === 'function') onDone(); }
+    else { uniforms.globalOpacity.value = 0; onDone && onDone(); }
   }
   requestAnimationFrame(step);
 }
 
 function showFullScreenVideo() {
   if (!bgVideo || !videoContainer) return;
-  bgVideo.muted = false;
 
-  const reveal = () => { videoContainer.style.display = 'block'; };
+  // Make sure element is visible and ready BEFORE play()
+  videoContainer.style.display = 'block';
+  videoContainer.classList.add('fade-in');
 
-  if (bgVideo.readyState >= 2) {
-    reveal();
-  } else {
-    const onCanPlay = () => { bgVideo.removeEventListener('canplay', onCanPlay); reveal(); };
+  // Autoplay requirements: start muted, then unmute after first gesture
+  bgVideo.muted = true;
+  bgVideo.setAttribute('playsinline', '');
+  try { bgVideo.load(); } catch(e){}
+
+  const tryPlay = () => {
+    const p = bgVideo.play();
+    if (p && p.catch) {
+      p.catch(() => {
+        // Retry muted once; still keep container visible
+        bgVideo.muted = true;
+        const p2 = bgVideo.play();
+        p2 && p2.catch(() => {
+          // Fallback: show tap overlay
+          tapToPlay && (tapToPlay.style.display = 'flex');
+        });
+      });
+    }
+  };
+
+  // After we have a gesture, unmute for proper audio
+  const unmuteOnGesture = () => {
+    document.removeEventListener('pointerdown', unmuteOnGesture);
+    try { bgVideo.muted = false; } catch(e){}
+  };
+  document.addEventListener('pointerdown', unmuteOnGesture, { once: true });
+
+  // If already buffered enough, start immediately
+  if (bgVideo.readyState >= 2) tryPlay();
+  else {
+    const onCanPlay = () => { bgVideo.removeEventListener('canplay', onCanPlay); tryPlay(); };
     bgVideo.addEventListener('canplay', onCanPlay);
   }
-
-  const p = bgVideo.play();
-  if (p && p.catch) p.catch(() => { 
-    if (tapToPlay) tapToPlay.style.display = 'flex'; 
-    reveal();
-  });
 }
 
 // Tap-to-play fallback
 tapToPlay?.addEventListener('click', ()=>{
   tapToPlay.style.display = 'none';
-  bgVideo.muted = false;
-  bgVideo.play();
+  try { bgVideo.muted = false; } catch(e){}
+  bgVideo.play().catch(()=>{});
 });
 
 /* ---------- Render Loop & Volume calc ---------- */
@@ -598,20 +614,19 @@ let t = 0;
 function sequence() {
   renderer.setAnimationLoop(()=>{
     t += clock.getDelta() * 0.5;
-    if (uniforms) {
-      uniforms.time.value = t;
-      if (controls) uniforms.azimuth.value = controls.getAzimuthalAngle();
-      uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0;
-    }
-    if (uniformsTree) uniformsTree.time.value = t * 5;
+    uniforms.time.value = t;
+    uniforms.azimuth.value = controls.getAzimuthalAngle();
+    uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0;
+
+    uniformsTree.time.value = t * 5;
 
     // Update music volume during landing
     if (pointsGeom && !isTransformed && isPlaying && currentMode === 'landing') {
       calculateP90AndUpdateVolume();
     }
 
-    controls?.update();
-    renderer?.render(scene, camera);
+    controls.update();
+    renderer.render(scene, camera);
   });
 }
 
@@ -620,7 +635,6 @@ function calculateP90AndUpdateVolume() {
   const speeds = pointsGeom.attributes.speed.array;
   const UL = uniforms.upperLimit.value;
 
-  // Sample-based P90
   const SAMPLE = 2000;
   const total = delays.length;
   const idxs = new Uint32Array(Math.min(SAMPLE, total));
@@ -640,18 +654,15 @@ function calculateP90AndUpdateVolume() {
     const loopT = currentTime % cycleTime;
 
     let h;
-    if (loopT < riseTime) {
-      h = (spd * loopT) % UL;
-      risingCount++;
-    } else {
+    if (loopT < riseTime) { h = (spd * loopT) % UL; risingCount++; }
+    else {
       const fallProgress = (loopT - riseTime) / fallTime;
       const individualFallDelay = (d + 10.0) / 10.0;
       const adjusted = Math.max(0, Math.min(1,
         (fallProgress - individualFallDelay * 0.3) / (1.0 - individualFallDelay * 0.3)
       ));
-      const maxHeightReached = (spd * riseTime) % UL;
-      h = maxHeightReached * (1.0 - adjusted);
-      fallingCount++;
+      const maxH = (spd * riseTime) % UL;
+      h = maxH * (1.0 - adjusted); fallingCount++;
     }
     heights.push(h);
   }
@@ -662,13 +673,11 @@ function calculateP90AndUpdateVolume() {
   if (heights.length > 0) {
     heights.sort((a, b) => a - b);
     const idx = Math.max(0, Math.min(heights.length - 1, Math.floor(0.90 * heights.length)));
-    const p90Height = heights[idx];
-    updateMusicVolume(p90Height, UL, phase);
+    updateMusicVolume(heights[idx], UL, phase);
   }
 }
 
 function onWindowResize() {
-  if (!camera || !renderer) return;
   const w = window.innerWidth, h = window.innerHeight;
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -676,36 +685,25 @@ function onWindowResize() {
 }
 
 /* ---------- Soft reset helpers ---------- */
-
-// When leaving Video → Landing without full page reload
 function returnToLandingFromVideo() {
-  // Hide video UI and pause
   if (videoContainer) videoContainer.style.display = 'none';
   try { bgVideo?.pause?.(); } catch(e){}
   try { bgVideo.currentTime = 0; } catch(e){}
 
-  // Rebuild scene if it was torn down
-  if (!renderer || !scene) {
-    initScene();
-    return; // initScene will start landing & polling
-  }
+  if (!renderer || !scene) { initScene(); return; }
 
-  // Reset flags
   isTransformed = false;
   uniforms.globalOpacity.value = 1.0;
 
-  // Restore landing camera/controls
   controls.target.set(0, 4, 0);
   camera.position.set(0, 5, 10);
   controls.autoRotate = true;
   controls.minDistance = 5;
   controls.maxDistance = 12.5;
 
-  // Show base & tree
   if (treeObject) treeObject.visible = true;
   if (base) base.visible = true;
 
-  // Reset petals to fresh rising
   reseedPetalDelaysAndSpeeds();
   restoreLandingPositionsAndColors();
 
@@ -714,7 +712,6 @@ function returnToLandingFromVideo() {
   playBackgroundMusic();
 }
 
-// When on Landing (but in dots mode) → fresh petals without reload
 function softResetLandingWithinScene() {
   isTransformed = false;
   uniforms.globalOpacity.value = 1.0;
@@ -736,7 +733,6 @@ function softResetLandingWithinScene() {
   playBackgroundMusic();
 }
 
-// Re-seed delay/speed so petals rise again in stagger
 function reseedPetalDelaysAndSpeeds() {
   if (!pointsGeom) return;
   const delays = pointsGeom.attributes.delay.array;
@@ -752,7 +748,6 @@ function reseedPetalDelaysAndSpeeds() {
   pointsGeom.attributes.speed.needsUpdate = true;
 }
 
-// Put positions/colors back to original landing arrays
 function restoreLandingPositionsAndColors() {
   if (!pointsGeom || !initialPositions || !initialColors) return;
   const pos = pointsGeom.attributes.position.array;
@@ -761,21 +756,12 @@ function restoreLandingPositionsAndColors() {
   col.set(initialColors);
   pointsGeom.attributes.position.needsUpdate = true;
   pointsGeom.attributes.color.needsUpdate = true;
-  // Remove sprite map so we return to petal shader look
-  pointsMat.map = null;
-  pointsMat.needsUpdate = true;
 }
 
-/* ---------- Clean-up ---------- */
-function disposeMaterial(mat){
-  if (!mat) return;
-  if (mat.map) { mat.map.dispose?.(); }
-  mat.dispose?.();
-}
+function disposeMaterial(mat){ if (!mat) return; if (mat.map) mat.map.dispose?.(); mat.dispose?.(); }
 function disposeGeometry(geo){ geo?.dispose?.(); }
 
 function teardownThree() {
-  document.removeEventListener('click', onDocumentClick);
   try { controls?.dispose?.(); } catch(e){}
   try { renderer?.setAnimationLoop(null); } catch(e){}
   try {
@@ -794,7 +780,6 @@ function teardownThree() {
 /* ---------- State polling ---------- */
 function startStatePolling() {
   if (pollTimer) clearInterval(pollTimer);
-  // Run immediately, then at interval
   pollState();
   pollTimer = setInterval(pollState, 1200);
 }
@@ -803,49 +788,40 @@ async function pollState() {
   try {
     const headers = lastETag ? { 'If-None-Match': lastETag } : {};
     const res = await fetch(STATE_URL, { cache: 'no-store', headers });
-    if (res.status === 304) return; // nothing changed
+    if (res.status === 304) return;
     if (!res.ok) throw new Error('Bad status: ' + res.status);
-    const et = res.headers.get('ETag');
-    if (et) lastETag = et;
+    const et = res.headers.get('ETag'); if (et) lastETag = et;
     const data = await res.json();
-
-    // Determine stage; default to landing; handle expiration
     let stage = data?.stage || 'landing';
+
+    if (DEBUG) setHUD(stage, lastETag);
+
     const expiresAt = data?.expires_at;
     if (expiresAt) {
       const expMs = Date.parse(expiresAt);
       if (!isNaN(expMs) && Date.now() > expMs) stage = 'landing';
     }
-
     handleStage(stage);
-  } catch (e) {
-    // On error, stay in landing for safety
+  } catch {
     handleStage('landing');
   }
 }
 
 function handleStage(stage) {
-  // Map stages to kiosk modes
+  // show_result => video; everything else => landing
+  if (DEBUG) setHUD(stage, lastETag);
   if (stage === 'show_result') {
-    if (currentMode !== 'video') {
-      startShowVideo();
-    }
+    if (currentMode !== 'video') startShowVideo();
   } else {
-    // landing / idle / in_progress / countdown / expired → Landing
-    if (currentMode === 'video') {
-      returnToLandingFromVideo();
-    } else if (isTransformed) {
-      softResetLandingWithinScene();
-    } else if (!isPlaying) {
-      startLandingExperience();
-    }
+    if (currentMode === 'video') returnToLandingFromVideo();
+    else if (isTransformed) softResetLandingWithinScene();
+    else if (!isPlaying) startLandingExperience();
   }
 }
 
-/* ---------- Wire up buttons ---------- */
+/* ---------- Buttons (optional) ---------- */
 landingButton?.addEventListener('click', (e)=>{
   e.stopPropagation();
-  // Manual override: force landing path
   if (currentMode === 'video') returnToLandingFromVideo();
   else if (isTransformed) softResetLandingWithinScene();
   else startLandingExperience();
@@ -855,5 +831,5 @@ showVideoButton?.addEventListener('click', (e)=>{
   startShowVideo();
 });
 
-// Kick off THREE scene so petals are visible and polling starts
+/* ---------- Boot ---------- */
 initScene();
