@@ -16,7 +16,7 @@ const veil = document.getElementById('veil');
 const percentage = document.getElementById('percentage');
 const videoContainer = document.getElementById('videoContainer');
 const bgVideo = document.getElementById('bgVideo');
-const tapToPlay = document.getElementById('tapToPlay');
+//const tapToPlay = document.getElementById('tapToPlay');
 
 // Optional debug HUD (?debug=1)
 const debug = new URLSearchParams(location.search).get('debug') === '1';
@@ -420,7 +420,7 @@ function showVideo(){
   const p = bgVideo.play();
   if (p && p.catch) p.catch(()=>{ tapToPlay.style.display='flex'; reveal(); });
 }
-tapToPlay.addEventListener('click', ()=>{ tapToPlay.style.display='none'; bgVideo.muted=false; bgVideo.play(); });
+//tapToPlay.addEventListener('click', ()=>{ tapToPlay.style.display='none'; bgVideo.muted=false; bgVideo.play(); });
 
 // ===== State poller (ETag) =====
 let lastETag = null;
