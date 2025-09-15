@@ -951,6 +951,9 @@ async function setMode(newMode) {
 
   app.mode = newMode;
 
+   // ADD THIS SINGLE LINE - Simple body class management for background
+   document.body.className = newMode === Modes.RESULT ? 'result-mode' : '';
+
   if (newMode === Modes.LANDING) {
     showLandingLayout();
 
