@@ -495,7 +495,7 @@ footer {
 .bar {
   position: relative;
   width: 25px;
-  background: ##5a7839;
+  background: #5a7839;
   border-radius: 2px 2px 0 0;
   transition: all 0.3s ease;
 }
