@@ -16,7 +16,7 @@ body {
   color: white;
   height: 100vh;
   overflow: hidden;
-  background: #1a1a1a;
+  background: url('./img/bg-img.gif') center center / cover no-repeat;
 }
 
 #video-background {
