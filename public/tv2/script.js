@@ -110,6 +110,68 @@ function fadeOutMusic(ms=1500){
   const it = setInterval(()=>{ i++; backgroundMusic.volume = Math.max(0, v0*(1 - i/steps));
     if (i>=steps){ clearInterval(it); backgroundMusic.pause(); } },50);
 }
+
+// --- Soft-reset landing without page reload (Pattern B) ---
+let initialPositions = null, initialColors = null;
+
+function captureInitialBuffersOnce() {
+  if (!pointsGeom) return;
+  if (!initialPositions) initialPositions = pointsGeom.attributes.position.array.slice(0);
+  if (!initialColors)    initialColors    = pointsGeom.attributes.color.array.slice(0);
+}
+
+function pauseForVideo() {
+  try { renderer?.setAnimationLoop(null); } catch (e) {}
+  if (renderer?.domElement) renderer.domElement.style.display = 'none';
+}
+
+function hideVideoAndPause() {
+  try { bgVideo.pause(); } catch (e) {}
+  try { bgVideo.currentTime = 0; } catch (e) {}
+  videoContainer.style.display = 'none';
+  tapToPlay.style.display = 'none';
+}
+
+function resetLandingState() {
+  if (!pointsGeom) return;
+
+  // restore geometry attributes
+  if (initialPositions) {
+    pointsGeom.attributes.position.array.set(initialPositions);
+    pointsGeom.attributes.position.needsUpdate = true;
+  }
+  if (initialColors) {
+    pointsGeom.attributes.color.array.set(initialColors);
+    pointsGeom.attributes.color.needsUpdate = true;
+  }
+
+  // reseed delays for staggered re-rise
+  const d = pointsGeom.attributes.delay;
+  if (d) {
+    for (let i = 0; i < d.array.length; i++) d.array[i] = THREE.Math.randFloat(-10, 0);
+    d.needsUpdate = true;
+  }
+
+  // reset uniforms / flags / visibility
+  isTransformed = false;
+  uniforms.isTransformed.value = 0.0;
+  uniforms.globalOpacity.value = 1.0;
+  if (treeObject) treeObject.visible = true;
+  if (base)       base.visible = true;
+
+  // camera + controls back to landing defaults
+  controls.target.set(0, 4, 0);
+  camera.position.set(0, 5, 10);
+  controls.autoRotate = true;
+  controls.minDistance = 5;  controls.maxDistance = 12.5;
+  controls.update();
+
+  // show canvas + resume loop
+  if (renderer?.domElement) renderer.domElement.style.display = '';
+  animate();
+}
+
+
 function updateMusic(avgHeight, maxH, phase){
   let ratio = Math.max(0, Math.min(1, avgHeight / maxH));
   if (ratio > 0.98) ratio = 1;
@@ -314,6 +376,7 @@ function initScene(){
 
   const pts = new THREE.Points(pointsGeom, pointsMat);
   scene.add(pts);
+  captureInitialBuffersOnce();
 
   animate();
 }
@@ -364,15 +427,32 @@ function calcVolumeProxy(){
 
 // ===== Transitions =====
 function startLanding(){
-  if (currentMode === 'video' || isTransformed) {
-     location.reload();
-     return;
-   }
-  currentMode = 'landing';
-  isPlaying = true;
   veil.style.display = "none";
-  try { backgroundMusic.load(); } catch {}
+
+  if (currentMode === 'video') {
+    hideVideoAndPause();     // hide/pause video
+    resetLandingState();     // restore petals/tree/ground + camera/controls + loop
+    isPlaying = true;
+    try { backgroundMusic.load(); } catch (e) {}
+    playBackgroundMusic();
+    currentMode = 'landing';
+    return;
+  }
+
+  if (isTransformed) {
+    resetLandingState();
+    isPlaying = true;
+    try { backgroundMusic.load(); } catch (e) {}
+    playBackgroundMusic();
+    currentMode = 'landing';
+    return;
+  }
+
+  // already landing → ensure music & loop
+  isPlaying = true;
+  try { backgroundMusic.load(); } catch (e) {}
   playBackgroundMusic();
+  currentMode = 'landing';
 }
 
 function toBiomeDots(){
@@ -454,14 +534,16 @@ async function tick(){
       toBiomeDots();
       setTimeout(() => {
         fadeDots(2000, () => {
-          teardownThree();
+          // Fade out landing music, pause rendering, then show video (prefer audio)
           fadeOutMusic(1200);
+          pauseForVideo();
           showVideo();
           currentMode = 'video';
         });
       }, 5000);
     }
     return;
+
   }
 
   // Any other stage (e.g., in_progress, countdown) → stay/return to landing
