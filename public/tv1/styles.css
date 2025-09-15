@@ -19,6 +19,18 @@ body {
   background: #1a1a1a;
 }
 
+body::before {
+  content: '';
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  background: url('./img/bg-img.gif');
+  pointer-events: none;
+}
+
+
 /* Result mode - show GIF background */
 body.result-mode {
   background: url('./img/bg-img.gif') center center / cover no-repeat;
