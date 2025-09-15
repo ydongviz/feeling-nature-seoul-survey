@@ -1,4 +1,3 @@
-
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.115.0/build/three.module.js';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/loaders/OBJLoader.js';
@@ -18,12 +17,17 @@ const videoContainer = document.getElementById('videoContainer');
 const bgVideo = document.getElementById('bgVideo');
 const tapToPlay = document.getElementById('tapToPlay');
 
+/* ---------- Remote state (S3 poller) ---------- */
+const STATE_URL = 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json';
+let pollTimer = null;
+let lastETag = null;
+
 /* ---------- State ---------- */
 let isTransformed = false;
 let isTransitioning = false;
 let isPlaying = false;
-let animationStartTime = 0;
-let currentMode = 'menu'; // 'menu' | 'landing' | 'video'
+let currentMode = 'landing'; // start on landing
+let didPrimeAudio = false;
 
 // Dynamic Music Volume System — P90-driven
 let currentVolume = 1.0;
@@ -31,8 +35,15 @@ let targetVolume = 1.0;
 const baseVolume = 1.0;        // FULL volume at peak
 const volumeTransitionSpeed = 0.02;
 
-// Preload audio
+// Preload audio & prime on first user gesture (browser policies)
 backgroundMusic?.load();
+function primeAudioOnce() {
+  if (didPrimeAudio || !backgroundMusic) return;
+  didPrimeAudio = true;
+  backgroundMusic.volume = currentVolume;
+  backgroundMusic.play().catch(()=>{});
+}
+document.addEventListener('pointerdown', primeAudioOnce, { once: true });
 
 function playBackgroundMusic() {
   if (!backgroundMusic) return;
@@ -42,11 +53,13 @@ function playBackgroundMusic() {
   if (p && p.catch) p.catch(()=>{});
 }
 
-function updateMusicVolume(avgHeight, maxHeight, phase) {
-  let heightRatio = Math.max(0, Math.min(1, avgHeight / maxHeight));
+function updateMusicVolume(p90Height, maxHeight, phase) {
+  // Map P90 height to [0..1] volume target
+  let heightRatio = Math.max(0, Math.min(1, p90Height / maxHeight));
   if (heightRatio > 0.98) heightRatio = 1.0;
   targetVolume = Math.min(1.0, heightRatio * baseVolume);
 
+  // Smooth transitions
   if (Math.abs(currentVolume - targetVolume) > 0.005) {
     if (currentVolume < targetVolume) currentVolume = Math.min(targetVolume, currentVolume + volumeTransitionSpeed);
     else currentVolume = Math.max(targetVolume, currentVolume - volumeTransitionSpeed);
@@ -54,7 +67,7 @@ function updateMusicVolume(avgHeight, maxHeight, phase) {
   }
   // HUD
   if (volumeValue) volumeValue.textContent = currentVolume.toFixed(3);
-  if (heightValue) heightValue.textContent = avgHeight.toFixed(2);
+  if (heightValue) heightValue.textContent = p90Height.toFixed(2);
   if (phaseValue) phaseValue.textContent = phase;
 }
 
@@ -448,28 +461,35 @@ function initScene() {
   const p = new THREE.Points(pointsGeom, pointsMat);
   scene.add(p);
 
+  // Start in Landing visually and sonically
+  startLandingExperience();
   sequence(); // begin render loop
+  startStatePolling(); // begin S3 polling
 }
 
 /* ---------- Landing / Video flows ---------- */
 function onDocumentClick(){ /* disabled */ return; }
 
 function startLandingExperience() {
-  if (currentMode === 'video') {
-    // Soft return from video
-    returnToLandingFromVideo();
-    return;
-  }
-  if (isTransformed) {
-    // Soft reset petals within existing scene
-    softResetLandingWithinScene();
-    return;
-  }
-  if (isPlaying) return;
+  // Ensure landing flags
   currentMode = 'landing';
   isPlaying = true;
-  animationStartTime = performance.now();
+  isTransformed = false;
+  uniforms.globalOpacity.value = 1.0;
   veil && (veil.style.display = "none");
+
+  // Show base & tree
+  if (treeObject) treeObject.visible = true;
+  if (base) base.visible = true;
+
+  // Camera/controls
+  controls.target.set(0, 4, 0);
+  camera.position.set(0, 5, 10);
+  controls.autoRotate = true;
+  controls.minDistance = 5;
+  controls.maxDistance = 12.5;
+
+  // Restart audio if needed
   playBackgroundMusic();
 }
 
@@ -587,7 +607,7 @@ function sequence() {
 
     // Update music volume during landing
     if (pointsGeom && !isTransformed && isPlaying && currentMode === 'landing') {
-      calculateAverageHeightAndUpdateVolume();
+      calculateP90AndUpdateVolume();
     }
 
     controls?.update();
@@ -595,7 +615,7 @@ function sequence() {
   });
 }
 
-function calculateAverageHeightAndUpdateVolume() {
+function calculateP90AndUpdateVolume() {
   const delays = pointsGeom.attributes.delay.array;
   const speeds = pointsGeom.attributes.speed.array;
   const UL = uniforms.upperLimit.value;
@@ -667,6 +687,7 @@ function returnToLandingFromVideo() {
   // Rebuild scene if it was torn down
   if (!renderer || !scene) {
     initScene();
+    return; // initScene will start landing & polling
   }
 
   // Reset flags
@@ -770,15 +791,69 @@ function teardownThree() {
   scene = camera = renderer = controls = null;
 }
 
+/* ---------- State polling ---------- */
+function startStatePolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  // Run immediately, then at interval
+  pollState();
+  pollTimer = setInterval(pollState, 1200);
+}
+
+async function pollState() {
+  try {
+    const headers = lastETag ? { 'If-None-Match': lastETag } : {};
+    const res = await fetch(STATE_URL, { cache: 'no-store', headers });
+    if (res.status === 304) return; // nothing changed
+    if (!res.ok) throw new Error('Bad status: ' + res.status);
+    const et = res.headers.get('ETag');
+    if (et) lastETag = et;
+    const data = await res.json();
+
+    // Determine stage; default to landing; handle expiration
+    let stage = data?.stage || 'landing';
+    const expiresAt = data?.expires_at;
+    if (expiresAt) {
+      const expMs = Date.parse(expiresAt);
+      if (!isNaN(expMs) && Date.now() > expMs) stage = 'landing';
+    }
+
+    handleStage(stage);
+  } catch (e) {
+    // On error, stay in landing for safety
+    handleStage('landing');
+  }
+}
+
+function handleStage(stage) {
+  // Map stages to kiosk modes
+  if (stage === 'show_result') {
+    if (currentMode !== 'video') {
+      startShowVideo();
+    }
+  } else {
+    // landing / idle / in_progress / countdown / expired → Landing
+    if (currentMode === 'video') {
+      returnToLandingFromVideo();
+    } else if (isTransformed) {
+      softResetLandingWithinScene();
+    } else if (!isPlaying) {
+      startLandingExperience();
+    }
+  }
+}
+
 /* ---------- Wire up buttons ---------- */
 landingButton?.addEventListener('click', (e)=>{
   e.stopPropagation();
-  startLandingExperience();
+  // Manual override: force landing path
+  if (currentMode === 'video') returnToLandingFromVideo();
+  else if (isTransformed) softResetLandingWithinScene();
+  else startLandingExperience();
 });
 showVideoButton?.addEventListener('click', (e)=>{
   e.stopPropagation();
   startShowVideo();
 });
 
-// Kick off THREE scene immediately so petals are visible in menu
+// Kick off THREE scene so petals are visible and polling starts
 initScene();
