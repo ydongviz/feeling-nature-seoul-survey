@@ -651,41 +651,65 @@ function showVideo(){
   isVideoMode = true;
   fadeOutMusic(1200);
 
-  // REVEAL container FIRST
+  // Reveal container FIRST (so layout exists)
   videoContainer.style.display = 'block';
 
-  // Autoplay-safe ordering: muted + playsinline + load + play
-  bgVideo.muted = true;
-  bgVideo.setAttribute('playsinline', '');
-  try { bgVideo.load(); } catch(e){}
-
-  const playMuted = () => {
-    const p = bgVideo.play();
-    if (p && p.catch) p.catch(()=>{ /* keep visible; will retry anyway */ });
-  };
-
-  const tryUnmuteWithReplay = async () => {
-    try {
-      bgVideo.muted = false;
-      await bgVideo.play(); // some browsers need play after unmute
-    } catch (err) {
-      // policy blocked: stay muted, still plays
-      bgVideo.muted = true;
-    }
-  };
-
-  if (bgVideo.readyState >= 2) {
-    playMuted();
-    setTimeout(tryUnmuteWithReplay, 200);
-  } else {
-    const onCanPlay = () => {
-      bgVideo.removeEventListener('canplay', onCanPlay);
-      playMuted();
-      setTimeout(tryUnmuteWithReplay, 200);
-    };
-    bgVideo.addEventListener('canplay', onCanPlay);
+  // Ensure we actually have a source
+  const hasSrcAttr = !!bgVideo.getAttribute('src');
+  const hasChildSource = !!bgVideo.querySelector('source');
+  if (!hasSrcAttr && !hasChildSource) {
+    console.warn('[video] No <source> on <video id="bgVideo">. Add one in index.html.');
+    // Keep container visible so you see the warning over black
+    return;
   }
+
+  // Autoplay-safe: start muted & inline; reset for a clean replay
+  try {
+    bgVideo.pause();
+    bgVideo.muted = true;
+    bgVideo.setAttribute('playsinline', '');
+    bgVideo.currentTime = 0;
+    bgVideo.load();
+  } catch(e){}
+
+  // Force layout before play (prevents “black first frame” on some WebKit)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const tryPlayMuted = () => {
+        const p = bgVideo.play();
+        if (p && p.catch) p.catch((err)=>{ 
+          console.debug('[video] play() muted rejected (will keep visible):', err);
+        });
+      };
+
+      const tryUnmute = async () => {
+        try {
+          bgVideo.muted = false;
+          await bgVideo.play(); // Safari often needs a second play after unmute
+        } catch (err) {
+          // Policy blocked: keep muted (still plays); kiosk tap can unmute later
+          bgVideo.muted = true;
+        }
+      };
+
+      // If enough is buffered, start immediately; else wait for canplay/loadeddata
+      if (bgVideo.readyState >= 2) {
+        tryPlayMuted();
+        setTimeout(tryUnmute, 200);
+      } else {
+        const onReady = () => {
+          bgVideo.removeEventListener('canplay', onReady);
+          bgVideo.removeEventListener('loadeddata', onReady);
+          tryPlayMuted();
+          setTimeout(tryUnmute, 200);
+        };
+        bgVideo.addEventListener('canplay', onReady);
+        bgVideo.addEventListener('loadeddata', onReady);
+      }
+    });
+  });
 }
+
 
 function returnToLandingFromVideo() {
   // Hide/reset video fully (prevents any overlap)
