@@ -14,25 +14,19 @@ const veil = document.getElementById('veil');
 const percentage = document.getElementById('percentage');
 const videoContainer = document.getElementById('videoContainer');
 const bgVideo = document.getElementById('bgVideo');
-//const tapToPlay = document.getElementById('tapToPlay');
-
-// Optional debug HUD (?debug=1)
-const debug = new URLSearchParams(location.search).get('debug') === '1';
-const volumeValue = document.getElementById('volumeValue');
-const heightValue = document.getElementById('heightValue');
-const phaseValue = document.getElementById('phaseValue');
-if (debug) document.getElementById('volumeDebug')?.removeAttribute('hidden');
 
 // ===== State =====
 let currentMode = 'landing';      // 'landing' | 'video'
 let isTransformed = false;        // biome-dots phase flag
 let isPlaying = false;
+let isVideoMode = false;          // prevent music primer during video
 
-// Music dynamics - from Script 1
+// Music dynamics
 let currentVolume = 1.0;
 let targetVolume = 1.0;
 const baseVolume = 1.0;
 const volumeTransitionSpeed = 0.02; // smooth transitions
+let didPrimeAudio = false;
 
 // ===== THREE globals =====
 let scene, camera, renderer, controls;
@@ -40,7 +34,11 @@ let baseGeom, baseMat, base;
 let treeObject = null;
 let pointsGeom, pointsMat, circleTexture;
 
-// Complete uniforms from Script 1 (including tree uniforms)
+// Keep original landing positions/colors to soft-reset without reload
+let initialPositions = null;
+let initialColors = null;
+
+// Complete uniforms (incl. tree)
 let uniformsTree = { time: { value: 0 } };
 const uniforms = {
   time: { value: 0 },
@@ -130,25 +128,28 @@ function fadeOutMusic(ms = 1500) {
   }, 50);
 }
 
-// Dynamic Volume Control — driven by height metric (from Script 1)
-function updateMusicVolume(avgHeight, maxHeight, phase) {
-  let heightRatio = Math.max(0, Math.min(1, avgHeight / maxHeight));
+// Dynamic Volume Control — driven by height metric
+function updateMusicVolume(p90Height, maxHeight) {
+  let heightRatio = Math.max(0, Math.min(1, p90Height / maxHeight));
   if (heightRatio > 0.98) heightRatio = 1.0;        // snap near-peak to full
   targetVolume = Math.min(1.0, heightRatio * baseVolume);
 
   if (Math.abs(currentVolume - targetVolume) > 0.005) {
-    if (currentVolume < targetVolume) currentVolume = Math.min(targetVolume, currentVolume + volumeTransitionSpeed);
-    else currentVolume = Math.max(targetVolume, currentVolume - volumeTransitionSpeed);
+    currentVolume += Math.sign(targetVolume - currentVolume) * volumeTransitionSpeed;
+    currentVolume = Math.max(0, Math.min(1, currentVolume));
     if (!backgroundMusic.paused) backgroundMusic.volume = currentVolume;
   }
-  
-  // Debug HUD
-  if (debug) {
-    volumeValue.textContent = currentVolume.toFixed(3);
-    heightValue.textContent = avgHeight.toFixed(2);
-    phaseValue.textContent = phase;
-  }
 }
+
+// Prime audio on first gesture (policy-safe)
+function primeAudioOnce() {
+  if (didPrimeAudio || !backgroundMusic) return;
+  didPrimeAudio = true;
+  if (isVideoMode) return; // don't start landing music while in video
+  backgroundMusic.volume = currentVolume;
+  backgroundMusic.play().catch(()=>{});
+}
+document.addEventListener('pointerdown', primeAudioOnce, { once: true });
 
 // ===== Scene initialization =====
 function initScene() {
@@ -247,12 +248,12 @@ function initScene() {
     object.scale.setScalar(5);
     scene.add(object);
     treeObject = object;
-    percentage.style.display = "none";
+    if (percentage) percentage.style.display = "none";
   }, (xhr)=>{
-    if (xhr.lengthComputable) percentage.innerText = (xhr.loaded / xhr.total * 100).toFixed(0) + '%';
+    if (xhr.lengthComputable && percentage) percentage.innerText = (xhr.loaded / xhr.total * 100).toFixed(0) + '%';
   });
 
-  // Particle generation
+  // Particle generation (landing petals)
   const c = new THREE.Color();
   while (pointsCount < MAX_POINTS) {
     const vec = new THREE.Vector3(THREE.Math.randFloat(-r, r), 0, THREE.Math.randFloat(-r, r));
@@ -282,7 +283,11 @@ function initScene() {
   pointsGeom.setAttribute("delay", new THREE.BufferAttribute(new Float32Array(delay), 1));
   pointsGeom.setAttribute("speed", new THREE.BufferAttribute(new Float32Array(speed), 2));
 
-  // Build SEOUL text texture for red-petals effect
+  // Snapshot for soft reset
+  initialPositions = new Float32Array(pointsGeom.attributes.position.array);
+  initialColors    = new Float32Array(pointsGeom.attributes.color.array);
+
+  // SEOUL text texture for red-petals effect
   const texSeoul = buildSeoulTexture();
   uniforms.tex2020.value = texSeoul;
 
@@ -468,11 +473,11 @@ function sequence() {
     uniforms.time.value = t;
     uniforms.azimuth.value = controls.getAzimuthalAngle();
     uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0;
-    uniformsTree.time.value = t * 5; // COMPLETE tree animation timing from Script 1
+    uniformsTree.time.value = t * 5; // tree animation timing
 
-    // Continuous loop: update music volume during landing
+    // Update music volume during landing
     if (!isTransformed && isPlaying && currentMode === 'landing') {
-      calculateAverageHeightAndUpdateVolume();
+      calculateP90AndUpdateVolume();
     }
 
     controls.update();
@@ -481,20 +486,18 @@ function sequence() {
 }
 
 // Height calculation
-function calculateAverageHeightAndUpdateVolume() {
+function calculateP90AndUpdateVolume() {
   const delays = pointsGeom.attributes.delay.array;
   const speeds = pointsGeom.attributes.speed.array;
   const UL = uniforms.upperLimit.value;
 
-  // Sample-based P90 for performance (identical behavior, cheaper)
+  // Sample-based P90
   const SAMPLE = 2000;
   const total = delays.length;
   const idxs = new Uint32Array(Math.min(SAMPLE, total));
   for (let i = 0; i < idxs.length; i++) idxs[i] = (Math.random() * total) | 0;
 
   const heights = [];
-  let risingCount = 0, fallingCount = 0, phase = 'Mixed';
-
   for (let k = 0; k < idxs.length; k++) {
     const i = idxs[k];
     const d = delays[i];
@@ -508,7 +511,6 @@ function calculateAverageHeightAndUpdateVolume() {
     let h;
     if (loopT < riseTime) {
       h = (spd * loopT) % UL;
-      risingCount++;
     } else {
       const fallProgress = (loopT - riseTime) / fallTime;
       const individualFallDelay = (d + 10.0) / 10.0;
@@ -517,46 +519,62 @@ function calculateAverageHeightAndUpdateVolume() {
       ));
       const maxHeightReached = (spd * riseTime) % UL;
       h = maxHeightReached * (1.0 - adjusted);
-      fallingCount++;
     }
     heights.push(h);
   }
-
-  if (risingCount > fallingCount * 2) phase = 'Rising';
-  else if (fallingCount > risingCount * 2) phase = 'Falling';
 
   if (heights.length > 0) {
     heights.sort((a, b) => a - b);
     const idx = Math.max(0, Math.min(heights.length - 1, Math.floor(0.90 * heights.length)));
     const p90Height = heights[idx];
-    updateMusicVolume(p90Height, UL, phase); // drive volume with P90
+    updateMusicVolume(p90Height, UL);
   }
 }
 
 // ===== Transitions =====
 function startLanding(){
-  if (currentMode === 'video' || isTransformed) {
-     location.reload();
-     return;
-   }
+  // SOFT reset (no reload) from either Video or Biome Dots
+  if (currentMode === 'video') {
+    returnToLandingFromVideo();
+    return;
+  }
+  if (isTransformed) {
+    // dots -> landing soft reset
+    isTransformed = false;
+    uniforms.globalOpacity.value = 1.0;
+
+    if (treeObject) treeObject.visible = true;
+    if (base) base.visible = true;
+
+    // camera back to tree
+    controls.target.set(0, 4, 0);
+    camera.position.set(0, 5, 10);
+    controls.autoRotate = true;
+    controls.minDistance = 5;
+    controls.maxDistance = 12.5;
+
+    reseedPetalDelaysAndSpeeds();
+    restoreLandingPositionsAndColors();
+  }
+
   currentMode = 'landing';
   isPlaying = true;
-  veil.style.display = "none";
+  if (veil) veil.style.display = "none";
   try { backgroundMusic.load(); } catch {}
   playBackgroundMusic();
 }
 
 function toBiomeDots(){
   if (isTransformed) return;
-  
-  // Fade out music while transitioning to dots (from Script 1)
+
+  // Fade out music while transitioning to dots
   fadeOutMusic(3000);
-  
-  // Hide tree and ground (preserving Script 1 tree object reference)
+
+  // Hide tree and ground
   if (treeObject) treeObject.visible = false;
   if (base) base.visible = false;
 
-  // Camera transition (same as Script 2)
+  // Camera transition
   controls.target.set(0, 0, 0);
   camera.position.set(0, 15, 50);
   camera.updateProjectionMatrix();
@@ -608,6 +626,8 @@ function disposeMaterial(mat){
 function disposeGeometry(geo){ geo?.dispose?.(); }
 
 function teardownThree() {
+  // prevent multiple resize listeners after re-init
+  try { window.removeEventListener('resize', onWindowResize); } catch(e){}
   try { controls?.dispose?.(); } catch(e){}
   try { renderer?.setAnimationLoop(null); } catch(e){}
   try {
@@ -624,28 +644,114 @@ function teardownThree() {
 }
 
 function showVideo(){
-  bgVideo.muted = false;
-  const reveal = () => { videoContainer.style.display = 'block'; };
-  
+  if (!bgVideo || !videoContainer) return;
+
+  // Mark mode & stop background music overlap
+  currentMode = 'video';
+  isVideoMode = true;
+  fadeOutMusic(1200);
+
+  // REVEAL container FIRST
+  videoContainer.style.display = 'block';
+
+  // Autoplay-safe ordering: muted + playsinline + load + play
+  bgVideo.muted = true;
+  bgVideo.setAttribute('playsinline', '');
+  try { bgVideo.load(); } catch(e){}
+
+  const playMuted = () => {
+    const p = bgVideo.play();
+    if (p && p.catch) p.catch(()=>{ /* keep visible; will retry anyway */ });
+  };
+
+  const tryUnmuteWithReplay = async () => {
+    try {
+      bgVideo.muted = false;
+      await bgVideo.play(); // some browsers need play after unmute
+    } catch (err) {
+      // policy blocked: stay muted, still plays
+      bgVideo.muted = true;
+    }
+  };
+
   if (bgVideo.readyState >= 2) {
-    reveal(); // already can paint
+    playMuted();
+    setTimeout(tryUnmuteWithReplay, 200);
   } else {
-    const onCanPlay = () => { bgVideo.removeEventListener('canplay', onCanPlay); reveal(); };
+    const onCanPlay = () => {
+      bgVideo.removeEventListener('canplay', onCanPlay);
+      playMuted();
+      setTimeout(tryUnmuteWithReplay, 200);
+    };
     bgVideo.addEventListener('canplay', onCanPlay);
   }
-  
-  const p = bgVideo.play();
-  if (p && p.catch) p.catch(() => { 
-    //tapToPlay.style.display = 'flex'; 
-    //reveal(); // still show the element so user can tap
-  });
 }
 
-/*tapToPlay.addEventListener('click', ()=>{
-  tapToPlay.style.display = 'none';
-  bgVideo.muted = false;
-  bgVideo.play();
-});*/
+function returnToLandingFromVideo() {
+  // Hide/reset video fully (prevents any overlap)
+  try {
+    if (bgVideo) {
+      bgVideo.pause();
+      bgVideo.muted = true;
+      bgVideo.currentTime = 0; // ensure next entry starts from beginning
+    }
+  } catch(e){}
+  if (videoContainer) videoContainer.style.display = 'none';
+  isVideoMode = false;
+
+  // If WebGL was torn down, rebuild scene then fall into Landing
+  if (!renderer || !scene) {
+    initScene();
+  }
+
+  // Reset Landing visuals
+  isTransformed = false;
+  uniforms.globalOpacity.value = 1.0;
+
+  if (treeObject) treeObject.visible = true;
+  if (base) base.visible = true;
+
+  // camera back to tree
+  controls.target.set(0, 4, 0);
+  camera.position.set(0, 5, 10);
+  controls.autoRotate = true;
+  controls.minDistance = 5;
+  controls.maxDistance = 12.5;
+
+  reseedPetalDelaysAndSpeeds();
+  restoreLandingPositionsAndColors();
+
+  currentMode = 'landing';
+  isPlaying = true;
+  if (veil) veil.style.display = "none";
+  try { backgroundMusic.load(); } catch {}
+  playBackgroundMusic();
+}
+
+/* Helpers for soft reset */
+function reseedPetalDelaysAndSpeeds() {
+  if (!pointsGeom) return;
+  const delays = pointsGeom.attributes.delay.array;
+  const speeds = pointsGeom.attributes.speed.array;
+  for (let i = 0; i < delays.length; i++) {
+    delays[i] = THREE.Math.randFloat(-10, 0);
+    let val = THREE.Math.randFloat(1, 2);
+    val = Math.random() < 0.25 ? 0 : val;
+    speeds[i*2+0] = Math.PI * val * 0.125;
+    speeds[i*2+1] = val;
+  }
+  pointsGeom.attributes.delay.needsUpdate = true;
+  pointsGeom.attributes.speed.needsUpdate = true;
+}
+function restoreLandingPositionsAndColors() {
+  if (!pointsGeom || !initialPositions || !initialColors) return;
+  const pos = pointsGeom.attributes.position.array;
+  const col = pointsGeom.attributes.color.array;
+  pos.set(initialPositions);
+  col.set(initialColors);
+  pointsGeom.attributes.position.needsUpdate = true;
+  pointsGeom.attributes.color.needsUpdate = true;
+}
 
 // ===== State poller (ETag) =====
 let lastETag = null;
@@ -672,7 +778,7 @@ async function tick(){
     return;
   }
 
-  // Only show video on show_result; ignore in_progress/countdown on TV2
+  // Only show video on show_result
   if (stage === 'show_result') {
     if (currentMode !== 'video') {
       toBiomeDots();
@@ -681,14 +787,13 @@ async function tick(){
           teardownThree();
           fadeOutMusic(1200);
           showVideo();
-          currentMode = 'video';
         });
       }, 5000);
     }
     return;
   }
 
-  // Any other stage (e.g., in_progress, countdown) → stay/return to landing
+  // Any other stage → stay/return to landing
   if (currentMode !== 'landing') startLanding();
 }
 
@@ -696,16 +801,16 @@ async function tick(){
 (function main(){
   initScene();
 
-  // Enter landing immediately (music may require user gesture; we add a one-shot handler)
+  // Enter landing immediately
   currentMode = 'landing';
   isPlaying = true;
-  veil.style.display = "none";
+  if (veil) veil.style.display = "none";
   try { backgroundMusic.load(); } catch {}
   playBackgroundMusic();
   
-  // One-shot audio resume handler for mobile browsers
+  // One-shot audio resume handler for mobile browsers, but not during video
   const resumeAudioOnce = ()=>{
-    if (backgroundMusic.paused){
+    if (!isVideoMode && backgroundMusic.paused){
       try { backgroundMusic.play().catch(()=>{}); } catch {}
     }
     document.removeEventListener('pointerdown', resumeAudioOnce, { capture:true });
