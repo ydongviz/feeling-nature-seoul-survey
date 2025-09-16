@@ -568,7 +568,7 @@ function toBiomeDots(){
   if (isTransformed) return;
 
   // Fade out music while transitioning to dots
-  fadeOutMusic(3000);
+  fadeOutMusic(1500);
 
   // Hide tree and ground
   if (treeObject) treeObject.visible = false;
@@ -783,12 +783,12 @@ async function tick(){
     if (currentMode !== 'video') {
       toBiomeDots();
       setTimeout(() => {
-        fadeDots(2000, () => {
+        fadeDots(800, () => {
           teardownThree();
           fadeOutMusic(1200);
           showVideo();
         });
-      }, 5000);
+      }, 2000);
     }
     return;
   }
