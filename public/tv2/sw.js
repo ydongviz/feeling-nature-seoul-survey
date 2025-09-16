@@ -1,4 +1,4 @@
-const CACHE = 'tv2-cache-v7';  // <= bump this when you change assets
+const CACHE = 'tv2-cache-v8';  // <= bump this when you change assets
 const ASSETS = [
   '/tv2/',
   '/tv2/index.html',
