@@ -264,6 +264,8 @@ function initScene() {
     depthWrite: false   // prevent halo/outline from depth conflicts
   });
 
+  pointsMat.extensions = { derivatives: true };
+
   pointsMat.onBeforeCompile = shader => {
     shader.uniforms.time           = uniforms.time;
     shader.uniforms.upperLimit     = uniforms.upperLimit;
