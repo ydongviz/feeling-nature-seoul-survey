@@ -1,106 +1,67 @@
+// ===== Imports =====
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.115.0/build/three.module.js';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/loaders/OBJLoader.js';
 import { MeshSurfaceSampler } from 'https://cdn.jsdelivr.net/npm/three@0.115.0/examples/jsm/math/MeshSurfaceSampler.js';
 
-/* ---------- DOM Refs ---------- */
+// ===== Config (state poller) =====
+const S3_STATE_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
+const POLL_MS = 1200;
+
+// ===== DOM =====
 const backgroundMusic = document.getElementById('backgroundMusic');
-const landingButton = document.getElementById('landingButton');
-const showVideoButton = document.getElementById('showVideoButton');
 const veil = document.getElementById('veil');
 const percentage = document.getElementById('percentage');
-const instructions = document.getElementById('instructions');
-const volumeValue = document.getElementById('volumeValue');
-const heightValue = document.getElementById('heightValue');
-const phaseValue = document.getElementById('phaseValue');
 const videoContainer = document.getElementById('videoContainer');
 const bgVideo = document.getElementById('bgVideo');
 const tapToPlay = document.getElementById('tapToPlay');
 
-/* ---------- Remote state (S3 poller) ---------- */
-const STATE_URL = 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json';
-let pollTimer = null;
-let lastETag = null;
+// Optional debug HUD (?debug=1)
+const debug = new URLSearchParams(location.search).get('debug') === '1';
+const volumeValue = document.getElementById('volumeValue');
+const heightValue = document.getElementById('heightValue');
+const phaseValue = document.getElementById('phaseValue');
+if (debug) document.getElementById('volumeDebug')?.removeAttribute('hidden');
 
-/* ---------- State ---------- */
-let isTransformed = false;
-let isTransitioning = false;
+// ===== State =====
+let currentMode = 'landing';      // 'landing' | 'video'
+let isTransformed = false;        // biome-dots phase flag
 let isPlaying = false;
-let currentMode = 'landing'; // start on landing
-let didPrimeAudio = false;
 
-// Dynamic Music Volume System — P90-driven
+// Music dynamics - from Script 1
 let currentVolume = 1.0;
 let targetVolume = 1.0;
-const baseVolume = 1.0;        // FULL volume at peak
-const volumeTransitionSpeed = 0.02;
+const baseVolume = 1.0;
+const volumeTransitionSpeed = 0.02; // smooth transitions
 
-// Preload audio & prime on first user gesture (browser policies)
-backgroundMusic?.load();
-function primeAudioOnce() {
-  if (didPrimeAudio || !backgroundMusic) return;
-  didPrimeAudio = true;
-  backgroundMusic.volume = currentVolume;
-  backgroundMusic.play().catch(()=>{});
-}
-document.addEventListener('pointerdown', primeAudioOnce, { once: true });
-
-function playBackgroundMusic() {
-  if (!backgroundMusic) return;
-  backgroundMusic.currentTime = 4;
-  backgroundMusic.volume = currentVolume;
-  const p = backgroundMusic.play();
-  if (p && p.catch) p.catch(()=>{});
-}
-
-function updateMusicVolume(p90Height, maxHeight, phase) {
-  // Map P90 height to [0..1] volume target
-  let heightRatio = Math.max(0, Math.min(1, p90Height / maxHeight));
-  if (heightRatio > 0.98) heightRatio = 1.0;
-  targetVolume = Math.min(1.0, heightRatio * baseVolume);
-
-  // Smooth transitions
-  if (Math.abs(currentVolume - targetVolume) > 0.005) {
-    if (currentVolume < targetVolume) currentVolume = Math.min(targetVolume, currentVolume + volumeTransitionSpeed);
-    else currentVolume = Math.max(targetVolume, currentVolume - volumeTransitionSpeed);
-    if (!backgroundMusic.paused) backgroundMusic.volume = currentVolume;
-  }
-  // HUD
-  if (volumeValue) volumeValue.textContent = currentVolume.toFixed(3);
-  if (heightValue) heightValue.textContent = p90Height.toFixed(2);
-  if (phaseValue) phaseValue.textContent = phase;
-}
-
-function fadeOutMusic(ms = 1500) {
-  if (!backgroundMusic || backgroundMusic.paused) return;
-  const steps = Math.max(1, Math.floor(ms / 50));
-  const v0 = backgroundMusic.volume;
-  let i = 0;
-  const it = setInterval(()=>{
-    i++;
-    const v = v0 * (1 - i/steps);
-    backgroundMusic.volume = Math.max(0, v);
-    if (i >= steps) { clearInterval(it); backgroundMusic.pause(); }
-  }, 50);
-}
-
-/* ---------- THREE Setup ---------- */
+// ===== THREE globals =====
 let scene, camera, renderer, controls;
 let baseGeom, baseMat, base;
-let uniformsTree = { time: { value: 0 } };
 let treeObject = null;
+let pointsGeom, pointsMat, circleTexture;
 
-// Points (petals / dots)
+// Complete uniforms from Script 1 (including tree uniforms)
+let uniformsTree = { time: { value: 0 } };
+const uniforms = {
+  time: { value: 0 },
+  upperLimit: { value: 10 },
+  upperRatio: { value: 2.1 },
+  spiralRadius: { value: 1.8 },
+  spiralTurns: { value: 1.3 },
+  tex2020: { value: null },
+  azimuth: { value: 0 },
+  transformProgress: { value: 0 },
+  isTransformed: { value: 0 },
+  globalOpacity: { value: 1.0 }
+};
+
+// Field configuration
 const r = 4.8;
 const MAX_POINTS = 30000;
 let pointsCount = 0;
-let pointsGeom, pointsMat, circleTexture;
 let points = [], delay = [], speed = [], color = [];
 
-// Keep original landing positions/colors to allow SOFT RESET
-let initialPositions = null;
-let initialColors = null;
-
+// Biome setup
 const biomeColors = {
   "Tundra": new THREE.Color("#90D2C8"),
   "Mediterranean Forest": new THREE.Color("#BF6021"),
@@ -114,20 +75,7 @@ const biomeColors = {
 const biomeNames = Object.keys(biomeColors);
 let targetPositions = [], targetColors = [];
 
-// Shared uniforms for shader
-const uniforms = {
-  time: { value: 0 },
-  upperLimit: { value: 10 },
-  upperRatio: { value: 2.1 },
-  spiralRadius: { value: 1.8 },
-  spiralTurns: { value: 1.3 },
-  tex2020: { value: null },   // SEOUL texture
-  azimuth: { value: 0 },
-  transformProgress: { value: 0 },
-  isTransformed: { value: 0 },
-  globalOpacity: { value: 1.0 } // fade dots → transparent
-};
-
+// ===== Utility functions =====
 function createCircleTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 32; canvas.height = 32;
@@ -160,6 +108,49 @@ function buildSeoulTexture(){
   return new THREE.CanvasTexture(cnvs);
 }
 
+// ===== Music functions =====
+function playBackgroundMusic() {
+  if (!backgroundMusic) return;
+  backgroundMusic.currentTime = 4; // tiny lead-in skip
+  backgroundMusic.volume = currentVolume;
+  const p = backgroundMusic.play();
+  if (p && p.catch) p.catch(()=>{});
+}
+
+function fadeOutMusic(ms = 1500) {
+  if (!backgroundMusic || backgroundMusic.paused) return;
+  const steps = Math.max(1, Math.floor(ms / 50));
+  const v0 = backgroundMusic.volume;
+  let i = 0;
+  const it = setInterval(()=>{
+    i++;
+    const v = v0 * (1 - i/steps);
+    backgroundMusic.volume = Math.max(0, v);
+    if (i >= steps) { clearInterval(it); backgroundMusic.pause(); }
+  }, 50);
+}
+
+// Dynamic Volume Control — driven by height metric (from Script 1)
+function updateMusicVolume(avgHeight, maxHeight, phase) {
+  let heightRatio = Math.max(0, Math.min(1, avgHeight / maxHeight));
+  if (heightRatio > 0.98) heightRatio = 1.0;        // snap near-peak to full
+  targetVolume = Math.min(1.0, heightRatio * baseVolume);
+
+  if (Math.abs(currentVolume - targetVolume) > 0.005) {
+    if (currentVolume < targetVolume) currentVolume = Math.min(targetVolume, currentVolume + volumeTransitionSpeed);
+    else currentVolume = Math.max(targetVolume, currentVolume - volumeTransitionSpeed);
+    if (!backgroundMusic.paused) backgroundMusic.volume = currentVolume;
+  }
+  
+  // Debug HUD
+  if (debug) {
+    volumeValue.textContent = currentVolume.toFixed(3);
+    heightValue.textContent = avgHeight.toFixed(2);
+    phaseValue.textContent = phase;
+  }
+}
+
+// ===== Scene initialization =====
 function initScene() {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
@@ -186,7 +177,6 @@ function initScene() {
   controls.target.set(0, 4, 0);
   controls.update();
 
-  // Ground — original vignette mix to background color
   baseGeom = new THREE.CircleBufferGeometry(6, 64);
   baseGeom.rotateX(-Math.PI * 0.5);
   baseMat = new THREE.MeshBasicMaterial({ color: 0x5A4218 });
@@ -207,7 +197,7 @@ function initScene() {
   base.position.y = -0.15;
   scene.add(base);
 
-  // OBJ tree + shimmering points overlay
+  // Load OBJ tree + animated points overlay
   const loader = new OBJLoader();
   loader.load('https://threejs.org/examples/models/obj/tree.obj', (object)=>{
     const mat = new THREE.MeshBasicMaterial({ color: 0x4A3C28, wireframe: false, transparent: true, opacity: 0.75 });
@@ -231,6 +221,7 @@ function initScene() {
     );
     treePoints.geometry.setAttribute("angle", new THREE.BufferAttribute(new Float32Array(angle), 1));
     treePoints.geometry.setAttribute("idx", new THREE.BufferAttribute(new Float32Array(idx), 1));
+    
     treePoints.material.onBeforeCompile = shader => {
       shader.uniforms.time = uniformsTree.time;
       shader.vertexShader = `uniform float time; attribute float angle; attribute float idx; varying float vAngle;` + shader.vertexShader;
@@ -256,12 +247,12 @@ function initScene() {
     object.scale.setScalar(5);
     scene.add(object);
     treeObject = object;
-    percentage && (percentage.style.display = "none");
+    percentage.style.display = "none";
   }, (xhr)=>{
-    if (xhr.lengthComputable && percentage) percentage.innerText = (xhr.loaded / xhr.total * 100).toFixed(0) + '%';
+    if (xhr.lengthComputable) percentage.innerText = (xhr.loaded / xhr.total * 100).toFixed(0) + '%';
   });
 
-  // Petals / points buffers
+  // Particle generation
   const c = new THREE.Color();
   while (pointsCount < MAX_POINTS) {
     const vec = new THREE.Vector3(THREE.Math.randFloat(-r, r), 0, THREE.Math.randFloat(-r, r));
@@ -291,13 +282,10 @@ function initScene() {
   pointsGeom.setAttribute("delay", new THREE.BufferAttribute(new Float32Array(delay), 1));
   pointsGeom.setAttribute("speed", new THREE.BufferAttribute(new Float32Array(speed), 2));
 
-  // Store initial landing arrays for SOFT RESET
-  initialPositions = new Float32Array(pointsGeom.attributes.position.array);
-  initialColors = new Float32Array(pointsGeom.attributes.color.array);
-
-  // SEOUL text texture and circle sprite
+  // Build SEOUL text texture for red-petals effect
   const texSeoul = buildSeoulTexture();
   uniforms.tex2020.value = texSeoul;
+
   circleTexture = createCircleTexture();
 
   pointsMat = new THREE.PointsMaterial({ size: 0.12, vertexColors: true, transparent: true, opacity: 0.9 });
@@ -311,7 +299,7 @@ function initScene() {
     shader.uniforms.azimuth = uniforms.azimuth;
     shader.uniforms.transformProgress = uniforms.transformProgress;
     shader.uniforms.isTransformed = uniforms.isTransformed;
-    shader.uniforms.globalOpacity = uniforms.globalOpacity; // fade control
+    shader.uniforms.globalOpacity = uniforms.globalOpacity;
 
     shader.vertexShader = `
       uniform float time;
@@ -333,7 +321,7 @@ function initScene() {
 
     shader.vertexShader = shader.vertexShader.replace(`#include <begin_vertex>`, `#include <begin_vertex>
       if (isTransformed > 0.5) {
-        // Biome dots floating waves — lively but light
+        // Biome dots floating waves
         float waveSpeed1 = 0.3 + (position.x + position.z) * 0.02; 
         float wavePhase1 = (position.x * 1.2 + position.z * 0.9);   
         float wave1 = sin(time * waveSpeed1 + wavePhase1) * 0.8;
@@ -395,14 +383,13 @@ function initScene() {
         transformed.x += cos(spiralA) * sRadius;
         transformed.z += sin(spiralA) * -sRadius;
 
-        // SEOUL letter sampling window
+        // --- SEOUL letter sampling window (restored) ---
         vec3 efcPos = vec3(0, 6, 0.5);
         vec3 efcClamp = vec3(2.0, 0.9, 0.25) * 3.5;
         vec3 efcMin = efcPos - efcClamp;
         vec3 efcMax = efcPos + efcClamp;
         vec3 UVTransformed = vec3(transformed);
-        mat2 R = rot(azimuth);
-        UVTransformed.xz *= R;
+        UVTransformed.xz *= rot(azimuth);
         vec3 efcUV = (UVTransformed - efcMin) / (efcMax - efcMin);
         float isEffect = texture2D(tex2020, efcUV.xy).r;
         isEffect *= (efcUV.z > 0. && efcUV.z < 1.) ? 1. : 0.;
@@ -461,166 +448,45 @@ function initScene() {
   const p = new THREE.Points(pointsGeom, pointsMat);
   scene.add(p);
 
-  // Start in Landing visually and sonically
-  startLandingExperience();
   sequence(); // begin render loop
-  startStatePolling(); // begin S3 polling
 }
 
-/* ---------- Landing / Video flows ---------- */
-function onDocumentClick(){ /* disabled */ return; }
-
-function startLandingExperience() {
-  // Ensure landing flags
-  currentMode = 'landing';
-  isPlaying = true;
-  isTransformed = false;
-  uniforms.globalOpacity.value = 1.0;
-  veil && (veil.style.display = "none");
-
-  // Show base & tree
-  if (treeObject) treeObject.visible = true;
-  if (base) base.visible = true;
-
-  // Camera/controls
-  controls.target.set(0, 4, 0);
-  camera.position.set(0, 5, 10);
-  controls.autoRotate = true;
-  controls.minDistance = 5;
-  controls.maxDistance = 12.5;
-
-  // Restart audio if needed
-  playBackgroundMusic();
-}
-
-// (b) Video flow: dots 5s → fade dots → teardown → show video
-function startShowVideo() {
-  if (currentMode === 'video') return;
-  currentMode = 'video';
-  if (!isPlaying) { isPlaying = true; }
-
-  instructions && (instructions.textContent = 'Preparing video… dots will fade out.');
-
-  if (!isTransformed) transformToBiomeDots();
-
-  setTimeout(() => {
-    fadeDotsToTransparent(2000, () => {
-      teardownThree();
-      fadeOutMusic(1500);
-      showFullScreenVideo();
-    });
-  }, 5000);
-}
-
-function transformToBiomeDots() {
-  if (isTransformed || isTransitioning) return;
-  isTransitioning = true;
-
-  fadeOutMusic(3000);
-
-  if (treeObject) treeObject.visible = false;
-  if (base) base.visible = false;
-
-  controls.target.set(0, 0, 0);
-  camera.position.set(0, 15, 50);
+function onWindowResize() {
+  if (!camera || !renderer) return;
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  controls.autoRotate = false;
-  controls.minDistance = 20;
-  controls.maxDistance = 80;
-
-  const positions = pointsGeom.attributes.position.array;
-  const colors = pointsGeom.attributes.color.array;
-  for (let i = 0; i < targetPositions.length; i++) {
-    const target = targetPositions[i];
-    const targetColor = targetColors[i];
-    positions[i * 3] = target.x;
-    positions[i * 3 + 1] = target.y;
-    positions[i * 3 + 2] = target.z;
-    colors[i * 3] = targetColor[0];
-    colors[i * 3 + 1] = targetColor[1];
-    colors[i * 3 + 2] = targetColor[2];
-  }
-  pointsGeom.attributes.position.needsUpdate = true;
-  pointsGeom.attributes.color.needsUpdate = true;
-
-  uniforms.isTransformed.value = 1.0;
-  if (!circleTexture) circleTexture = createCircleTexture();
-  pointsMat.map = circleTexture;
-  pointsMat.needsUpdate = true;
-
-  isTransformed = true;
-  isTransitioning = false;
-  instructions && (instructions.textContent = 'Biome Dots are floating…');
+  renderer.setSize(w, h);
 }
 
-// Fade helper
-function fadeDotsToTransparent(duration = 2000, onDone) {
-  const start = performance.now();
-  function step(now){
-    const t = Math.min(1, (now - start) / duration);
-    uniforms.globalOpacity.value = 1 - t;
-    if (t < 1) requestAnimationFrame(step);
-    else { uniforms.globalOpacity.value = 0; if (typeof onDone === 'function') onDone(); }
-  }
-  requestAnimationFrame(step);
-}
-
-function showFullScreenVideo() {
-  if (!bgVideo || !videoContainer) return;
-  bgVideo.muted = false;
-
-  const reveal = () => { videoContainer.style.display = 'block'; };
-
-  if (bgVideo.readyState >= 2) {
-    reveal();
-  } else {
-    const onCanPlay = () => { bgVideo.removeEventListener('canplay', onCanPlay); reveal(); };
-    bgVideo.addEventListener('canplay', onCanPlay);
-  }
-
-  const p = bgVideo.play();
-  if (p && p.catch) p.catch(() => { 
-    if (tapToPlay) tapToPlay.style.display = 'flex'; 
-    reveal();
-  });
-}
-
-// Tap-to-play fallback
-tapToPlay?.addEventListener('click', ()=>{
-  tapToPlay.style.display = 'none';
-  bgVideo.muted = false;
-  bgVideo.play();
-});
-
-/* ---------- Render Loop & Volume calc ---------- */
+// ===== Render Loop =====
 const clock = new THREE.Clock();
 let t = 0;
 function sequence() {
   renderer.setAnimationLoop(()=>{
     t += clock.getDelta() * 0.5;
-    if (uniforms) {
-      uniforms.time.value = t;
-      if (controls) uniforms.azimuth.value = controls.getAzimuthalAngle();
-      uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0;
-    }
-    if (uniformsTree) uniformsTree.time.value = t * 5;
+    uniforms.time.value = t;
+    uniforms.azimuth.value = controls.getAzimuthalAngle();
+    uniforms.isTransformed.value = isTransformed ? 1.0 : 0.0;
+    uniformsTree.time.value = t * 5; // COMPLETE tree animation timing from Script 1
 
-    // Update music volume during landing
-    if (pointsGeom && !isTransformed && isPlaying && currentMode === 'landing') {
-      calculateP90AndUpdateVolume();
+    // Continuous loop: update music volume during landing
+    if (!isTransformed && isPlaying && currentMode === 'landing') {
+      calculateAverageHeightAndUpdateVolume();
     }
 
-    controls?.update();
-    renderer?.render(scene, camera);
+    controls.update();
+    renderer.render(scene, camera);
   });
 }
 
-function calculateP90AndUpdateVolume() {
+// Height calculation
+function calculateAverageHeightAndUpdateVolume() {
   const delays = pointsGeom.attributes.delay.array;
   const speeds = pointsGeom.attributes.speed.array;
   const UL = uniforms.upperLimit.value;
 
-  // Sample-based P90
+  // Sample-based P90 for performance (identical behavior, cheaper)
   const SAMPLE = 2000;
   const total = delays.length;
   const idxs = new Uint32Array(Math.min(SAMPLE, total));
@@ -663,110 +529,77 @@ function calculateP90AndUpdateVolume() {
     heights.sort((a, b) => a - b);
     const idx = Math.max(0, Math.min(heights.length - 1, Math.floor(0.90 * heights.length)));
     const p90Height = heights[idx];
-    updateMusicVolume(p90Height, UL, phase);
+    updateMusicVolume(p90Height, UL, phase); // drive volume with P90
   }
 }
 
-function onWindowResize() {
-  if (!camera || !renderer) return;
-  const w = window.innerWidth, h = window.innerHeight;
-  camera.aspect = w / h;
+// ===== Transitions =====
+function startLanding(){
+  if (currentMode === 'video' || isTransformed) {
+     location.reload();
+     return;
+   }
+  currentMode = 'landing';
+  isPlaying = true;
+  veil.style.display = "none";
+  try { backgroundMusic.load(); } catch {}
+  playBackgroundMusic();
+}
+
+function toBiomeDots(){
+  if (isTransformed) return;
+  
+  // Fade out music while transitioning to dots (from Script 1)
+  fadeOutMusic(3000);
+  
+  // Hide tree and ground (preserving Script 1 tree object reference)
+  if (treeObject) treeObject.visible = false;
+  if (base) base.visible = false;
+
+  // Camera transition (same as Script 2)
+  controls.target.set(0, 0, 0);
+  camera.position.set(0, 15, 50);
   camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
-}
+  controls.autoRotate = false;
+  controls.minDistance = 20;
+  controls.maxDistance = 80;
 
-/* ---------- Soft reset helpers ---------- */
-
-// When leaving Video → Landing without full page reload
-function returnToLandingFromVideo() {
-  // Hide video UI and pause
-  if (videoContainer) videoContainer.style.display = 'none';
-  try { bgVideo?.pause?.(); } catch(e){}
-  try { bgVideo.currentTime = 0; } catch(e){}
-
-  // Rebuild scene if it was torn down
-  if (!renderer || !scene) {
-    initScene();
-    return; // initScene will start landing & polling
+  // Transform to biome positions and colors
+  const positions = pointsGeom.attributes.position.array;
+  const colors = pointsGeom.attributes.color.array;
+  for (let i = 0; i < targetPositions.length; i++) {
+    const target = targetPositions[i];
+    const targetColor = targetColors[i];
+    positions[i * 3] = target.x;
+    positions[i * 3 + 1] = target.y;
+    positions[i * 3 + 2] = target.z;
+    colors[i * 3] = targetColor[0];
+    colors[i * 3 + 1] = targetColor[1];
+    colors[i * 3 + 2] = targetColor[2];
   }
-
-  // Reset flags
-  isTransformed = false;
-  uniforms.globalOpacity.value = 1.0;
-
-  // Restore landing camera/controls
-  controls.target.set(0, 4, 0);
-  camera.position.set(0, 5, 10);
-  controls.autoRotate = true;
-  controls.minDistance = 5;
-  controls.maxDistance = 12.5;
-
-  // Show base & tree
-  if (treeObject) treeObject.visible = true;
-  if (base) base.visible = true;
-
-  // Reset petals to fresh rising
-  reseedPetalDelaysAndSpeeds();
-  restoreLandingPositionsAndColors();
-
-  currentMode = 'landing';
-  isPlaying = true;
-  playBackgroundMusic();
-}
-
-// When on Landing (but in dots mode) → fresh petals without reload
-function softResetLandingWithinScene() {
-  isTransformed = false;
-  uniforms.globalOpacity.value = 1.0;
-
-  controls.target.set(0, 4, 0);
-  camera.position.set(0, 5, 10);
-  controls.autoRotate = true;
-  controls.minDistance = 5;
-  controls.maxDistance = 12.5;
-
-  if (treeObject) treeObject.visible = true;
-  if (base) base.visible = true;
-
-  reseedPetalDelaysAndSpeeds();
-  restoreLandingPositionsAndColors();
-
-  currentMode = 'landing';
-  isPlaying = true;
-  playBackgroundMusic();
-}
-
-// Re-seed delay/speed so petals rise again in stagger
-function reseedPetalDelaysAndSpeeds() {
-  if (!pointsGeom) return;
-  const delays = pointsGeom.attributes.delay.array;
-  const speeds = pointsGeom.attributes.speed.array;
-  for (let i = 0; i < delays.length; i++) {
-    delays[i] = THREE.Math.randFloat(-10, 0);
-    let val = THREE.Math.randFloat(1, 2);
-    val = Math.random() < 0.25 ? 0 : val;
-    speeds[i * 2 + 0] = Math.PI * val * 0.125;
-    speeds[i * 2 + 1] = val;
-  }
-  pointsGeom.attributes.delay.needsUpdate = true;
-  pointsGeom.attributes.speed.needsUpdate = true;
-}
-
-// Put positions/colors back to original landing arrays
-function restoreLandingPositionsAndColors() {
-  if (!pointsGeom || !initialPositions || !initialColors) return;
-  const pos = pointsGeom.attributes.position.array;
-  const col = pointsGeom.attributes.color.array;
-  pos.set(initialPositions);
-  col.set(initialColors);
   pointsGeom.attributes.position.needsUpdate = true;
   pointsGeom.attributes.color.needsUpdate = true;
-  // Remove sprite map so we return to petal shader look
-  pointsMat.map = null;
+
+  uniforms.isTransformed.value = 1.0;
+  if (!circleTexture) circleTexture = createCircleTexture();
+  pointsMat.map = circleTexture;
   pointsMat.needsUpdate = true;
+
+  isTransformed = true;
 }
 
-/* ---------- Clean-up ---------- */
+function fadeDots(ms = 2000, done){
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1, (now - start) / ms);
+    uniforms.globalOpacity.value = 1 - t;
+    if (t < 1) requestAnimationFrame(step);
+    else { uniforms.globalOpacity.value = 0; if (typeof done === 'function') done(); }
+  }
+  requestAnimationFrame(step);
+}
+
+// Cleanup
 function disposeMaterial(mat){
   if (!mat) return;
   if (mat.map) { mat.map.dispose?.(); }
@@ -775,7 +608,6 @@ function disposeMaterial(mat){
 function disposeGeometry(geo){ geo?.dispose?.(); }
 
 function teardownThree() {
-  document.removeEventListener('click', onDocumentClick);
   try { controls?.dispose?.(); } catch(e){}
   try { renderer?.setAnimationLoop(null); } catch(e){}
   try {
@@ -791,69 +623,95 @@ function teardownThree() {
   scene = camera = renderer = controls = null;
 }
 
-/* ---------- State polling ---------- */
-function startStatePolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  // Run immediately, then at interval
-  pollState();
-  pollTimer = setInterval(pollState, 1200);
-}
-
-async function pollState() {
-  try {
-    const headers = lastETag ? { 'If-None-Match': lastETag } : {};
-    const res = await fetch(STATE_URL, { cache: 'no-store', headers });
-    if (res.status === 304) return; // nothing changed
-    if (!res.ok) throw new Error('Bad status: ' + res.status);
-    const et = res.headers.get('ETag');
-    if (et) lastETag = et;
-    const data = await res.json();
-
-    // Determine stage; default to landing; handle expiration
-    let stage = data?.stage || 'landing';
-    const expiresAt = data?.expires_at;
-    if (expiresAt) {
-      const expMs = Date.parse(expiresAt);
-      if (!isNaN(expMs) && Date.now() > expMs) stage = 'landing';
-    }
-
-    handleStage(stage);
-  } catch (e) {
-    // On error, stay in landing for safety
-    handleStage('landing');
+function showVideo(){
+  bgVideo.muted = false;
+  const reveal = () => { videoContainer.style.display = 'block'; };
+  
+  if (bgVideo.readyState >= 2) {
+    reveal(); // already can paint
+  } else {
+    const onCanPlay = () => { bgVideo.removeEventListener('canplay', onCanPlay); reveal(); };
+    bgVideo.addEventListener('canplay', onCanPlay);
   }
+  
+  const p = bgVideo.play();
+  if (p && p.catch) p.catch(() => { 
+    tapToPlay.style.display = 'flex'; 
+    reveal(); // still show the element so user can tap
+  });
 }
 
-function handleStage(stage) {
-  // Map stages to kiosk modes
+tapToPlay.addEventListener('click', ()=>{
+  tapToPlay.style.display = 'none';
+  bgVideo.muted = false;
+  bgVideo.play();
+});
+
+// ===== State poller (ETag) =====
+let lastETag = null;
+function isExpired(s){ const e = Date.parse(s?.expires_at||''); return Number.isFinite(e) && Date.now() > e; }
+async function fetchState(){
+  try{
+    const headers = {}; if (lastETag) headers['If-None-Match']=lastETag;
+    const res = await fetch(S3_STATE_URL,{ headers, cache:'no-cache' });
+    if (res.status===304) return null;
+    if (!res.ok) throw new Error('state '+res.status);
+    lastETag = res.headers.get('ETag'); return await res.json();
+  }catch(e){ return null; }
+}
+
+async function tick(){
+  const s = await fetchState(); 
+  if (!s) return;
+
+  const stage = (s.stage || s.state || 'idle');
+
+  // If state is expired or explicitly landing/idle → ensure landing
+  if (isExpired(s) || stage === 'landing' || stage === 'idle') {
+    startLanding();
+    return;
+  }
+
+  // Only show video on show_result; ignore in_progress/countdown on TV2
   if (stage === 'show_result') {
     if (currentMode !== 'video') {
-      startShowVideo();
+      toBiomeDots();
+      setTimeout(() => {
+        fadeDots(2000, () => {
+          teardownThree();
+          fadeOutMusic(1200);
+          showVideo();
+          currentMode = 'video';
+        });
+      }, 5000);
     }
-  } else {
-    // landing / idle / in_progress / countdown / expired → Landing
-    if (currentMode === 'video') {
-      returnToLandingFromVideo();
-    } else if (isTransformed) {
-      softResetLandingWithinScene();
-    } else if (!isPlaying) {
-      startLandingExperience();
-    }
+    return;
   }
+
+  // Any other stage (e.g., in_progress, countdown) → stay/return to landing
+  if (currentMode !== 'landing') startLanding();
 }
 
-/* ---------- Wire up buttons ---------- */
-landingButton?.addEventListener('click', (e)=>{
-  e.stopPropagation();
-  // Manual override: force landing path
-  if (currentMode === 'video') returnToLandingFromVideo();
-  else if (isTransformed) softResetLandingWithinScene();
-  else startLandingExperience();
-});
-showVideoButton?.addEventListener('click', (e)=>{
-  e.stopPropagation();
-  startShowVideo();
-});
+// ===== Boot =====
+(function main(){
+  initScene();
 
-// Kick off THREE scene so petals are visible and polling starts
-initScene();
+  // Enter landing immediately (music may require user gesture; we add a one-shot handler)
+  currentMode = 'landing';
+  isPlaying = true;
+  veil.style.display = "none";
+  try { backgroundMusic.load(); } catch {}
+  playBackgroundMusic();
+  
+  // One-shot audio resume handler for mobile browsers
+  const resumeAudioOnce = ()=>{
+    if (backgroundMusic.paused){
+      try { backgroundMusic.play().catch(()=>{}); } catch {}
+    }
+    document.removeEventListener('pointerdown', resumeAudioOnce, { capture:true });
+  };
+  document.addEventListener('pointerdown', resumeAudioOnce, { capture:true, once:true });
+
+  // Start polling for state changes
+  setInterval(tick, POLL_MS);
+})();

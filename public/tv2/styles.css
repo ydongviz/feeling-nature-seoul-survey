@@ -21,9 +21,6 @@ canvas {
   transform: translate3d(0, 0, 0);
 }
 
-/* Hide the old top-left manual buttons (no longer used) */
-#buttonContainer, .control-button { display: none !important; }
-
 /* Always-visible controls at top-left (a) */
 #buttonContainer {
   position: fixed;
