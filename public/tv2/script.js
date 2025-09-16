@@ -636,8 +636,8 @@ function showVideo(){
   
   const p = bgVideo.play();
   if (p && p.catch) p.catch(() => { 
-    tapToPlay.style.display = 'flex'; 
-    reveal(); // still show the element so user can tap
+    //tapToPlay.style.display = 'flex'; 
+    //reveal(); // still show the element so user can tap
   });
 }
 
