@@ -1264,8 +1264,9 @@ function updateTopElements(top3Names) {
       'River': 'River',
       'Lake': 'Lake',
       'Mountain': 'Mount',
-      'Swimming': 'Pool',
-      'Fireplace': 'Fire'
+      'mountain': 'Mount',
+      'swimming': 'Pool',
+      'fireplace': 'Fire'
     };
     const shorten = (s) => {
       if (SHORT[s]) return SHORT[s];
