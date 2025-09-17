@@ -28,6 +28,7 @@ const baseVolume = 1.0;
 const volumeTransitionSpeed = 0.02; // smooth transitions
 let didPrimeAudio = false;
 let audioUnlocked = false; 
+let pendingVideoStart = false;
 
 // ===== THREE globals =====
 let scene, camera, renderer, controls;
@@ -177,6 +178,9 @@ function initScene() {
   renderer.domElement.addEventListener('webglcontextrestored', () => {
   console.info('[tv2] WebGL context restored — rebuilding scene');
   // Rebuild everything cleanly
+  try { window.removeEventListener('resize', onWindowResize); } catch {}
+  try { renderer.setAnimationLoop(null); renderer.dispose?.(); } catch {}
+  
   try { renderer.domElement.remove(); } catch {}
   scene = camera = renderer = controls = null;
   initScene();          // restart landing visuals
@@ -835,7 +839,8 @@ async function tick(){
 
   // Only show video on show_result
   if (stage === 'show_result') {
-    if (currentMode !== 'video') {
+      if (document.hidden) { pendingVideoStart = true; return; }
+      if (currentMode !== 'video') {
       toBiomeDots();
       setTimeout(() => {
         fadeDots(800, () => {
@@ -875,3 +880,26 @@ async function tick(){
   // Start polling for state changes
   setInterval(tick, POLL_MS);
 })();
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    try { renderer?.setAnimationLoop(null); } catch {}
+    try { backgroundMusic?.pause(); } catch {}
+    return;
+  }
+  if (!renderer || !scene) initScene(); else sequence();
+  if (pendingVideoStart) {
+    pendingVideoStart = false;
+    toBiomeDots();
+    setTimeout(() => {
+      fadeDots(600, () => {
+        teardownThree();
+        fadeOutMusic(800);
+        showVideo();
+      });
+    }, 1000);
+  }
+  if (currentMode === 'video' && bgVideo?.paused) {
+    try { bgVideo.play().catch(()=>{}); } catch {}
+  }
+});

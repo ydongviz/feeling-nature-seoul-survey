@@ -1252,21 +1252,20 @@ function updateTopElements(top3Names) {
   
     // a short name mapper; fallback trims long names neatly
     const SHORT = {
-      'Plant/Flora': 'Plant',
-      'Animal/Fauna': 'Animal',
-      'Living Being': 'Living',
-      'Greenscape': 'Green',
-      'Waterscape': 'Water',
-      'Landscape': 'Land',
-      'Waterfall': 'Fall',
-      'Palm Tree': 'Palmtree',
-      'PalmTree': 'Palmtree',
-      'River': 'River',
-      'Lake': 'Lake',
-      'Mountain': 'Mount',
-      'mountain': 'Mount',
-      'swimming': 'Pool',
-      'fireplace': 'Fire'
+      'plant/flora': 'plant',
+      'animal/fauna': 'animal',
+      'living Being': 'living',
+      'greenscape': 'green',
+      'waterscape': 'water',
+      'landscape': 'land',
+      'waterfall': 'fall',
+      'palm Tree': 'palmtree',
+      'palmTree': 'palmtree',
+      'river': 'river',
+      'lake': 'lake',
+      'mountain': 'mount',
+      'swimming': 'pool',
+      'fireplace': 'fire'
     };
     const shorten = (s) => {
       if (SHORT[s]) return SHORT[s];
