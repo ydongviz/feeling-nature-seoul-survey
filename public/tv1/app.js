@@ -823,11 +823,11 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
   }
 
   const firstGroupCount = Math.floor(filteredData.length * 0.3);
-  const fadeDuration = 1000;
-  const moveDurationFirst = 800;
-  const dotDelayFirst = 0.1;
+  const fadeDuration = 800;
+  const moveDurationFirst = 500;
+  const dotDelayFirst = 0.05;
   const moveDurationSecond = 200;
-  const dotDelaySecond = 0.03;
+  const dotDelaySecond = 0.01;
 
   const totalMoveDurationGroup1 = firstGroupCount > 0 ? ((firstGroupCount - 1) * dotDelayFirst + moveDurationFirst) : 0;
   const totalMoveDurationGroup2 = (filteredData.length - firstGroupCount) > 0 ?
@@ -1163,10 +1163,10 @@ async function executeResultSequence() {
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, true);
 
     // Approximate faster transition duration (1.5x faster note retained)
-    const fadeDuration = 2000;
+    const fadeDuration = 1500;
     const moveDuration = 800;
     const originalTransitionDuration = fadeDuration + moveDuration + 1000;
-    const totalTransitionDuration = originalTransitionDuration / 1.5;
+    const totalTransitionDuration = originalTransitionDuration / 2;
     await wait(totalTransitionDuration);
 
     // Show full circular layout for a moment
