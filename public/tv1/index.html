@@ -17,20 +17,6 @@
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-
-  <style>
-    /* hide dev/test buttons on the kiosk */
-    #control-buttons { display: none; }
-    /* small overlay styles for note / countdown */
-    #kioskOverlay { position: fixed; inset: 0; z-index: 9999; display: none;
-      align-items: center; justify-content: center; background: rgba(0,0,0,.5); }
-    #kioskOverlay .box {
-      background: rgb(20 20 20 / 0%); color:#fff; border-radius:12px;
-      padding: 18px 22px; min-width:320px; text-align:center; box-shadow:0 6px 30px rgba(0,0,0,.35);
-    }
-    #kioskOverlay .msg { font-size: clamp(18px, 2.4vw, 28px); }
-    #kioskOverlay .count { margin-top:6px; font-size: clamp(22px, 3vw, 44px); display:none; }
-  </style>
 </head>
 <body>
   <!-- === your original DOM skeleton (unchanged IDs/classes) === -->
