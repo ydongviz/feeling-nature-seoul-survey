@@ -136,18 +136,6 @@ canvas {
   display: none;
   background: #000;
   z-index: 1050;
-  /* Smooth video transitions */
-  opacity: 1;
-  transition: opacity 0.5s ease;
-  will-change: opacity;
-}
-
-#videoContainer.fade-in {
-  opacity: 1;
-}
-
-#videoContainer.fade-out {
-  opacity: 0;
 }
 
 #bgVideo {
@@ -156,8 +144,7 @@ canvas {
   height: 100%;
   object-fit: cover;
   background: #000;
-  /* Video performance optimizations */
-  will-change: transform;
+  display: block;
 }
 
 #tapToPlay {

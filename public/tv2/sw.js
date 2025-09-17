@@ -1,25 +1,66 @@
-const CACHE = 'tv2-cache-v11';  // <= bump this when you change assets
+// sw.js — TV-2 kiosk SW
+const CACHE = 'tv2-cache-v12';
+
 const ASSETS = [
   '/tv2/',
   '/tv2/index.html',
   '/tv2/styles.css',
   '/tv2/script.js',
-  '/tv2/img/fn-draft2.mp4'
+  '/tv2/img/fn-draft2.mp4',
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(()=>self.skipWaiting()));
-});
-self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))) .then(()=>self.clients.claim()));
-});
-self.addEventListener('fetch', (e) => {
-  const { request } = e;
-  if (request.url.includes('/public/runtime/state.json')) return; // network for live state
-  e.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(resp => {
-      const clone = resp.clone(); caches.open(CACHE).then(c => c.put(request, clone)).catch(()=>{});
-      return resp;
-    }))
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).catch(() => {})
   );
 });
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+
+  // Only handle GETs
+  if (req.method !== 'GET') return;
+
+  // Let range requests (video scrubbing) hit network directly
+  if (req.headers.has('range')) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  // Never cache live runtime state (keep mode switches fresh)
+  if (url.pathname.endsWith('/runtime/state.json')) {
+    event.respondWith(fetch(req, { cache: 'no-store' }));
+    return;
+  }
+
+  // For cross-origin requests, just pass through
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  // Cache-first for everything else (shell + video)
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req).then((resp) => {
+        if (resp && resp.ok) {
+          const copy = resp.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+        }
+        return resp;
+      }).catch(() => cached || Promise.reject());
+    })
+  );
+});
+
