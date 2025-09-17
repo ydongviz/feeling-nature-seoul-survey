@@ -1262,7 +1262,10 @@ function updateTopElements(top3Names) {
       'Palm Tree': 'Palmtree',
       'PalmTree': 'Palmtree',
       'River': 'River',
-      'Lake': 'Lake'
+      'Lake': 'Lake',
+      'Mountain': 'Mount',
+      'Swimming': 'Pool',
+      'Fireplace': 'Fire'
     };
     const shorten = (s) => {
       if (SHORT[s]) return SHORT[s];
