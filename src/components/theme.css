@@ -141,7 +141,7 @@
     color: #000000;
 }
 
-/* Updated button styles - applying to all buttons globally */
+/* FIXED: Updated button styles with iPad hover fix */
 .button-generic {
     font-size: 17px;
     border: 1px solid #262626;
@@ -154,12 +154,29 @@
     margin: 30px auto;
     display: block;
     text-decoration: none;
+    /* ADDED: Remove tap highlight on mobile devices */
+    -webkit-tap-highlight-color: transparent;
+    /* ADDED: Ensure proper touch behavior */
+    touch-action: manipulation;
 }
 
-.button-generic:hover {
-    border: 1px solid var(--primary-color);
-    background: #F9FEEC;
-    color: var(--primary-color);
+/* FIXED: Only apply hover styles on devices that can actually hover */
+@media (hover: hover) and (pointer: fine) {
+    .button-generic:hover {
+        border: 1px solid var(--primary-color);
+        background: #F9FEEC;
+        color: var(--primary-color);
+    }
+}
+
+/* ADDED: Touch/tap feedback for touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .button-generic:active {
+        border: 1px solid var(--primary-color);
+        background: #F9FEEC;
+        color: var(--primary-color);
+        transform: scale(0.98);
+    }
 }
 
 .button-generic:disabled {
@@ -204,7 +221,7 @@
     margin-right: auto;
 }
 
-/* Radio button styles with hover enhancement */
+/* FIXED: Radio button styles with iPad hover fix */
 input[type='radio'] {
     -webkit-appearance: none;
     width: 16px;
@@ -212,6 +229,8 @@ input[type='radio'] {
     border-radius: 50%;
     outline: none;
     border: 2px solid var(--primary-color);
+    /* ADDED: Remove tap highlight */
+    -webkit-tap-highlight-color: transparent;
 }
 
 input[type='radio']:checked {
@@ -227,7 +246,7 @@ label {
     transition: color 0.3s ease;
 }
 
-/* Global radio option hover styles */
+/* FIXED: Global radio option hover styles with iPad fix */
 .div-option-item {
     margin-right: 20px;
     display: inline-block;
@@ -238,14 +257,31 @@ label {
     border-radius: 6px;
     transition: all 0.3s ease;
     cursor: pointer;
+    /* ADDED: Remove tap highlight */
+    -webkit-tap-highlight-color: transparent;
 }
 
-.div-option-item:hover {
-    background-color: #f8f9fa;
+/* FIXED: Only apply hover styles on devices that can actually hover */
+@media (hover: hover) and (pointer: fine) {
+    .div-option-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .div-option-item:hover label {
+        color: var(--primary-color);
+    }
 }
 
-.div-option-item:hover label {
-    color: var(--primary-color);
+/* ADDED: Touch feedback for mobile devices */
+@media (hover: none) and (pointer: coarse) {
+    .div-option-item:active {
+        background-color: #f8f9fa;
+        transform: scale(0.98);
+    }
+
+    .div-option-item:active label {
+        color: var(--primary-color);
+    }
 }
 
 /* Remove text decoration from links */
@@ -276,5 +312,4 @@ a {
     .button-stick-to-right-and-a-little-more {
          left: 0px;
     }
-
 }
