@@ -167,9 +167,9 @@ function initScene() {
   renderer.domElement.addEventListener('webglcontextlost', (e) => {
   e.preventDefault();
   try { renderer.setAnimationLoop(null); } catch {}
-  console.warn('[tv2] WebGL context lost');  
+  console.warn('[tv2] WebGL context lost');
   }, false);
-
+ 
   renderer.domElement.addEventListener('webglcontextrestored', () => {
   console.info('[tv2] WebGL context restored — rebuilding scene');
   // Rebuild everything cleanly
@@ -178,6 +178,7 @@ function initScene() {
   initScene();          // restart landing visuals
   // (state poller will keep doing its job)
   }, false);
+
 
   document.body.appendChild(renderer.domElement);
   window.addEventListener("resize", onWindowResize, false);

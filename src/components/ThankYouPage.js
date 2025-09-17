@@ -23,12 +23,12 @@ export function ThankYouPage() {
     useEffect(() => {
         const timer = setTimeout(() => {
             setShowButton(true);
-        }, 40000); // 40 seconds
+        }, 20000); // 20 seconds
 
         return () => clearTimeout(timer);
     }, []);
 
-    // Auto-reset: stay in sync with TVs if we can read expires_at; else 5 min
+    // Auto-reset: stay in sync with TVs if we can read expires_at; else 3 min
     useEffect(() => {
         let timer = null;
         let didReset = false;
@@ -36,7 +36,7 @@ export function ThankYouPage() {
         // e.g. REACT_APP_STATE_URL=https://<bucket>.s3.<region>.amazonaws.com/public/runtime/state.json
       
         async function schedule() {
-          // default 5 minutes
+          // default 3 minutes
           let ms = 3 * 60 * 1000;
       
           // try to sync with TVs
