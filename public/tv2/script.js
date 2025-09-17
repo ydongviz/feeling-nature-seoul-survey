@@ -27,6 +27,7 @@ let targetVolume = 1.0;
 const baseVolume = 1.0;
 const volumeTransitionSpeed = 0.02; // smooth transitions
 let didPrimeAudio = false;
+let audioUnlocked = false; 
 
 // ===== THREE globals =====
 let scene, camera, renderer, controls;
@@ -145,6 +146,9 @@ function updateMusicVolume(p90Height, maxHeight) {
 function primeAudioOnce() {
   if (didPrimeAudio || !backgroundMusic) return;
   didPrimeAudio = true;
+
+  audioUnlocked = true; 
+
   if (isVideoMode) return; // don't start landing music while in video
   backgroundMusic.volume = currentVolume;
   backgroundMusic.play().catch(()=>{});
@@ -677,14 +681,13 @@ function showVideo(){
   const hasChildSource = !!bgVideo.querySelector('source');
   if (!hasSrcAttr && !hasChildSource) {
     console.warn('[video] No <source> on <video id="bgVideo">. Add one in index.html.');
-    // Keep container visible so you see the warning over black
     return;
   }
 
   // Autoplay-safe: start muted & inline; reset for a clean replay
   try {
     bgVideo.pause();
-    bgVideo.muted = true;
+    bgVideo.muted = true;                        
     bgVideo.setAttribute('playsinline', '');
     bgVideo.currentTime = 0;
     bgVideo.load();
@@ -693,37 +696,47 @@ function showVideo(){
   // Force layout before play (prevents “black first frame” on some WebKit)
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
+
       const tryPlayMuted = () => {
         const p = bgVideo.play();
-        if (p && p.catch) p.catch((err)=>{ 
-          console.debug('[video] play() muted rejected (will keep visible):', err);
-        });
+        if (p && p.catch) p.catch(()=>{ /* keep visible; will retry if needed */ });
       };
 
-      const tryUnmute = async () => {
+      // Only attempt to unmute if user has unlocked audio
+      const tryUnmuteIfUnlocked = () => {
+        if (!audioUnlocked) return;            
         try {
           bgVideo.muted = false;
-          await bgVideo.play(); // Safari often needs a second play after unmute
+          bgVideo.play().catch(()=>{});         // some engines need play() again after unmute
         } catch (err) {
-          // Policy blocked: keep muted (still plays); kiosk tap can unmute later
-          bgVideo.muted = true;
+          bgVideo.muted = true;                 // stay muted if blocked for any reason
         }
       };
 
-      // If enough is buffered, start immediately; else wait for canplay/loadeddata
       if (bgVideo.readyState >= 2) {
         tryPlayMuted();
-        setTimeout(tryUnmute, 200);
+        tryUnmuteIfUnlocked();
       } else {
         const onReady = () => {
           bgVideo.removeEventListener('canplay', onReady);
           bgVideo.removeEventListener('loadeddata', onReady);
           tryPlayMuted();
-          setTimeout(tryUnmute, 200);
+          tryUnmuteIfUnlocked();
         };
         bgVideo.addEventListener('canplay', onReady);
         bgVideo.addEventListener('loadeddata', onReady);
       }
+
+      // If not yet unlocked, set a one-time listener to unmute on FIRST tap
+      if (!audioUnlocked) {
+        const unlockVideoOnce = () => {
+          document.removeEventListener('pointerdown', unlockVideoOnce);
+          audioUnlocked = true;
+          try { bgVideo.muted = false; bgVideo.play().catch(()=>{}); } catch {}
+        };
+        document.addEventListener('pointerdown', unlockVideoOnce, { once:true });
+      }
+
     });
   });
 }
