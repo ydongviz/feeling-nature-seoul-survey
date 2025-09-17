@@ -16,11 +16,6 @@ export default async function handler(req, res) {
     console.log('=== PROGRESS REQUEST DEBUG ===');
     console.log('Timestamp:', new Date().toISOString());
     console.log('Method:', req.method);
-    console.log('Environment variables check:');
-    console.log('- AWS_ACCESS_KEY_ID exists:', !!AWS_ACCESS_KEY_ID);
-    console.log('- AWS_SECRET_ACCESS_KEY exists:', !!AWS_SECRET_ACCESS_KEY);
-    console.log('- AWS_REGION:', AWS_REGION);
-    console.log('- AWS_BUCKET_NAME:', AWS_BUCKET_NAME);
 
     // Add CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -50,100 +45,70 @@ export default async function handler(req, res) {
         if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_REGION || !AWS_BUCKET_NAME) {
             console.error('Missing AWS environment variables for progress');
             res.status(500).json({ 
-                error: 'Server configuration error - missing AWS credentials',
-                missingVars: {
-                    accessKey: !AWS_ACCESS_KEY_ID,
-                    secretKey: !AWS_SECRET_ACCESS_KEY,
-                    region: !AWS_REGION,
-                    bucket: !AWS_BUCKET_NAME
-                }
+                error: 'Server configuration error - missing AWS credentials'
             });
             return;
         }
 
         console.log('=== S3 LIST OBJECTS ATTEMPT ===');
         console.log('Bucket:', AWS_BUCKET_NAME);
-        console.log('Region:', AWS_REGION);
 
         const params = { Bucket: AWS_BUCKET_NAME, Prefix: "raw/" };
 
-        
         const s3 = new S3Client({
             region: AWS_REGION, 
             credentials: AWS_Credentials,
-            // Add request timeout
             requestHandler: {
                 requestTimeout: 30000,
                 httpsAgent: { timeout: 30000 }
             }
         });
 
-        console.log('Sending ListObjectsCommand...');
-        //const response = await s3.send(new ListObjectsCommand(params));
-        
-        console.log('=== S3 RESPONSE SUCCESS ===');
-        console.log('Response metadata:', response.$metadata);
-        console.log('Contents count:', response.Contents ? response.Contents.length : 0);
-        console.log('IsTruncated:', response.IsTruncated);
+        console.log('Sending ListObjectsV2Command...');
 
-        // Log first few keys for debugging
-        if (response.Contents && response.Contents.length > 0) {
-            console.log('First 3 keys:', response.Contents.slice(0, 3).map(item => item.Key));
-        }
-
-        //res.status(200).json(response);
-
+        // Fixed: Get all objects using pagination
         let total = 0;
         let contents = [];
-let token;
-do {
- const resp = await s3.send(new ListObjectsV2Command({ ...params, ContinuationToken: token }));
-   total += resp.KeyCount || 0;
-   if (resp.Contents) contents.push(...resp.Contents);
-  token = resp.IsTruncated ? resp.NextContinuationToken : undefined;
- } while (token);
+        let token;
 
- res.status(200).json({
-   ok: true,
-  count: total,
-   latest: contents.slice(-10).reverse().map(o => ({ key: o.Key, size: o.Size, lastModified: o.LastModified })),
-   bucket: AWS_BUCKET_NAME,
-   prefix: "raw/"
- });
+        do {
+            const response = await s3.send(new ListObjectsV2Command({ 
+                ...params, 
+                ContinuationToken: token 
+            }));
+            
+            total += response.KeyCount || 0;
+            if (response.Contents) {
+                contents.push(...response.Contents);
+            }
+            token = response.IsTruncated ? response.NextContinuationToken : undefined;
+        } while (token);
+
+        console.log('=== S3 RESPONSE SUCCESS ===');
+        console.log('Total objects found:', total);
+        console.log('Contents count:', contents.length);
+
+        // Return data in the format your frontend expects
+        res.status(200).json({
+            Contents: contents,
+            totalCount: total,
+            bucket: AWS_BUCKET_NAME,
+            prefix: "raw/"
+        });
 
     } catch (error) {
         console.error('=== PROGRESS ERROR ===');
         console.error('Error type:', error.constructor.name);
         console.error('Error message:', error.message);
-        console.error('Error code:', error.code || error.Code);
-        console.error('Error stack:', error.stack);
-
-        // AWS specific error handling
-        if (error.name === 'AccessDenied' || error.Code === 'AccessDenied') {
-            console.error('AWS Access Denied for ListObjects');
-            console.error('Required permission: s3:ListBucket');
-            console.error('Bucket:', AWS_BUCKET_NAME);
-            console.error('Make sure IAM policy includes s3:ListBucket permission');
-        }
-
-        if (error.$metadata) {
-            console.error('AWS Error Metadata:', error.$metadata);
-        }
 
         // Return error details
         res.status(500).json({ 
             error: 'Failed to list S3 objects',
             details: error.message,
             errorType: error.constructor.name,
-            errorCode: error.code || error.Code,
             timestamp: new Date().toISOString(),
             requiredPermission: 's3:ListBucket',
-            bucket: AWS_BUCKET_NAME,
-            awsError: error.$metadata ? {
-                httpStatusCode: error.$metadata.httpStatusCode,
-                requestId: error.$metadata.requestId,
-                attempts: error.$metadata.attempts
-            } : null
+            bucket: AWS_BUCKET_NAME
         });
     }
 }
