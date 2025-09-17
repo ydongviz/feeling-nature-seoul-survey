@@ -162,6 +162,23 @@ function initScene() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   const bc = new THREE.Color(0x11130E);
   renderer.setClearColor(bc);
+
+  // Recover gracefully if the GPU resets (rare on kiosks)
+  renderer.domElement.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  try { renderer.setAnimationLoop(null); } catch {}
+  console.warn('[tv2] WebGL context lost');  
+  }, false);
+
+  renderer.domElement.addEventListener('webglcontextrestored', () => {
+  console.info('[tv2] WebGL context restored — rebuilding scene');
+  // Rebuild everything cleanly
+  try { renderer.domElement.remove(); } catch {}
+  scene = camera = renderer = controls = null;
+  initScene();          // restart landing visuals
+  // (state poller will keep doing its job)
+  }, false);
+
   document.body.appendChild(renderer.domElement);
   window.addEventListener("resize", onWindowResize, false);
 
