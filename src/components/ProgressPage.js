@@ -14,6 +14,7 @@ export const ProgressPage = () => {
         // Send request to the endpoint /api/progress
         axios.get('/api/progress')
             .then((response) => {
+                console.log('API Response:', response.data);
                 const _data = response.data;
                 
                 let progressData = {
@@ -23,22 +24,38 @@ export const ProgressPage = () => {
 
                 // Check if response has Contents
                 if (!_data || !('Contents' in _data) || !_data.Contents) {
+                    console.log('No Contents found in response');
                     setData(progressData);
                     setLoading(false);
                     return;
                 }
 
                 const _contents = _data['Contents'];
+                console.log('Total items from S3:', _contents.length);
+                console.log('Sample keys:', _contents.slice(0, 5).map(item => item.Key));
 
                 // Filter contents to exclude contact forms and other non-survey data
                 const contents = _contents.filter((content) => {
-                    return content.Key && 
-                           !content.Key.startsWith('_') && 
-                           !content.Key.startsWith('__contact_') &&
-                           content.Key.startsWith('sel_'); // Only Seoul surveys
+                    if (!content.Key) return false;
+                    
+                    // Debug each item
+                    const key = content.Key;
+                    const isPrivate = key.startsWith('_');
+                    const isContact = key.startsWith('__contact_');
+                    const isRawSeoul = key.startsWith('raw/sel_'); // Updated filter
+                    const isJustSeoul = key.startsWith('sel_');
+                    
+                    console.log(`Key: ${key} | Private: ${isPrivate} | Contact: ${isContact} | RawSeoul: ${isRawSeoul} | JustSeoul: ${isJustSeoul}`);
+                    
+                    // Updated logic: look for survey data (not contact forms)
+                    return key.startsWith('raw/sel_') || (!isPrivate && !isContact && isJustSeoul);
                 });
 
+                console.log('Filtered survey count:', contents.length);
+                console.log('Filtered keys:', contents.slice(0, 5).map(item => item.Key));
+
                 progressData['totalSubmit'] = contents.length;
+                progressData['rawTotal'] = _contents.length;
                 setData(progressData);
                 setLoading(false);
             })
