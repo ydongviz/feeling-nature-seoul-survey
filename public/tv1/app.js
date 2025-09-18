@@ -1193,7 +1193,7 @@ async function startLandingAnimationSequence() {
       'BS Map: the distribution of nature-based elements in Seoul urban environment.',
       true
     );
-    await wait(6000); // 6 seconds
+    await wait(4000); // 4 seconds
 
     // Step D: BP map + full header (6s)
     //console.log('Landing Step D: BP map visualization');
@@ -1205,7 +1205,7 @@ async function startLandingAnimationSequence() {
       'BP Map: the strength of perceived Biophilia in the city',
       true
     );
-    await wait(6000); // 6 seconds
+    await wait(4000); // 4 seconds
 
     // Step E: BP group highlighting + full header (24 seconds total)
     //console.log('Landing Step E: BP group highlighting');
