@@ -3,14 +3,14 @@
    Clean + reliable for 4-day event
    ========================================================= */
 
-<<<<<<< HEAD
+
 /* ---------- Config ---------- */
 const MAX_DISTANCE_METERS = 15000;
 const Modes = { LANDING: 'landing', RESULT: 'result' };
 
 const HIGHLIGHT_COLOR = '#92C043';
 const NON_HIGHLIGHT_GRAY = '#666666';
-=======
+
 const ovEl = document.getElementById("kioskOverlay");
 const ovMsg = document.getElementById("kioskMsg");
 const ovCnt = document.getElementById("kioskCount");
@@ -18,7 +18,7 @@ let timer = null, etag = null, stage = null;
 let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
->>>>>>> parent of 04781efc (Body class toggle, Mapbox token meta, register every timer/RAF)
+parent of 04781efc (Body class toggle, Mapbox token meta, register every timer/RAF)
 
 const BP_GROUPS = [
   { min: 0.00, max: 0.25 },
@@ -110,7 +110,7 @@ async function loadSeoulData(type){
   return app.data.cache[key];
 }
 
-<<<<<<< HEAD
+
 async function loadDashboardData(){
   try{
     const base = (window.APP_CONFIG?.RUNTIME_BASE_URL)||window.RUNTIME_BASE||'';
@@ -220,7 +220,7 @@ function ensureLandingText(){
     const wrap=document.querySelector('.center-column .visualization-wrapper')||document.querySelector('.center-column');
     if (wrap){ const l2=document.createElement('div'); l2.id='landing-line2'; l2.className='landing-line2'; wrap.parentNode.insertBefore(l2, wrap.nextSibling); }
   }
-=======
+
 async function poll(){
     try{
       const s = await fetchJSON(STATE_URL, etag);
@@ -278,7 +278,8 @@ async function poll(){
       }
       hideOverlay(); window.setMode?.("landing");
     }catch(e){ /* keep last view */ }
->>>>>>> parent of 04781efc (Body class toggle, Mapbox token meta, register every timer/RAF)
+
+ parent of 04781efc (Body class toggle, Mapbox token meta, register every timer/RAF)
 }
 function updateLandingTexts(line1Text, line2Text='', showLine2=true){
   const l1=document.getElementById('landing-line1'), l2=document.getElementById('landing-line2');
@@ -431,6 +432,8 @@ async function startLandingAnimationSequence(){
     app.landing.active=false;
     landingRestartTimer = app.registerTimeout(()=>{ if (app.mode===Modes.LANDING) startLandingAnimationSequence(); }, 1000);
   }
+
+ parent of 04781efc (Body class toggle, Mapbox token meta, register every timer/RAF)
 }
 
 function updateLandingTextGroupDynamic(group){

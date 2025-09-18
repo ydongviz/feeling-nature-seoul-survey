@@ -774,7 +774,5 @@ footer {
   line-height: 1.5;
 }
 
-
 /* Mapbox attribution — prefer styling over hiding for ToS compliance */
 .mapboxgl-ctrl-attrib { display:none !important; } 
-
