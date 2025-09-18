@@ -1188,7 +1188,7 @@ async function startLandingAnimationSequence() {
     showVideo();
     showHeaderLogos(false); // Show only left logo
     updateLandingTexts('Feeling Nature Seoul', '', false);
-    await wait(5000); // 7 seconds
+    await wait(5000); // 5 seconds
 
     // Step B: Video + Biophilia explanation + partial header (10s)
     //console.log('Landing Step B: Biophilia explanation');
