@@ -605,11 +605,22 @@ function ensureLandingText() {
   return { line1, line2 };
 }
 
-// Helper functions for the new sequence
-function showHeaderLogos() {
+// Updated function to show logos with conditional display
+function showHeaderLogos(showBoth = false) {
   const logos = document.getElementById('headerLogos');
+  const leftLogo = document.querySelector('.header-logo:first-child');
+  const rightLogo = document.querySelector('.header-logo:last-child');
+  
   if (logos) {
     logos.style.display = 'flex';
+  }
+  
+  if (rightLogo) {
+    rightLogo.style.display = 'block'; // Right logo always shows
+  }
+  
+  if (leftLogo) {
+    leftLogo.style.display = showBoth ? 'block' : 'none'; // Left logo only shows when showBoth is true
   }
 }
 
@@ -1001,12 +1012,13 @@ async function setMode(newMode) {
 
   app.mode = newMode;
 
-   // ADD THIS SINGLE LINE - Simple body class management for background
-   document.body.className = newMode === Modes.RESULT ? 'result-mode' : '';
+  // Simple body class management for background
+  document.body.className = newMode === Modes.RESULT ? 'result-mode' : '';
 
   if (newMode === Modes.LANDING) {
     showLandingLayout();
-
+    // Header will be managed by the landing sequence
+    
     app.state.currentDataType = 'BP';
     await loadSeoulData('BP');
 
@@ -1022,6 +1034,7 @@ async function setMode(newMode) {
 
   } else if (newMode === Modes.RESULT) {
     showDashboardLayout();
+    hideHeaderLogos(); // Hide header in result mode
     buildAllContent();
 
     await Promise.all([
@@ -1122,26 +1135,27 @@ async function startLandingAnimationSequence() {
     // Ensure text elements exist
     ensureLandingText();
 
-    // Step A: Video + "Feeling Nature Seoul" + logos (45s)
+    // Step A: Video + "Feeling Nature Seoul" + partial header (7s)
     console.log('Landing Step A: Video + Feeling Nature Seoul');
     showVideo();
-    showHeaderLogos();
+    showHeaderLogos(false); // Show only left logo
     updateLandingTexts('Feeling Nature Seoul', '', false);
-    await wait(45000); // 45 seconds
+    await wait(3000); // 7 seconds
 
-    // Step B: Text about biophilia + "Explore..." (35s)
+    // Step B: Video + Biophilia explanation + partial header (10s)
     console.log('Landing Step B: Biophilia explanation');
-    hideVideo();
-    hideHeaderLogos();
+    // Keep video and partial header
     updateLandingTexts(
       'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
       'Explore how Seoul residents perceive nature.',
       true
     );
-    await wait(35000); // 35 seconds
+    await wait(10000); // 10 seconds
 
-    // Step C: BS map + updated texts (12s = original 2s + 10s)
+    // Step C: BS map + full header (6s)
     console.log('Landing Step C: BS map visualization');
+    hideVideo();
+    showHeaderLogos(true); // Show both logos
     app.state.currentDataType = 'BS';
     const bsData = await loadSeoulData('BS');
     updateVisualizationCanvas(bsData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
@@ -1150,9 +1164,9 @@ async function startLandingAnimationSequence() {
       'The distribution of nature-based elements in Seoul urban environment.',
       true
     );
-    await wait(12000); // 12 seconds
+    await wait(6000); // 6 seconds
 
-    // Step D: BP map + updated texts (12s = original 2s + 10s)
+    // Step D: BP map + full header (6s)
     console.log('Landing Step D: BP map visualization');
     app.state.currentDataType = 'BP';
     const bpData = await loadSeoulData('BP');
@@ -1162,9 +1176,9 @@ async function startLandingAnimationSequence() {
       'The strength of perceived Biophilia in the city',
       true
     );
-    await wait(12000); // 12 seconds
+    await wait(6000); // 6 seconds
 
-    // Step E: BP group highlighting loop (same duration as before)
+    // Step E: BP group highlighting + full header (24 seconds total)
     console.log('Landing Step E: BP group highlighting');
     animateBPGroupHighlighting(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon);
 
