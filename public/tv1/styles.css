@@ -425,7 +425,7 @@ footer {
   background: #1a1a1a8c;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  padding: 20px 60px 5px 60px; /* Increased top padding, added bottom padding */
+  padding: 25px 60px 5px 60px; /* Increased top padding, added bottom padding */
   display: grid;
   grid-template-columns: minmax(260px, 300px) minmax(640px, 1fr) minmax(360px, 420px);
   gap: 32px; /* Slightly increased gap for better spacing */

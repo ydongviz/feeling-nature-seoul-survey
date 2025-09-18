@@ -697,6 +697,19 @@ function removeLandingText() {
 function showDashboardLayout() {
   removeLandingText();
   hideHeaderLogos();
+  
+  // ADD: Ensure GIF is hidden when switching to result mode
+  const gif = document.getElementById('landingVideo');
+  if (gif) {
+    gif.style.display = 'none';
+    gif.style.opacity = '1'; // Reset opacity for next landing sequence
+  }
+  
+  // ADD: Ensure map and canvas are visible
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  if (map) map.style.display = 'block';
+  if (canvas) canvas.style.display = 'block';
 
   if (app.elements.rightCol) {
     app.elements.rightCol.style.display = 'block';
@@ -1177,7 +1190,7 @@ async function startLandingAnimationSequence() {
     updateVisualizationCanvas(bsData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     updateLandingTexts(
       'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-      'BS Map: The distribution of nature-based elements in Seoul urban environment.',
+      'BS Map: the distribution of nature-based elements in Seoul urban environment.',
       true
     );
     await wait(6000); // 6 seconds
@@ -1189,7 +1202,7 @@ async function startLandingAnimationSequence() {
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     updateLandingTexts(
       'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-      'BP Map: The strength of perceived Biophilia in the city',
+      'BP Map: the strength of perceived Biophilia in the city',
       true
     );
     await wait(6000); // 6 seconds
