@@ -696,6 +696,7 @@ function removeLandingText() {
 
 function showDashboardLayout() {
   removeLandingText();
+  hideHeaderLogos();
 
   if (app.elements.rightCol) {
     app.elements.rightCol.style.display = 'block';
@@ -1151,24 +1152,24 @@ async function startLandingAnimationSequence() {
     ensureLandingText();
 
     // Step A: Video + "Feeling Nature Seoul" + partial header (7s)
-    console.log('Landing Step A: Video + Feeling Nature Seoul');
+    //console.log('Landing Step A: Video + Feeling Nature Seoul');
     showVideo();
     showHeaderLogos(false); // Show only left logo
     updateLandingTexts('Feeling Nature Seoul', '', false);
-    await wait(3000); // 7 seconds
+    await wait(5000); // 7 seconds
 
     // Step B: Video + Biophilia explanation + partial header (10s)
-    console.log('Landing Step B: Biophilia explanation');
+    //console.log('Landing Step B: Biophilia explanation');
     // Keep video and partial header
     updateLandingTexts(
       'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
       'Explore how Seoul residents perceive nature.',
       true
     );
-    await wait(10000); // 10 seconds
+    await wait(11000); // 10 seconds
 
     // Step C: BS map + full header (6s)
-    console.log('Landing Step C: BS map visualization');
+    //console.log('Landing Step C: BS map visualization');
     hideVideo();
     showHeaderLogos(true); // Show both logos
     app.state.currentDataType = 'BS';
@@ -1182,7 +1183,7 @@ async function startLandingAnimationSequence() {
     await wait(6000); // 6 seconds
 
     // Step D: BP map + full header (6s)
-    console.log('Landing Step D: BP map visualization');
+    //console.log('Landing Step D: BP map visualization');
     app.state.currentDataType = 'BP';
     const bpData = await loadSeoulData('BP');
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
@@ -1194,7 +1195,7 @@ async function startLandingAnimationSequence() {
     await wait(6000); // 6 seconds
 
     // Step E: BP group highlighting + full header (24 seconds total)
-    console.log('Landing Step E: BP group highlighting');
+    //console.log('Landing Step E: BP group highlighting');
     animateBPGroupHighlighting(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon);
 
   } catch (error) {
@@ -1226,7 +1227,7 @@ function animateBPGroupHighlighting(data, centerLat, centerLon) {
       cycleCount++;
       if (cycleCount >= maxCycles) {
         // Restart the entire sequence
-        console.log('Restarting landing sequence...');
+        //console.log('Restarting landing sequence...');
         app.landing.active = false;
         setTimeout(() => startLandingAnimationSequence(), 1000);
         return;
