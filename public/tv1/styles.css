@@ -61,7 +61,7 @@ body.result-mode {
     min-width:320px; 
     text-align:center; 
     box-shadow:0 6px 30px rgba(0,0,0,.35);
-    transform: translateY(20vh);  /* ← Move box up by 20% of viewport height */
+    transform: translateY(10vh);  /* ← Move box up by 20% of viewport height */
   }
   
 
@@ -101,21 +101,32 @@ body.result-mode {
 }
 
 /* ========== HEADER LOGOS ========== */
+/* REPLACE the existing .header-logos style with this: */
 .header-logos {
   position: fixed;
   top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 40px;
+  left: 0;
+  right: 0;
   z-index: 20;
-  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 40px; /* Add padding from screen edges */
+  pointer-events: none;
 }
 
 .header-logo {
   width: 25px;
   height: auto;
   opacity: 0.9;
+}
+
+/* Optional: Individual positioning for more control */
+.header-logo.left {
+  align-self: flex-start;
+}
+
+.header-logo.right {
+  align-self: flex-end;
 }
 
 /* ========== VIDEO ELEMENT ========== */
@@ -698,21 +709,16 @@ footer {
 /* Center overlay text */
 .landing-line1 {
   position: fixed;
-  top: 50%;
+  top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 15;
   text-align: center;
-  font-size: 24px;
-  font-weight: 400;
+  font-size: 25px;
+  font-weight: 300;
   color: #ffffff;
-  max-width: 80vw;
+  max-width: 100vw;
   line-height: 1.3;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
-  background: rgba(0,0,0,0.3);
-  padding: 20px 30px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
 }
 
 /* Below visualization text */
