@@ -760,4 +760,4 @@ body.dev .landing-mode #control-buttons {
 }
 
 /* Mapbox attribution — prefer styling over hiding for ToS compliance */
-/* .mapboxgl-ctrl-attrib { display:none !important; } */
+.mapboxgl-ctrl-attrib { display:none !important; } */
