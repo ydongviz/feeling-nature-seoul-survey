@@ -580,42 +580,95 @@ function showLandingLayout() {
 
 /* ===== Landing text lines ===== */
 function ensureLandingText() {
-  let box = document.getElementById('landing-text');
-  if (box) { box.style.display = ''; return box; }
-
-  const wrapper = document.querySelector('.center-column .visualization-wrapper')
-               || document.querySelector('.center-column')
-               || document.querySelector('#map')?.parentElement;
-  if (!wrapper) return null;
-
-  box = document.createElement('div');
-  box.id = 'landing-text';
-  box.className = 'landing-text';
-  box.innerHTML = `
-  <div class="landing-line1">Complete the survey to learn how you perceive and value urban nature in Seoul!</div>
-  <div class="landing-line2" id="landing-line2">Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.</div>  <!-- NEW default -->
-  `;
-  wrapper.parentNode.insertBefore(box, wrapper.nextSibling);
-  return box;
+  let line1 = document.getElementById('landing-line1');
+  let line2 = document.getElementById('landing-line2');
+  
+  if (!line1) {
+    line1 = document.createElement('div');
+    line1.id = 'landing-line1';
+    line1.className = 'landing-line1';
+    document.body.appendChild(line1);
+  }
+  
+  if (!line2) {
+    const wrapper = document.querySelector('.center-column .visualization-wrapper')
+                 || document.querySelector('.center-column')
+                 || document.querySelector('#map')?.parentElement;
+    if (wrapper) {
+      line2 = document.createElement('div');
+      line2.id = 'landing-line2';
+      line2.className = 'landing-line2';
+      wrapper.parentNode.insertBefore(line2, wrapper.nextSibling);
+    }
+  }
+  
+  return { line1, line2 };
 }
 
-// NEW: helper to set line 2 directly
-function setLandingLine2(text) {
-  const el = document.getElementById('landing-line2');
-  if (el) el.textContent = text;
+// Helper functions for the new sequence
+function showHeaderLogos() {
+  const logos = document.getElementById('headerLogos');
+  if (logos) {
+    logos.style.display = 'flex';
+  }
 }
 
-function updateLandingTextGroup(group) {
-  const line = document.getElementById('landing-line2');
-  if (!line || !group) return;
-  const min = (Math.round(group.min * 100) / 100).toFixed(2);
-  const max = (Math.round(group.max * 100) / 100).toFixed(2);
-  line.textContent = `Biophilic Perceptions (BP) group value located in Seoul: ${min}–${max}`;
+function hideHeaderLogos() {
+  const logos = document.getElementById('headerLogos');
+  if (logos) {
+    logos.style.display = 'none';
+  }
+}
+
+function showVideo() {
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (video) {
+    video.style.display = 'block';
+    video.currentTime = 0;
+    video.play().catch(e => console.log('Video autoplay prevented:', e));
+  }
+  
+  if (map) map.style.display = 'none';
+  if (canvas) canvas.style.display = 'none';
+}
+
+function hideVideo() {
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (video) {
+    video.style.display = 'none';
+    video.pause();
+  }
+  
+  if (map) map.style.display = 'block';
+  if (canvas) canvas.style.display = 'block';
+}
+
+function updateLandingTexts(line1Text, line2Text = '', showLine2 = true) {
+  const texts = ensureLandingText();
+  
+  if (texts.line1) {
+    texts.line1.textContent = line1Text;
+    texts.line1.style.display = line1Text ? 'block' : 'none';
+  }
+  
+  if (texts.line2) {
+    texts.line2.textContent = line2Text;
+    texts.line2.style.display = (showLine2 && line2Text) ? 'block' : 'none';
+  }
 }
 
 function removeLandingText() {
-  const box = document.getElementById('landing-text');
-  if (box) box.remove();
+  const line1 = document.getElementById('landing-line1');
+  const line2 = document.getElementById('landing-line2');
+  
+  if (line1) line1.remove();
+  if (line2) line2.remove();
 }
 
 function showDashboardLayout() {
@@ -641,7 +694,7 @@ function showDashboardLayout() {
   }
 }
 
-/* ========== CANVAS VISUALIZATION - INTEGRATED FROM SCRIPT3 ========== */
+/* ========== CANVAS VISUALIZATION ========== */
 function updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon) {
   if (!data || !data.length) return;
 
@@ -1069,22 +1122,53 @@ async function startLandingAnimationSequence() {
   app.landing.active = true;
 
   try {
-    // Step 1: Start with BS data
+    // Ensure text elements exist
+    ensureLandingText();
+
+    // Step A: Video + "Feeling Nature Seoul" + logos (45s)
+    console.log('Landing Step A: Video + Feeling Nature Seoul');
+    showVideo();
+    showHeaderLogos();
+    updateLandingTexts('Feeling Nature Seoul', '', false);
+    await wait(45000); // 45 seconds
+
+    // Step B: Text about biophilia + "Explore..." (35s)
+    console.log('Landing Step B: Biophilia explanation');
+    hideVideo();
+    hideHeaderLogos();
+    updateLandingTexts(
+      'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
+      'Explore how Seoul residents perceive nature.',
+      true
+    );
+    await wait(35000); // 35 seconds
+
+    // Step C: BS map + updated texts (12s = original 2s + 10s)
+    console.log('Landing Step C: BS map visualization');
     app.state.currentDataType = 'BS';
     const bsData = await loadSeoulData('BS');
     updateVisualizationCanvas(bsData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-    await wait(2000);
+    updateLandingTexts(
+      'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+      'The distribution of nature-based elements in Seoul urban environment.',
+      true
+    );
+    await wait(12000); // 12 seconds
 
-    // Step 2: Switch to BP data
+    // Step D: BP map + updated texts (12s = original 2s + 10s)
+    console.log('Landing Step D: BP map visualization');
     app.state.currentDataType = 'BP';
     const bpData = await loadSeoulData('BP');
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+    updateLandingTexts(
+      'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+      'The strength of perceived Biophilia in the city',
+      true
+    );
+    await wait(12000); // 12 seconds
 
-    // NEW: show explanatory sentence for 3s before cycling
-    setLandingLine2('Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.');
-    await wait(3000);
-
-    // Step 3: Start BP group highlighting loop (no pulsation)
+    // Step E: BP group highlighting loop (same duration as before)
+    console.log('Landing Step E: BP group highlighting');
     animateBPGroupHighlighting(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon);
 
   } catch (error) {
@@ -1093,22 +1177,38 @@ async function startLandingAnimationSequence() {
   }
 }
 
+
 function animateBPGroupHighlighting(data, centerLat, centerLon) {
   const groups = [BP_GROUPS[0], BP_GROUPS[1], BP_GROUPS[2], BP_GROUPS[3]];
   let i = 0;
+  let cycleCount = 0;
+  const maxCycles = 2; // Number of complete cycles before restarting sequence
 
   // Initialize immediately
   app.landing.currentGroup = groups[0];
-  updateLandingTextGroup(app.landing.currentGroup); // updates the line to dynamic range
+  updateLandingTextGroupDynamic(app.landing.currentGroup);
   updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon);
 
   // Cycle every 2500 ms
   const tick = () => {
     if (!app.landing.active || app.mode !== Modes.LANDING) return;
+    
     i = (i + 1) % groups.length;
+    
+    // Check if we completed a full cycle
+    if (i === 0) {
+      cycleCount++;
+      if (cycleCount >= maxCycles) {
+        // Restart the entire sequence
+        console.log('Restarting landing sequence...');
+        app.landing.active = false;
+        setTimeout(() => startLandingAnimationSequence(), 1000);
+        return;
+      }
+    }
+    
     app.landing.currentGroup = groups[i];
-
-    updateLandingTextGroup(app.landing.currentGroup);
+    updateLandingTextGroupDynamic(app.landing.currentGroup);
     updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon);
 
     app.landing.intervalId = setTimeout(tick, 2500);
@@ -1117,6 +1217,20 @@ function animateBPGroupHighlighting(data, centerLat, centerLon) {
 
   app.landing.intervalId = setTimeout(tick, 2500);
   app.cleanup.timers.add(app.landing.intervalId);
+}
+
+// ADD this new function for BP group text updates
+function updateLandingTextGroupDynamic(group) {
+  if (!group) return;
+  
+  const min = (Math.round(group.min * 100) / 100).toFixed(2);
+  const max = (Math.round(group.max * 100) / 100).toFixed(2);
+  
+  updateLandingTexts(
+    'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+    `Biophilic Perceptions (BP) group value located in Seoul: ${min}–${max}`,
+    true
+  );
 }
 
 /* ========== RESULT SEQUENCE WITH PULSATION EFFECT ========== */

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TV-1 • Live Viz</title>
 
-  <!-- your styles -->
+  <!-- styles -->
   <link rel="stylesheet" href="./styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,6 +19,10 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
+  <div id="headerLogos" class="header-logos" style="display: none;">
+    <img src="img/logo-left.png" alt="Left Logo" class="header-logo" />
+    <img src="img/logo-right.png" alt="Right Logo" class="header-logo" />
+  </div>
   <!-- === your original DOM skeleton (unchanged IDs/classes) === -->
   <div class="main-content">
     <div class="overlay-container">
@@ -34,6 +38,10 @@
 
         <div class="center-column">
           <div class="visualization-wrapper">
+            <video id="landingVideo" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" muted loop>
+              <source src="img/fn-logo.mov" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
             <div id="map"></div>
             <canvas id="visualization-canvas"></canvas>
             <div class="loading-indicator" id="loadingIndicator" style="display: none;">Loading data...</div>
