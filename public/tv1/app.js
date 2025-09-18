@@ -732,19 +732,6 @@ function showDashboardLayout() {
 }
 
 /* ========== CANVAS VISUALIZATION ========== */
-
-function getPulsingGroupColor(d, group) {
-  const pe = app.effects.pulse;
-  const now = performance.now();
-  const phase = ((now - pe.t0) % pe.period) / pe.period;
-  const intensity = (1 + Math.sin(2 * Math.PI * phase)) / 2;
-  
-  // Pulse between group color and a highlight color
-  const baseColor = colorScale(d.biophilia_norm);
-  const highlightColor = '#92C043'; // Or whatever you prefer
-  return interpolateColor(baseColor, highlightColor, intensity);
-}
-
 function updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon) {
   if (!data || !data.length) return;
 
@@ -792,14 +779,8 @@ function updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon) {
 
     ctx.beginPath();
     ctx.arc(x, y, Math.max(1, radius), 0, Math.PI * 2);
-
-    // NEW: Use pulse effect for highlighted group
-    if (inGroup && app.effects?.pulse?.active) {
-      ctx.fillStyle = getPulsingGroupColor(d, group);
-    } else {
-      ctx.fillStyle = colorScale(d.biophilia_norm);
-    }
-
+    // use the global scale everywhere (map & circular use the same palette)
+    ctx.fillStyle = colorScale(d.biophilia_norm);
     // emphasize current bin with alpha only
     ctx.globalAlpha = inGroup ? 0.9 : 0.1;
     ctx.fill();
@@ -1238,7 +1219,6 @@ async function startLandingAnimationSequence() {
 
 
 function animateBPGroupHighlighting(data, centerLat, centerLon) {
-  startPulseLoop();
   const groups = [BP_GROUPS[0], BP_GROUPS[1], BP_GROUPS[2], BP_GROUPS[3]];
   let i = 0;
   let cycleCount = 0;
