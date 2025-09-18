@@ -6,6 +6,9 @@ const ovEl = document.getElementById("kioskOverlay");
 const ovMsg = document.getElementById("kioskMsg");
 const ovCnt = document.getElementById("kioskCount");
 let timer = null, etag = null, stage = null;
+let failures = 0;
+let offline = false;
+
 let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
@@ -61,6 +64,12 @@ function applyCurrent(cur){
 async function poll(){
     try{
       const s = await fetchJSON(STATE_URL, etag);
+      failures = 0;
+      if (offline) { offline = false; hideOverlay(); }
+      const mapEl = document.getElementById('map');
+      if (mapEl) mapEl.classList.remove('hidden-map');  // show map again
+
+
       if (s.notModified) return;
       if (s.et) etag = s.et;
       const curEt = s.et || null;
@@ -114,7 +123,19 @@ async function poll(){
         return;
       }
       hideOverlay(); window.setMode?.("landing");
-    }catch(e){ /* keep last view */ }
+    }catch(e){ 
+      failures++;
+    if (failures >= 3) {
+      offline = true;
+      // Safe default: show Landing with a small banner
+      window.setMode?.("landing");
+      showNote("Offline — showing landing loop");
+
+      const mapEl = document.getElementById('map');
+      if (mapEl) mapEl.classList.add('hidden-map'); 
+
+   }
+  }
 }
   
 

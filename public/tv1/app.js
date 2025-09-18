@@ -188,6 +188,19 @@ function stopPulseLoop() {
   pe.raf = null;
 }
 
+// Pause heavy redraws when the tab isn't visible
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopPulseLoop(); // you already call this in clearAllTimers()
+  } else {
+    // OPTIONAL: only resume if you're actually in RESULT mode and highlights are on
+    if (app.mode === Modes.RESULT && app.state?.isHighlightMode) {
+      startPulseLoop();
+    }
+  }
+});
+
+
 function ensureHighlightHasSamples(minCount = 400) {
   const key = `seoul_${app.state.currentDataType || 'BP'}`;
   const data = app.data.cache[key] || [];
@@ -482,14 +495,13 @@ function initializeMapbox() {
   try {
     // Wait until #map actually exists
     const el = document.getElementById('map');
-    if (!el) {
-      // Not yet in DOM (or was temporarily re-rendered) → retry shortly
-      setTimeout(initializeMapbox, 50);
-      return;
-    }
+    if (!el) { app.registerTimeout(initializeMapbox, 50); return; } // use your wrapper
 
     // Use the element, not a string id (more robust)
-    mapboxgl.accessToken = 'pk.eyJ1IjoieWltYXAiLCJhIjoiY20yeWRqc2xzMDBkdjJ2cHhyczFiYzZyciJ9.ePNnEmtc0W3b7ep4xQjGNg';
+    const metaTok = document.querySelector('meta[name="mapbox-token"]')?.content?.trim();
+    if (!metaTok) console.warn('Missing <meta name="mapbox-token">');
+    mapboxgl.accessToken = metaTok || '';
+    
     app.map = new mapboxgl.Map({
       container: el,
       style: 'mapbox://styles/yimap/cm2znj5kv00oj01qkhyuya0yn?fresh=true',
@@ -498,7 +510,6 @@ function initializeMapbox() {
     });
 
     app.map.on('load', () => { app.mapLoaded = true; });
-
     const redrawCanvas = debounce(() => {
       if (app.state.animationInProgress) return;
       const data = app.data.cache[`seoul_${app.state.currentDataType}`];
@@ -521,6 +532,24 @@ function initializeMapbox() {
 
 
 /* ========== CLEANUP FUNCTIONS ========== */
+let landingRestartTimer = null;
+
+app.registerTimeout = (fn, ms) => {
+  const id = setTimeout(fn, ms);
+  app.cleanup.timers.add(id);
+  return id;
+};
+app.registerInterval = (fn, ms) => {
+  const id = setInterval(fn, ms);
+  app.cleanup.timers.add(id);
+  return id;
+};
+app.registerRAF = (fn) => {
+  const id = requestAnimationFrame(fn);
+  app.cleanup.animations.add(id);
+  return id;
+};
+
 function clearAllTimersAndAnimations() {
   for (const timerId of app.cleanup.timers) {
     clearTimeout(timerId);
@@ -535,8 +564,9 @@ function clearAllTimersAndAnimations() {
 
   // stop any result-mode pulsing
   stopPulseLoop();
-
   removeAllCustomTooltips();
+  window.stopKioskPoller?.(); 
+
 
   app.landing.active = false;
   app.landing.currentGroup = null;
@@ -546,6 +576,8 @@ function clearAllTimersAndAnimations() {
   }
 
   app.state.animationInProgress = false;
+  if (landingRestartTimer) { clearTimeout(landingRestartTimer); landingRestartTimer = null; }
+
 }
 
 /* ========== LAYOUT FUNCTIONS ========== */
@@ -655,10 +687,8 @@ function hideVideo() {
     gif.style.opacity = '0';
     
     // Hide it completely after fade completes
-    setTimeout(() => {
-      gif.style.display = 'none';
-      gif.style.opacity = '1'; // Reset for next time
-    }, 500); // Match the CSS transition duration
+    app.registerTimeout(() => { gif.style.display = 'none'; gif.style.opacity = '1'; }, 500);
+
   }
   
   if (map) map.style.display = 'block';
@@ -1014,15 +1044,13 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
 
     ctx.globalAlpha = 1;
     if (elapsed < totalDuration) {
-      const animationId = requestAnimationFrame(animateFrame);
-      app.cleanup.animations.add(animationId);
+      const animationId = app.registerRAF(animateFrame);
     } else {
       app.state.animationInProgress = false;
     }
   }
 
-  const animationId = requestAnimationFrame(animateFrame);
-  app.cleanup.animations.add(animationId);
+  const animationId = app.registerRAF(animateFrame);
 }
 
 /* ========== MODE CONTROL - INTEGRATED SEQUENCES ========== */
@@ -1042,7 +1070,8 @@ async function setMode(newMode) {
   app.mode = newMode;
 
   // Simple body class management for background
-  document.body.className = newMode === Modes.RESULT ? 'result-mode' : '';
+  document.body.classList.toggle('result-mode', newMode === Modes.RESULT);
+  document.body.classList.toggle('landing-mode', newMode === Modes.LANDING);
 
   if (newMode === Modes.LANDING) {
     showLandingLayout();
@@ -1156,6 +1185,7 @@ function buildFooterContent() {
 
 /* ========== LANDING ANIMATION (UPDATED TEXT + 3s PAUSE) ========== */
 async function startLandingAnimationSequence() {
+  if (app.mode !== Modes.LANDING) return;
   if (app.landing.active) return;
 
   app.landing.active = true;
@@ -1242,7 +1272,15 @@ function animateBPGroupHighlighting(data, centerLat, centerLon) {
         // Restart the entire sequence
         //console.log('Restarting landing sequence...');
         app.landing.active = false;
-        setTimeout(() => startLandingAnimationSequence(), 1000);
+       
+        landingRestartTimer = setTimeout(() => startLandingAnimationSequence(), 1000);
+        app.cleanup.timers.add(landingRestartTimer);
+
+        async function startLandingAnimationSequence() {
+          if (app.mode !== Modes.LANDING) return;
+          if (app.landing.active) return;
+        }
+
         return;
       }
     }
@@ -1251,11 +1289,11 @@ function animateBPGroupHighlighting(data, centerLat, centerLon) {
     updateLandingTextGroupDynamic(app.landing.currentGroup);
     updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon);
 
-    app.landing.intervalId = setTimeout(tick, 2500);
+    app.landing.intervalId = app.registerTimeout(tick, 2500);
     app.cleanup.timers.add(app.landing.intervalId);
   };
 
-  app.landing.intervalId = setTimeout(tick, 2500);
+  app.landing.intervalId = app.registerTimeout(tick, 2500);
   app.cleanup.timers.add(app.landing.intervalId);
 }
 
@@ -1832,8 +1870,12 @@ if (typeof updateDistributionChart === 'function') {
 }
 
 
-
 /* ========== INITIALIZATION ========== */
+window.addEventListener("load", () => {
+  window.stopKioskPoller = () => { if (window.__pollerId) { clearInterval(window.__pollerId); window.__pollerId = null; } };
+  window.__pollerId = setInterval(poll, 2000);
+});
+
 async function initializeApplication() {
   if (app.initialized || app._initializing) return;
   app._initializing = true;
@@ -1846,6 +1888,7 @@ async function initializeApplication() {
 
     //createAndSetupButtons();
     initializeMapbox();
+    
 
     await setMode(Modes.LANDING);
 

@@ -673,68 +673,57 @@ footer {
 }
 
 /* ========== LANDING MODE STYLES ========== */
+/* ========== LANDING MODE (de-duplicated) ========== */
 
-/* Landing Mode Layout */
+/* Hide non-landing panels */
 .landing-mode .right-column,
 .landing-mode footer {
   display: none !important;
 }
 
+/* Keep left column container present if you need overlay content there */
 .landing-mode .left-column {
   display: block !important;
   visibility: visible !important;
-  z-index: 999 !important;
-  position: absolute;
+  z-index: 999;
 }
 
+/* Optional: only keep the top area inside left column visible */
 .landing-mode .left-column-top {
   display: block !important;
   visibility: visible !important;
 }
 
-#control-buttons { display: none !important; }
-
-/* Hide content except control buttons in landing mode */
-.landing-mode .left-column .left-column-top > :not(.control-buttons):not(#control-buttons) {
-  display: none !important;
-}
-
-/* Always show control buttons */
-.landing-mode .control-buttons,
-.landing-mode #control-buttons {
-  display: flex !important;
-  flex-direction: column;
-  gap: 10px;
-  visibility: visible !important;
-}
-
-/* Landing Mode Visualization */
+/* Visualization fills the circle */
 .landing-mode .visualization-wrapper,
 .landing-mode #visualization-canvas,
 .landing-mode #map {
+  position: absolute !important;
+  top: 0; left: 0;
   width: 100% !important;
   height: 100% !important;
-  position: absolute !important;
-  top: 0;
-  left: 0;
 }
 
 .landing-mode #visualization-canvas {
   z-index: 2;
   pointer-events: none;
 }
+.landing-mode #map { z-index: 1; }
 
-.landing-mode #map {
-  z-index: 1;
+/* --- DEV controls (see note above) --- */
+body.dev .landing-mode .control-buttons,
+body.dev .landing-mode #control-buttons {
+  display: flex !important;
+  flex-direction: column;
+  gap: 10px;
+  visibility: visible !important;
 }
+.landing-mode .control-buttons,
+.landing-mode #control-buttons { display: none !important; }
 
-/* Landing Text Styles */
-/* UPDATED: Landing Text Styles - Split positioning */
-.landing-text {
-  position: relative;
-}
+/* Landing text overlays */
+.landing-text { position: relative; }
 
-/* Center overlay text */
 .landing-line1 {
   position: fixed;
   top: 43%;
@@ -747,19 +736,15 @@ footer {
   color: #e7e7e7;
   max-width: 100vw;
   line-height: 1.3;
-  font-family: "Poppins", serif; 
+  font-family: "Poppins", serif;
 }
-
-/* Specific style for "Feeling Nature Seoul" text */
 .landing-line1.feeling-nature {
-  font-family: "Attack Type", "Poppins", serif; 
-  font-weight: 200; 
+  font-family: "Attack Type", "Poppins", serif;
+  font-weight: 200;
   font-size: 75px;
   color: #e7e7e7;
-
 }
 
-/* Below visualization text */
 .landing-line2 {
   position: absolute;
   bottom: -80px;
@@ -770,12 +755,9 @@ footer {
   font-weight: 200;
   font-size: 16px;
   color: #cbd5b1;
-  max-width: 90vw;      
+  max-width: 90vw;
   line-height: 1.5;
 }
 
-/* ========== MAPBOX CUSTOMIZATION ========== */
-.mapboxgl-ctrl-attrib {
-  display: none !important;
-}
-
+/* Mapbox attribution — prefer styling over hiding for ToS compliance */
+/* .mapboxgl-ctrl-attrib { display:none !important; } */
