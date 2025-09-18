@@ -671,6 +671,13 @@ function updateLandingTexts(line1Text, line2Text = '', showLine2 = true) {
   if (texts.line1) {
     texts.line1.textContent = line1Text;
     texts.line1.style.display = line1Text ? 'block' : 'none';
+    
+    // Apply custom font only for "Feeling Nature Seoul" text
+    if (line1Text === 'Feeling Nature Seoul') {
+      texts.line1.classList.add('feeling-nature');
+    } else {
+      texts.line1.classList.remove('feeling-nature');
+    }
   }
   
   if (texts.line2) {
@@ -1246,7 +1253,7 @@ function updateLandingTextGroupDynamic(group) {
   const max = (Math.round(group.max * 100) / 100).toFixed(2);
   
   updateLandingTexts(
-    'Complete the survey to learn how you perceive and value urban nature in Seoul!',
+    'Complete the survey to learn how you perceive and value nature in Seoul!',
     `Biophilic Perceptions (BP) group value located in Seoul: ${min}–${max}`,
     true
   );
