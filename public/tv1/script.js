@@ -3,12 +3,22 @@
    Clean + reliable for 4-day event
    ========================================================= */
 
+<<<<<<< HEAD
 /* ---------- Config ---------- */
 const MAX_DISTANCE_METERS = 15000;
 const Modes = { LANDING: 'landing', RESULT: 'result' };
 
 const HIGHLIGHT_COLOR = '#92C043';
 const NON_HIGHLIGHT_GRAY = '#666666';
+=======
+const ovEl = document.getElementById("kioskOverlay");
+const ovMsg = document.getElementById("kioskMsg");
+const ovCnt = document.getElementById("kioskCount");
+let timer = null, etag = null, stage = null;
+let baselineEt = null;
+let lastRenderedEt = null;
+let rendering = false;
+>>>>>>> parent of 04781efc (Body class toggle, Mapbox token meta, register every timer/RAF)
 
 const BP_GROUPS = [
   { min: 0.00, max: 0.25 },
@@ -100,6 +110,7 @@ async function loadSeoulData(type){
   return app.data.cache[key];
 }
 
+<<<<<<< HEAD
 async function loadDashboardData(){
   try{
     const base = (window.APP_CONFIG?.RUNTIME_BASE_URL)||window.RUNTIME_BASE||'';
@@ -209,6 +220,65 @@ function ensureLandingText(){
     const wrap=document.querySelector('.center-column .visualization-wrapper')||document.querySelector('.center-column');
     if (wrap){ const l2=document.createElement('div'); l2.id='landing-line2'; l2.className='landing-line2'; wrap.parentNode.insertBefore(l2, wrap.nextSibling); }
   }
+=======
+async function poll(){
+    try{
+      const s = await fetchJSON(STATE_URL, etag);
+      if (s.notModified) return;
+      if (s.et) etag = s.et;
+      const curEt = s.et || null;
+  
+      const st = s.json || {};
+      if (expired(st)) { hideOverlay(); window.setMode?.("landing"); return; }
+  
+      // Accept either {stage} or {state}
+      let stage = st.stage || st.state || "idle";
+      if (stage === "landing")   stage = "idle";
+      if (stage === "countdown") stage = "in_progress";
+  
+      // Synthesize overlay if the Lambda wrote root fields
+      let ov = st.overlay;
+      if (!ov || typeof ov !== "object") {
+        if (st.state === "countdown") {
+          ov = { type:"countdown", message: st.message || "Loading your result…", not_before: st.countdown_end };
+        } else if (st.state === "in_progress") {
+          ov = { type:"note", message: st.message || "Please complete your survey questions!" };
+        } else {
+          ov = {};
+        }
+      }
+  
+      // Baseline only to avoid replaying old *results*; do not drop overlays
+      if (baselineEt === null) {
+        baselineEt = curEt;
+        if (stage !== "show_result") {
+          // fall through and render overlay immediately
+        }
+      }
+  
+      if (stage === "idle"){
+        hideOverlay(); window.setMode?.("landing"); return;
+      }
+      if (stage === "in_progress"){
+        if (ov.type === "countdown") showCountdown(ov.message, ov.countdown_secs, ov.not_before);
+        else showNote(ov.message);
+        window.setMode?.("landing"); return;
+      }
+      if (stage === "show_result"){
+        hideOverlay();
+        const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
+        if (!changed || rendering) return;
+        rendering = true;
+        const c = await fetchJSON(RESULT_URL);
+        window.setMode?.("result");
+        if (!c.notModified && c.json) applyCurrent(c.json);
+        lastRenderedEt = curEt;
+        rendering = false;
+        return;
+      }
+      hideOverlay(); window.setMode?.("landing");
+    }catch(e){ /* keep last view */ }
+>>>>>>> parent of 04781efc (Body class toggle, Mapbox token meta, register every timer/RAF)
 }
 function updateLandingTexts(line1Text, line2Text='', showLine2=true){
   const l1=document.getElementById('landing-line1'), l2=document.getElementById('landing-line2');
