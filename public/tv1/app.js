@@ -621,14 +621,12 @@ function hideHeaderLogos() {
 }
 
 function showVideo() {
-  const video = document.getElementById('landingVideo');
+  const gif = document.getElementById('landingVideo');
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
   
-  if (video) {
-    video.style.display = 'block';
-    video.currentTime = 0;
-    video.play().catch(e => console.log('Video autoplay prevented:', e));
+  if (gif) {
+    gif.style.display = 'block';
   }
   
   if (map) map.style.display = 'none';
@@ -636,13 +634,12 @@ function showVideo() {
 }
 
 function hideVideo() {
-  const video = document.getElementById('landingVideo');
+  const gif = document.getElementById('landingVideo');
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
   
-  if (video) {
-    video.style.display = 'none';
-    video.pause();
+  if (gif) {
+    gif.style.display = 'none';
   }
   
   if (map) map.style.display = 'block';
@@ -1227,7 +1224,7 @@ function updateLandingTextGroupDynamic(group) {
   const max = (Math.round(group.max * 100) / 100).toFixed(2);
   
   updateLandingTexts(
-    'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+    'Complete the survey to learn how you perceive and value urban nature in Seoul!',
     `Biophilic Perceptions (BP) group value located in Seoul: ${min}–${max}`,
     true
   );
