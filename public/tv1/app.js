@@ -1296,7 +1296,7 @@ async function startLandingAnimationSequence() {
         'BS Map: the distribution of nature-based elements in Seoul urban environment.',
         true
       );
-      await wait(4000);
+      await waitForVideoTime(video, 4);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
@@ -1306,7 +1306,7 @@ async function startLandingAnimationSequence() {
         'BP Map: the strength of perceived Biophilia in the city',
         true
       );
-      await wait(4000); 
+      await waitForVideoTime(video, 8);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 

@@ -151,7 +151,7 @@ body:not(.result-mode) .header-logos {
 }
 
 /* ========== VIDEO ELEMENT ========== */
-#landingGif {
+#landingVideo {
   position: absolute;
   top: 1px;
   left: 0;
