@@ -2,42 +2,21 @@
 window.RUNTIME_BASE = window.RUNTIME_BASE || 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
 window.APP_CONFIG  = window.APP_CONFIG  || { RUNTIME_BASE_URL: window.RUNTIME_BASE };
 // ==========================================================================
-/* EVENT-OPTIMIZED BIOPHILIC VISUALIZATION - INTEGRATED WITH SCRIPT3 FEATURES
-   Complete integration of:
-   1. Geo map to circular layout transition with polar coordinates
-   2. Full animation sequence: BS→BP→highlight→circular→highlight final
-   3. Distribution curve animation with tooltips from script3.js
+/* EVENT-OPTIMIZED BIOPHILIC VISUALIZATION - OPTIMIZED VERSION
+   Addresses critical redundancies:
+   1. Unified color management
+   2. Consolidated BP value handling
+   3. Single dashboard update system
+   4. Unified icon management
+   5. Centralized safe execution
 */
 
 /* ========== CONFIGURATION ========== */
 const MAX_DISTANCE_METERS = 15000;
-window.HIGHLIGHT_MIN = window.HIGHLIGHT_MIN ?? 0.70;
-window.HIGHLIGHT_MAX = window.HIGHLIGHT_MAX ?? 0.75;
-
 const HIGHLIGHT_COLOR = '#92C043', NON_HIGHLIGHT_GRAY = '#666666';
+const PULSE_BASE_PERIOD = 1200;
 
 window.USE_CURRENT_JSON = true;
-
-// Single source of truth for user BP pushed in from TV adapter
-window.setUserBp = function setUserBp(bp) {// normalized BP -> center highlight band and repaint
-const v = Number(bp) || 0;
-const EPS = 0.01;
-window.app = window.app || { state:{}, data:{} };
-app.state.bpValue = v;
-app.state.highlightMin = Math.max(0, v - EPS);
-app.state.highlightMax = Math.min(1, v + EPS);
-window.HIGHLIGHT_MIN = app.state.highlightMin;
-window.HIGHLIGHT_MAX = app.state.highlightMax;
-
-// footer number
-const n = document.getElementById('bpValueNumber');
-if (n) n.textContent = v.toFixed(2);
-
-// repaint center viz layers if available
-if (typeof window.refreshDotLayer === 'function') { try { window.refreshDotLayer(); } catch(_){} }
-if (typeof window.updateLegend    === 'function') { try { window.updateLegend(); } catch(_){} }
-if (typeof window.updateCenterViz === 'function') { try { window.updateCenterViz(); } catch(_){} }
-};
 
 const BP_GROUPS = [
   { min: 0.00, max: 0.25, color: '#92C043', name: 'Very Low (0-0.25)' },
@@ -59,9 +38,427 @@ const seoulData = {
   dashboardDataPath: "./data/SCL/test_FNdashbaord.csv" 
 };
 
-// High value (→1) = close to #92C043; low (→0) = close to #151D07
-colorScale = d3.scaleLinear().domain([0, 1]).range(["#151D07", "#92C043"]).clamp(true);
 const sizeScale = d3.scaleLinear().domain([0, 0.2, 0.6, 0.8, 1]).range([0, 1, 2, 3, 6]);
+
+/* ========== UNIFIED MANAGERS ========== */
+
+// Unified Color Management
+class ColorManager {
+  constructor() {
+    this.colorScale = d3.scaleLinear().domain([0, 1]).range(["#151D07", "#92C043"]).clamp(true);
+  }
+
+  getColor(d, state = {}) {
+    const { isHighlightMode = false, pulseActive = false, pulseIntensity = 0 } = state;
+    
+    if (!isHighlightMode) {
+      return this.colorScale(d.biophilia_norm);
+    }
+    
+    const highlighted = this.isHighlighted(d);
+    
+    if (!pulseActive || !highlighted) {
+      return highlighted ? HIGHLIGHT_COLOR : NON_HIGHLIGHT_GRAY;
+    }
+    
+    return this.interpolateColor(HIGHLIGHT_COLOR, NON_HIGHLIGHT_GRAY, pulseIntensity);
+  }
+
+  isHighlighted(d) {
+    const v = d.biophilia_norm;
+    const lo = window.HIGHLIGHT_MIN ?? 0.70;
+    const hi = window.HIGHLIGHT_MAX ?? 0.75;
+    return v >= lo && v <= hi;
+  }
+
+  interpolateColor(color1, color2, t) {
+    const hex1 = color1.replace('#', '');
+    const hex2 = color2.replace('#', '');
+    
+    const r1 = parseInt(hex1.substr(0, 2), 16);
+    const g1 = parseInt(hex1.substr(2, 2), 16);
+    const b1 = parseInt(hex1.substr(4, 2), 16);
+    
+    const r2 = parseInt(hex2.substr(0, 2), 16);
+    const g2 = parseInt(hex2.substr(2, 2), 16);
+    const b2 = parseInt(hex2.substr(4, 2), 16);
+    
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+    
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  }
+}
+
+// Unified BP Value Management
+class BPManager {
+  constructor() {
+    this.currentValue = 0;
+    this.elements = {};
+  }
+
+  setValue(bp) {
+    const v = Number(bp) || 0;
+    this.currentValue = v;
+    const EPS = 0.01;
+    
+    // Update app state
+    app.state.bpValue = v;
+    app.state.highlightMin = Math.max(0, v - EPS);
+    app.state.highlightMax = Math.min(1, v + EPS);
+    window.HIGHLIGHT_MIN = app.state.highlightMin;
+    window.HIGHLIGHT_MAX = app.state.highlightMax;
+    
+    // Update DOM
+    this.updateDOM();
+    
+    // Trigger repaints
+    this.refreshVisualization();
+  }
+
+  updateDOM() {
+    if (!this.elements.bpNumber) {
+      this.elements.bpNumber = document.getElementById('bpValueNumber');
+    }
+    
+    if (this.elements.bpNumber) {
+      this.elements.bpNumber.textContent = this.currentValue.toFixed(2);
+    }
+  }
+
+  refreshVisualization() {
+    safeExecute('refreshDotLayer');
+    safeExecute('updateLegend');
+    safeExecute('updateCenterViz');
+  }
+}
+
+// Unified Icon Management
+class IconManager {
+  constructor() {
+    this.cache = new Map();
+    this.categoryLabels = {
+      sky: "Sky", tree: "Tree", grass: "Grass", person: "Person",
+      ground: "Earth/Ground", mountain: "Mountain", plant: "Plant/Flora",
+      water: "Water", sea: "Sea", field: "Field", rock: "Rock/Stone",
+      sand: "Sand", fireplace: "Fireplace", river: "River", flower: "Flower",
+      hill: "Hill", palm: "Palmtree", light: "Light/Sunlight",
+      land: "Land/Soil", fountain: "Fountain", swimming: "Swimming Pool",
+      waterfall: "Waterfall", food: "Natural Food", animal: "Animal/Fauna",
+      lake: "Lake"
+    };
+  }
+
+  normalizeKey(s) {
+    if (!s) return "";
+    const raw = String(s).toLowerCase().replace(/[^a-z]/g, "");
+    const alias = { plantflora: "plant", earthground: "ground", naturalfood: "food", palmtree: "palm" };
+    return alias[raw] || raw;
+  }
+
+  labelFromKey(k) {
+    return this.categoryLabels[k] || k;
+  }
+
+  getPaths(key) {
+    const normalized = this.normalizeKey(key);
+    
+    if (this.cache.has(normalized)) {
+      return this.cache.get(normalized);
+    }
+    
+    const cleanKey = String(normalized).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g,'');
+    const base = `img/classes/${cleanKey}`;
+    const paths = [`${base}.png`, `${base}.webp`];
+    
+    this.cache.set(normalized, paths);
+    return paths;
+  }
+
+  loadWithFallback(img, key, onError) {
+    const paths = this.getPaths(key);
+    let index = 0;
+    
+    img.onerror = () => {
+      index++;
+      if (index < paths.length) {
+        img.src = paths[index];
+      } else {
+        img.onerror = null;
+        onError();
+      }
+    };
+    
+    img.src = paths[0];
+  }
+}
+
+// Unified Dashboard Management
+class DashboardManager {
+  constructor() {
+    this.elements = {};
+  }
+
+  cacheElements() {
+    this.elements = {
+      bpNumber: document.getElementById('bpValueNumber'),
+      topCategoryText: document.getElementById('topCategoryText'),
+      topElements: document.getElementById('topElements'),
+      barChart: document.getElementById('barChart'),
+      barLabels: document.getElementById('barLabels'),
+      lineChart: document.getElementById('lineChart')
+    };
+  }
+
+  updateAll(data) {
+    if (!data) return;
+    
+    this.cacheElements();
+    
+    const bpValue = Number(data.bp) || 0;
+    bpManager.setValue(bpValue);
+    
+    const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
+      ? data.intensity_top.slice(0, 3)
+      : Object.entries(data.intensities || {})
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([k]) => k);
+    
+    this.updateTopElements(top3);
+    
+    const top10 = Object.entries(data.intensities || {})
+      .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+    
+    this.updateBarChart(top10);
+    this.updateDistributionChart(bpValue, data.distribution);
+  }
+
+  updateTopElements(top3Names) {
+    const keys = (top3Names || []).map(iconManager.normalizeKey.bind(iconManager)).filter(Boolean);
+
+    if (this.elements.topCategoryText) {
+      this.elements.topCategoryText.textContent = keys.map(iconManager.labelFromKey.bind(iconManager)).join(', ');
+    }
+
+    if (!this.elements.topElements) return;
+    this.elements.topElements.innerHTML = '';
+
+    keys.forEach((key) => {
+      if (!iconManager.categoryLabels[key]) return;
+
+      const card = document.createElement('div');
+      card.className = 'top-element';
+
+      const img = document.createElement('img');
+      img.alt = iconManager.labelFromKey(key);
+      img.style.cssText = 'max-width: 100%; max-height: 100%; object-fit: contain;';
+
+      iconManager.loadWithFallback(img, key, () => card.remove());
+
+      card.appendChild(img);
+      this.elements.topElements.appendChild(card);
+    });
+  }
+
+  updateBarChart(intensityData) {
+    if (!this.elements.barChart || !this.elements.barLabels) return;
+
+    this.elements.barChart.innerHTML = '';
+    this.elements.barLabels.innerHTML = '';
+
+    const maxHeight = 80;
+    const shortNames = {
+      'plant/flora': 'plant', 'animal/fauna': 'animal', 'living Being': 'living',
+      'greenscape': 'green', 'waterscape': 'water', 'landscape': 'land',
+      'waterfall': 'fall', 'palm Tree': 'palmtree', 'palmTree': 'palmtree',
+      'river': 'river', 'lake': 'lake', 'mountain': 'mount',
+      'swimming': 'pool', 'fireplace': 'fire'
+    };
+
+    const shorten = (s) => {
+      if (shortNames[s]) return shortNames[s];
+      const clean = String(s).replace(/_/g, ' ');
+      return clean.length > 12 ? clean.slice(0, 12).trim() : clean;
+    };
+
+    intensityData.forEach(item => {
+      const v = Math.max(0, Math.min(1, item.value));
+      const h = v * maxHeight;
+
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = `${h}px`;
+      bar.style.pointerEvents = 'none';
+      this.elements.barChart.appendChild(bar);
+
+      const label = document.createElement('div');
+      label.className = 'bar-label';
+      label.textContent = shorten(item.name);
+      label.title = item.name;
+      label.style.pointerEvents = 'none';
+      this.elements.barLabels.appendChild(label);
+    });
+  }
+
+  updateDistributionChart(userBpValue, distribution) {
+    const lineCanvas = this.elements.lineChart;
+    if (!lineCanvas || !document.body.contains(lineCanvas)) return;
+
+    const lineCtx = lineCanvas.getContext('2d');
+    if (!lineCtx) return;
+
+    let labels = [];
+    let histogram = [];
+
+    if (distribution && Array.isArray(distribution)) {
+      labels = distribution.map(d => Number(d.bin).toFixed(1));
+      histogram = distribution.map(d => Number(d.count) || 0);
+    } else {
+      if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
+      const bins = 11;
+      const binSize = 1 / (bins - 1);
+      histogram = new Array(bins).fill(0);
+      app.data.allParticipantsData.forEach(value => {
+        const v = Number(value) || 0;
+        const binIndex = Math.min(Math.round(v / binSize), bins - 1);
+        histogram[binIndex]++;
+      });
+      labels = Array.from({ length: bins }, (_, i) => (i * binSize).toFixed(1));
+    }
+
+    const maxCount = Math.max(...histogram, 1);
+    const normalizedData = histogram.map(count => (count / maxCount) * 100);
+
+    if (window.lineChart && typeof window.lineChart.destroy === 'function') {
+      try { window.lineChart.destroy(); } catch (e) {}
+      window.lineChart = null;
+    }
+
+    if (!Chart.Tooltip.positioners) Chart.Tooltip.positioners = {};
+    if (!Chart.Tooltip.positioners.below) {
+      Chart.Tooltip.positioners.below = function (elements, eventPosition) {
+        if (!elements.length) return false;
+        const element = elements[0];
+        return { x: element.element.x, y: element.element.y + 35 };
+      };
+    }
+
+    try {
+      window.lineChart = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'All Participants',
+            data: normalizedData,
+            borderColor: '#666666',
+            backgroundColor: 'rgba(102, 102, 102, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 0,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { bottom: 15, right: 40 } },
+          interaction: { intersect: false, mode: 'none' },
+          onHover: null,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: {
+              display: true,
+              position: 'bottom',
+              grid: { display: false, drawBorder: true },
+              ticks: {
+                display: true,
+                color: '#888',
+                font: { size: 11, weight: 'normal' },
+                padding: 5,
+                callback: function(value, index, ticks) {
+                  if (index === 0) return '0';
+                  if (index === ticks.length - 1) return '1';
+                  if (index === Math.floor(ticks.length / 2)) return '0.5';
+                  return '';
+                }
+              },
+              border: { display: true, color: '#444' }
+            },
+            y: { display: false, min: 0, grid: { display: false } }
+          },
+          animation: { duration: 1000 }
+        }
+      });
+    } catch (error) {
+      console.error('Error creating distribution chart:', error);
+    }
+  }
+}
+
+/* ========== INITIALIZE MANAGERS ========== */
+const colorManager = new ColorManager();
+const bpManager = new BPManager();
+const iconManager = new IconManager();
+const dashboardManager = new DashboardManager();
+
+/* ========== UTILITY FUNCTIONS ========== */
+function safeExecute(fnName, ...args) {
+  try {
+    if (typeof window[fnName] === 'function') {
+      return window[fnName](...args);
+    }
+  } catch (error) {
+    // Silent fail for UI updates
+  }
+  return null;
+}
+
+function safeBatch(fnNames) {
+  fnNames.forEach(fn => safeExecute(fn));
+}
+
+function debounce(func, delay) {
+  let debounceTimer;
+  return function() {
+    const context = this;
+    const args = arguments;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => func.apply(context, args), delay);
+  };
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calculateBearing(lat1, lon1, lat2, lon2) {
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  return Math.atan2(Math.sin(Δλ) * Math.cos(φ2),
+                   Math.cos(φ1) * Math.sin(φ2) -
+                   Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ));
+}
 
 /* ========== APPLICATION STATE ========== */
 const Modes = { LANDING: 'landing', RESULT: 'result' };
@@ -80,7 +477,10 @@ const app = {
     currentDataType: 'BS',
     isCircularView: false,
     isHighlightMode: false,
-    animationInProgress: false
+    animationInProgress: false,
+    bpValue: 0,
+    highlightMin: 0.70,
+    highlightMax: 0.75
   },
   data: {
     cache: {},
@@ -98,77 +498,32 @@ const app = {
     timers: new Set(),
     animations: new Set()
   },
+  effects: {
+    pulse: { active: false, raf: null, t0: 0, last: 0, period: PULSE_BASE_PERIOD }
+  },
   initialized: false,
   _initializing: false,
   _resizeListenerAdded: false
 };
 
-/* ========== PULSE ENGINE (Result-only, highlighted dots) ========== */
-app.effects = app.effects || {};
-app.effects.pulse = { active: false, raf: null, t0: 0, last: 0, period: 1200 };
+// Unified BP setter for external use
+window.setUserBp = function(bp) {
+  bpManager.setValue(bp);
+};
 
-// keep these in one place near the pulse engine
-//const PULSE_BASE_AMP    = 0.35;   // set this to your CURRENT amplitude
-const PULSE_BASE_PERIOD = 1200;   // set this to your CURRENT period (ms)
-
-function colorWithPulse(d) {
-  const pe = app.effects?.pulse || {};
-  const bp = Number(app.state?.bpValue) || 0;
-  
-  // Only affect highlighted dots while the pulse is active
-  if (!pe.active || !app.state?.isHighlightMode || !isHighlighted(d)) {
-    // Return normal color for non-highlighted or when pulse is inactive
-    if (!app.state.isHighlightMode) return colorScale(d.biophilia_norm);
-    return isHighlighted(d) ? HIGHLIGHT_COLOR : NON_HIGHLIGHT_GRAY;
-  }
-
-  // Calculate pulse phase (same timing as before)
-  const now = performance.now();
-  const phase = ((now - pe.t0) % pe.period) / pe.period; // [0..1)
-  
-  // Create sinusoidal interpolation between colors
-  const intensity = (1 + Math.sin(2 * Math.PI * phase)) / 2; // [0..1]
-  
-  // Interpolate between HIGHLIGHT_COLOR (#92C043) and NON_HIGHLIGHT_GRAY (#666666)
-  return interpolateColor(HIGHLIGHT_COLOR, NON_HIGHLIGHT_GRAY, intensity);
-} 
-
-
-function interpolateColor(color1, color2, t) {
-  // Parse hex colors
-  const hex1 = color1.replace('#', '');
-  const hex2 = color2.replace('#', '');
-  
-  const r1 = parseInt(hex1.substr(0, 2), 16);
-  const g1 = parseInt(hex1.substr(2, 2), 16);
-  const b1 = parseInt(hex1.substr(4, 2), 16);
-  
-  const r2 = parseInt(hex2.substr(0, 2), 16);
-  const g2 = parseInt(hex2.substr(2, 2), 16);
-  const b2 = parseInt(hex2.substr(4, 2), 16);
-  
-  // Interpolate each channel
-  const r = Math.round(r1 + (r2 - r1) * t);
-  const g = Math.round(g1 + (g2 - g1) * t);
-  const b = Math.round(b1 + (b2 - b1) * t);
-  
-  // Convert back to hex
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
-
-
+/* ========== PULSE ENGINE ========== */
 function startPulseLoop() {
   const pe = app.effects.pulse;
-  if (pe.raf) return;               // already running
+  if (pe.raf) return;
   pe.active = true;
   pe.t0 = performance.now();
   pe.last = pe.t0;
-  pe.period = PULSE_BASE_PERIOD;    
+  pe.period = PULSE_BASE_PERIOD;
 
   const tick = () => {
     if (!pe.active) { pe.raf = null; return; }
     const now = performance.now();
-    if (now - pe.last > 42) {       // ~24fps redraw
+    if (now - pe.last > 42) {
       const data = app.data.cache[`seoul_${app.state.currentDataType}`];
       if (data) updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
       pe.last = now;
@@ -199,7 +554,7 @@ function ensureHighlightHasSamples(minCount = 400) {
 
   let count = countInBand();
   while (count < minCount && widen < 0.05) {
-    widen += 0.005; // widen by 0.5% each step
+    widen += 0.005;
     lo = Math.max(0, app.state.bpValue - (0.01 + widen));
     hi = Math.min(1, app.state.bpValue + (0.01 + widen));
     count = countInBand();
@@ -208,55 +563,10 @@ function ensureHighlightHasSamples(minCount = 400) {
   window.HIGHLIGHT_MAX = hi;
 }
 
-
-/* ========== UTILITY FUNCTIONS ========== */
-function debounce(func, delay) {
-  let debounceTimer;
-  return function() {
-    const context = this;
-    const args = arguments;
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => func.apply(context, args), delay);
-  };
-}
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function isHighlighted(d) {
-  const v = d.biophilia_norm;
-  const lo = (window.HIGHLIGHT_MIN ?? 0.70);
-  const hi = (window.HIGHLIGHT_MAX ?? 0.75);
-  return v >= lo && v <= hi;
-}
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function calculateBearing(lat1, lon1, lat2, lon2) {
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-  return Math.atan2(Math.sin(Δλ) * Math.cos(φ2),
-                   Math.cos(φ1) * Math.sin(φ2) -
-                   Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ));
-}
-
 /* ========== TOOLTIP CLEANUP ========== */
 function removeAllCustomTooltips() {
   const existingTooltips = document.querySelectorAll('#custom-chart-tooltip');
-  existingTooltips.forEach(tooltip => {
-    tooltip.remove();
-  });
+  existingTooltips.forEach(tooltip => tooltip.remove());
 
   if (window.lineChart && typeof window.lineChart.destroy !== 'function') {
     try {
@@ -310,7 +620,6 @@ async function loadSeoulData(dataType) {
   return app.data.cache[cacheKey];
 }
 
-// --- fetch helpers (no-cache) ---
 async function fetchJSONNoCache(url) {
   const withTs = url + (url.includes('?') ? '&' : '?') + 'ts=' + Date.now();
   const res = await fetch(withTs, {
@@ -324,63 +633,6 @@ async function fetchJSONNoCache(url) {
   return res.json();
 }
 
-// Optional: small retry if S3 propagation lags a split second
-async function loadFreshCurrentWithRetry(maxTries = 3) {
-  const prevTs = app?.data?.current?.meta?.computed_at || '';
-  for (let i = 0; i < maxTries; i++) {
-    const cur = await fetchJSONNoCache(`${RUNTIME_BASE}/current.json`);
-    const curTs = cur?.meta?.computed_at || '';
-    if (curTs && curTs !== prevTs) return cur;
-    await new Promise(r => setTimeout(r, 350 + i * 200));
-  }
-  // last attempt
-  return fetchJSONNoCache(`${RUNTIME_BASE}/current.json`);
-}
-
-// Called when the system should show results on TV1
-async function tv1ApplyResults() {
-  // 1) fetch the newest data first (prevents showing stale BP)
-  const latest = await loadFreshCurrentWithRetry();
-
-  // 2) set as the single source of truth
-  app.data.current = latest;
-
-  // 3) render everything from one place
-  updateDashboardDisplay(latest);     // <-- your existing centralized renderer
-}
-
-// --- helpers to normalize/label categories and get values from intensities ---
-const CATEGORY_LABELS = {
-  sky: "Sky", tree: "Tree", grass: "Grass", person: "Person",
-  ground: "Earth/Ground", mountain: "Mountain", plant: "Plant/Flora",
-  water: "Water", sea: "Sea", field: "Field", rock: "Rock/Stone",
-  sand: "Sand", fireplace: "Fireplace", river: "River", flower: "Flower",
-  hill: "Hill", palm: "Palmtree", light: "Light/Sunlight",
-  land: "Land/Soil", fountain: "Fountain", swimming: "Swimming Pool",
-  waterfall: "Waterfall", food: "Natural Food", animal: "Animal/Fauna",
-  lake: "Lake"
-};
-
-function toKey(s) {
-  if (!s) return "";
-  const raw = String(s).toLowerCase().replace(/[^a-z]/g, "");
-  // a couple of simple aliases so names match your CSV/Lambda keys
-  const alias = { plantflora: "plant", earthground: "ground", naturalfood: "food", palmtree: "palm" };
-  return alias[raw] || raw;
-}
-function labelFromKey(k) { return CATEGORY_LABELS[k] || k; }
-
-// Force the BP value everywhere in the UI (prevents the "flip back" to default)
-function enforceBpValue(bp) {
-  const num = document.getElementById("bpValueNumber");
-  if (num) num.textContent = bp.toFixed(2);
-  // if your radial viz exposes a setter, call it too (noop if not present)
-  if (window.setBiPValue) try { window.setBiPValue(bp); } catch {}
-}
-
-
-
-// Prefer current.json written by Lambda; fall back to CSV if unavailable
 async function loadDashboardData() {
   try {
     const url = `${window.APP_CONFIG?.RUNTIME_BASE_URL || window.RUNTIME_BASE}/current.json`;
@@ -395,8 +647,6 @@ async function loadDashboardData() {
     };
 
     app.data.dashboardData = normalized;
-    window.setUserBp?.(normalized.bp);
-    
     return normalized;
     
   } catch (err) {
@@ -465,15 +715,12 @@ function generateSampleDistribution() {
 /* ========== MAP INITIALIZATION ========== */
 function initializeMapbox() {
   try {
-    // Wait until #map actually exists
     const el = document.getElementById('map');
     if (!el) {
-      // Not yet in DOM (or was temporarily re-rendered) → retry shortly
       setTimeout(initializeMapbox, 50);
       return;
     }
 
-    // Use the element, not a string id (more robust)
     mapboxgl.accessToken = 'pk.eyJ1IjoieWltYXAiLCJhIjoiY20yeWRqc2xzMDBkdjJ2cHhyczFiYzZyciJ9.ePNnEmtc0W3b7ep4xQjGNg';
     app.map = new mapboxgl.Map({
       container: el,
@@ -502,7 +749,6 @@ function initializeMapbox() {
   return app.map;
 }
 
-
 /* ========== CLEANUP FUNCTIONS ========== */
 function clearAllTimersAndAnimations() {
   for (const timerId of app.cleanup.timers) {
@@ -516,12 +762,9 @@ function clearAllTimersAndAnimations() {
   }
   app.cleanup.animations.clear();
 
-  // Stop result-mode pulsing
   stopPulseLoop();
-
   removeAllCustomTooltips();
 
-  // Stop all media
   const video = document.getElementById('landingVideo');
   if (video) video.pause();
 
@@ -537,10 +780,6 @@ function clearAllTimersAndAnimations() {
 
 /* ========== LAYOUT FUNCTIONS ========== */
 function showLandingLayout() {
-  if (!document.getElementById('control-buttons')) {
-    //createAndSetupButtons();
-  }
-
   if (app.elements.rightCol) {
     app.elements.rightCol.style.display = 'none';
   }
@@ -565,7 +804,6 @@ function showLandingLayout() {
   ensureLandingText();
 }
 
-/* ===== Landing text lines ===== */
 function ensureLandingText() {
   let line1 = document.getElementById('landing-line1');
   let line2 = document.getElementById('landing-line2');
@@ -592,7 +830,6 @@ function ensureLandingText() {
   return { line1, line2 };
 }
 
-// Updated function to show logos with conditional display
 function showHeaderLogos(showBoth = false) {
   const logos = document.getElementById('headerLogos');
   const leftLogo = document.querySelector('.header-logo:first-child');
@@ -603,11 +840,11 @@ function showHeaderLogos(showBoth = false) {
   }
   
   if (rightLogo) {
-    rightLogo.style.display = 'block'; // Right logo always shows
+    rightLogo.style.display = 'block';
   }
   
   if (leftLogo) {
-    leftLogo.style.display = showBoth ? 'block' : 'none'; // Left logo only shows when showBoth is true
+    leftLogo.style.display = showBoth ? 'block' : 'none';
   }
 }
 
@@ -625,7 +862,6 @@ function updateLandingTexts(line1Text, line2Text = '', showLine2 = true) {
     texts.line1.textContent = line1Text;
     texts.line1.style.display = line1Text ? 'block' : 'none';
     
-    // Apply custom font only for "Feeling Nature Seoul" text
     if (line1Text === 'Feeling Nature Seoul') {
       texts.line1.classList.add('feeling-nature');
     } else {
@@ -650,8 +886,6 @@ function removeLandingText() {
 function showDashboardLayout() {
   removeLandingText();
   hideHeaderLogos();
-  
-  // Hide all landing media
   hideAllMedia();
   
   if (app.elements.rightCol) {
@@ -674,6 +908,7 @@ function showDashboardLayout() {
   }
 }
 
+/* ========== VISUALIZATION CANVAS ========== */
 function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) {
   if (!data || data.length === 0) return;
   const canvas = app.elements.canvas;
@@ -697,7 +932,6 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
   const centerX = width / 2;
   const centerY = height / 2;
 
-  // POLAR COORDINATE TRANSFORMATION FROM SCRIPT3
   const radiusScale = d3.scaleLinear()
     .domain([0, MAX_DISTANCE_METERS])
     .range([0, (Math.min(centerX, centerY) - 5) * 0.98])
@@ -728,19 +962,21 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
   }
 
   function getDotColor(d) {
-    // If pulse is active and this is highlight mode, use color pulsation
-    if (app.effects?.pulse?.active && app.state.isHighlightMode) {
-      return colorWithPulse(d);
-    }
+    const now = performance.now();
+    const pe = app.effects.pulse;
+    const phase = pe.active ? ((now - pe.t0) % pe.period) / pe.period : 0;
+    const pulseIntensity = pe.active ? (1 + Math.sin(2 * Math.PI * phase)) / 2 : 0;
     
-    // Otherwise use existing logic
-    if (!app.state.isHighlightMode) return colorScale(d.biophilia_norm);
-    return isHighlighted(d) ? HIGHLIGHT_COLOR : NON_HIGHLIGHT_GRAY;
+    return colorManager.getColor(d, {
+      isHighlightMode: app.state.isHighlightMode,
+      pulseActive: pe.active && colorManager.isHighlighted(d),
+      pulseIntensity
+    });
   }
 
   function getDotOpacity(d) {
     if (!app.state.isHighlightMode) return 0.7;
-    return isHighlighted(d) ? 0.7 : 0.15;
+    return colorManager.isHighlighted(d) ? 0.7 : 0.15;
   }
 
   const filteredData = data.filter(d => {
@@ -752,8 +988,8 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
   if (!animate) {
     ctx.clearRect(0, 0, width, height);
 
-    const nonHighlighted = app.state.isHighlightMode ? filteredData.filter(d => !isHighlighted(d)) : filteredData;
-    const highlighted = app.state.isHighlightMode ? filteredData.filter(isHighlighted) : [];
+    const nonHighlighted = app.state.isHighlightMode ? filteredData.filter(d => !colorManager.isHighlighted(d)) : filteredData;
+    const highlighted = app.state.isHighlightMode ? filteredData.filter(d => colorManager.isHighlighted(d)) : [];
 
     // Draw non-highlighted dots first
     nonHighlighted.forEach(d => {
@@ -762,20 +998,20 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
         ctx.beginPath();
         const radius = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
         ctx.arc(p.x, p.y, Math.max(1, radius), 0, 2 * Math.PI);
-        ctx.fillStyle = getDotColor(d); // This will handle the color logic
+        ctx.fillStyle = getDotColor(d);
         ctx.globalAlpha = getDotOpacity(d);
         ctx.fill();
       }
    });
 
-    // Draw highlighted dots on top (with pulsation if active)
+    // Draw highlighted dots on top
     highlighted.forEach(d => {
       const p = app.state.isCircularView ? getCircularPosition(d) : getMapPosition(d);
       if (p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height) {
         ctx.beginPath();
         const radius = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
         ctx.arc(p.x, p.y, Math.max(1, radius), 0, 2 * Math.PI);
-        ctx.fillStyle = getDotColor(d); // This will use color pulsation for highlighted dots
+        ctx.fillStyle = getDotColor(d);
         ctx.globalAlpha = getDotOpacity(d);
         ctx.fill();
       }
@@ -785,7 +1021,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
     return;
   }
 
-  // ENHANCED ANIMATION FROM SCRIPT3 WITH SOPHISTICATED PHASING
+  // Animation logic
   app.state.animationInProgress = true;
 
   let initialPositions, targetPositions;
@@ -819,7 +1055,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
     const y = init.y + (target.y - init.y) * easedT;
     const radius = init.radius + (target.radius - init.radius) * easedT;
     const baseOpacity = 0.2 + (1 - 0.2) * easedT;
-    const finalOpacity = app.state.isHighlightMode ? (isHighlighted(d) ? baseOpacity * 1.3 : baseOpacity * 0.3) : baseOpacity;
+    const finalOpacity = app.state.isHighlightMode ? (colorManager.isHighlighted(d) ? baseOpacity * 1.3 : baseOpacity * 0.3) : baseOpacity;
 
     if (x >= 0 && x <= width && y >= 0 && y <= height) {
       ctx.beginPath();
@@ -836,12 +1072,11 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
     ctx.clearRect(0, 0, width, height);
 
     if (elapsed < fadeDuration) {
-      // Phase 1: Fade Out
       const tFade = Math.min(1, elapsed / fadeDuration);
       const currentOpacity = 1 + (0.2 - 1) * tFade;
 
       filteredData.forEach((d, i) => {
-        if (!app.state.isHighlightMode || !isHighlighted(d)) {
+        if (!app.state.isHighlightMode || !colorManager.isHighlighted(d)) {
           const pos = initialPositions[i];
           if (pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height) {
             ctx.beginPath();
@@ -855,7 +1090,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
 
       if (app.state.isHighlightMode) {
         filteredData.forEach((d, i) => {
-          if (isHighlighted(d)) {
+          if (colorManager.isHighlighted(d)) {
             const pos = initialPositions[i];
             if (pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height) {
               ctx.beginPath();
@@ -868,7 +1103,6 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
         });
       }
     } else {
-      // Phase 2: Move & Fade In with staggered timing
       const moveElapsedTotal = elapsed - fadeDuration;
 
       const drawByGroup = (predicate) => {
@@ -892,9 +1126,8 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
         });
       };
 
-      // Draw non-highlighted first, highlighted second for proper layering
-      drawByGroup(d => !app.state.isHighlightMode || !isHighlighted(d));
-      if (app.state.isHighlightMode) drawByGroup(d => isHighlighted(d));
+      drawByGroup(d => !app.state.isHighlightMode || !colorManager.isHighlighted(d));
+      if (app.state.isHighlightMode) drawByGroup(d => colorManager.isHighlighted(d));
     }
 
     ctx.globalAlpha = 1;
@@ -910,7 +1143,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
   app.cleanup.animations.add(animationId);
 }
 
-/* ========== MODE CONTROL - INTEGRATED SEQUENCES ========== */
+/* ========== MODE CONTROL ========== */
 async function setMode(newMode) {
   if (app.mode === newMode) return;
 
@@ -925,13 +1158,10 @@ async function setMode(newMode) {
   }
 
   app.mode = newMode;
-
-  // Simple body class management for background
   document.body.className = newMode === Modes.RESULT ? 'result-mode' : '';
 
   if (newMode === Modes.LANDING) {
     showLandingLayout();
-    // Header will be managed by the landing sequence
     
     app.state.currentDataType = 'BP';
     await loadSeoulData('BP');
@@ -948,13 +1178,11 @@ async function setMode(newMode) {
 
   } else if (newMode === Modes.RESULT) {
     showDashboardLayout();
-    hideHeaderLogos(); // Hide header in result mode
+    hideHeaderLogos();
     buildAllContent();
 
-    // Ensure map is ready FIRST
     await ensureMapReady();
 
-    // Load all data in parallel
     const [, , dashboardData, participantsData] = await Promise.all([
       loadSeoulData('BS'),
       loadSeoulData('BP'), 
@@ -962,7 +1190,9 @@ async function setMode(newMode) {
       loadAllParticipantsData()
     ]);
 
-    await updateDashboardDisplay();
+    if (dashboardData) {
+      dashboardManager.updateAll(dashboardData);
+    }
 
     app.state.isCircularView = false;
     app.state.isHighlightMode = false;
@@ -973,7 +1203,6 @@ async function setMode(newMode) {
     }
 
     await wait(100);
-
     await executeResultSequence();
   }
 }
@@ -995,8 +1224,6 @@ function buildLeftColumnContent() {
       ${app.state.currentDataType === 'BP' ? seoulData.BPDescription : seoulData.BSDescription}
     </p>
   `;
-
-  //createAndSetupButtons();
 }
 
 function buildRightColumnContent() {
@@ -1045,7 +1272,7 @@ function buildFooterContent() {
   `;
 }
 
-/* ========== LANDING ANIMATION (UPDATED TEXT + 3s PAUSE) ========== */
+/* ========== LANDING ANIMATION ========== */
 function showGif() {
   const gif = document.getElementById('landingGif');
   const video = document.getElementById('landingVideo');
@@ -1076,7 +1303,7 @@ function showVideo() {
   if (video) {
     video.style.display = 'block';
     video.style.opacity = '1';
-    video.currentTime = 0; // Reset to beginning
+    video.currentTime = 0;
     video.play();
   }
   if (map) map.style.display = 'none';
@@ -1110,27 +1337,12 @@ function hideAllMedia() {
   if (canvas) canvas.style.display = 'block';
 }
 
-// Wait for video to reach specific time
-function waitForVideoTime(video, targetTime) {
-  return new Promise(resolve => {
-    const checkTime = () => {
-      if (!video || video.currentTime >= targetTime) {
-        resolve();
-      } else {
-        requestAnimationFrame(checkTime);
-      }
-    };
-    checkTime();
-  });
-}
-
-// Preload video for smoother playback
 function preloadVideo() {
   const video = document.getElementById('landingVideo');
   if (video && video.readyState < 4) {
     return new Promise(resolve => {
       video.addEventListener('canplaythrough', resolve, { once: true });
-      video.load(); // Force load if needed
+      video.load();
     });
   }
   return Promise.resolve();
@@ -1142,26 +1354,19 @@ async function startLandingAnimationSequence() {
   app.landing.active = true;
 
   try {
-    // Preload video for smooth playback
     await preloadVideo();
-    
-    // Ensure text elements exist
     ensureLandingText();
 
-    // INFINITE LOOP - will restart from GIF every time
     while (app.landing.active && app.mode === Modes.LANDING) {
       
-      // === PHASE 1: GIF SEQUENCE (16 seconds total) ===
-      
-      // Step A: GIF + "Feeling Nature Seoul" + partial header (5s)
+      // Phase 1: GIF sequence (16 seconds)
       showGif();
-      showHeaderLogos(false); // Show only right logo
+      showHeaderLogos(false);
       updateLandingTexts('Feeling Nature Seoul', '', false);
       await wait(5000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      // Step B: GIF + Biophilia explanation + partial header (11s)
       updateLandingTexts(
         'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
         'Explore how Seoul residents perceive nature.',
@@ -1171,40 +1376,33 @@ async function startLandingAnimationSequence() {
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      // === PHASE 2: VIDEO SEQUENCE (28 seconds total) ===
-      
+      // Phase 2: Video sequence (28 seconds)
       showVideo();
-      showHeaderLogos(true); // Show both logos
+      showHeaderLogos(true);
 
-      // Step C: Video shows BS map + text (4s) - FIXED TIMING
       updateLandingTexts(
         'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
         'BS Map: the distribution of nature-based elements in Seoul urban environment.',
         true
       );
-      await wait(4000); // Fixed 4 second timing
+      await wait(4000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      // Step D: Video shows BP map + text (4s more) - FIXED TIMING  
       updateLandingTexts(
         'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
         'BP Map: the strength of perceived Biophilia in the city',
         true
       );
-      await wait(4000); // Fixed 4 second timing
+      await wait(4000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      // Step E: Video shows BP group highlighting with cycling text (20s) - FIXED TIMING
       await animateTextForVideoGroupSequenceFixed();
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
       
-      // Brief pause before restarting the entire sequence from GIF
       await wait(1000);
-      
-      // Loop continues automatically - will restart from Phase 1 (GIF)
     }
 
   } catch (error) {
@@ -1213,7 +1411,6 @@ async function startLandingAnimationSequence() {
   }
 }
 
-// Add this NEW function to replace the old video timing approach:
 async function animateTextForVideoGroupSequenceFixed() {
   const groups = [
     { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)' },
@@ -1222,17 +1419,14 @@ async function animateTextForVideoGroupSequenceFixed() {
     { min: 0.75, max: 1.00, name: 'High (0.75-1.0)' }
   ];
 
-  // Show first group immediately
   updateLandingTextForGroup(groups[0]);
   
-  // Cycle through remaining groups every 5 seconds
   for (let i = 1; i < 4; i++) {
-    await wait(5000); // Fixed 5 second intervals
+    await wait(5000);
     if (!app.landing.active || app.mode !== Modes.LANDING) break;
     updateLandingTextForGroup(groups[i]);
   }
   
-  // Wait for final group display
   await wait(5000);
 }
 
@@ -1242,20 +1436,17 @@ function updateLandingTextForGroup(group) {
   
   updateLandingTexts(
     'Complete the survey to learn how you perceive and value nature in Seoul!',
-    `Biophilic Perceptions (BP) group value located in Seoul: ${min}–${max}`,
+    `Biophilic Perceptions (BP) group value located in Seoul: ${min}—${max}`,
     true
   );
 }
 
-
-/* ========== RESULT SEQUENCE WITH PULSATION EFFECT ========== */
-// Add this to ensure map is ready when switching to result mode
+/* ========== RESULT SEQUENCE ========== */
 async function ensureMapReady() {
   if (!app.map) {
     initializeMapbox();
   }
   
-  // Wait for map to be fully loaded
   if (app.map && !app.mapLoaded) {
     return new Promise(resolve => {
       app.map.once('load', () => {
@@ -1268,13 +1459,10 @@ async function ensureMapReady() {
   return Promise.resolve();
 }
 
-
-
 async function executeResultSequence() {
   if (app.state.animationInProgress) return;
 
   try {
-    // Ensure we're in BP mode first
     if (app.state.currentDataType !== 'BP') {
       app.state.currentDataType = 'BP';
       await loadSeoulData('BP');
@@ -1283,19 +1471,14 @@ async function executeResultSequence() {
 
     const bpData = app.data.cache['seoul_BP'];
 
-    // Step 1: Activate highlight on map view WITH PULSE
+    // Step 1: Activate highlight on map view with pulse
     app.state.isHighlightMode = true;
     ensureHighlightHasSamples();    
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
 
-    // set period from BP just before starting pulse
-    app.effects = app.effects || {};
-    app.effects.pulse = app.effects.pulse || { period: PULSE_BASE_PERIOD };
-    //app.effects.pulse.period = getPulsePeriodByBp(app.state.bpValue);
     app.effects.pulse.period = PULSE_BASE_PERIOD;
-
-    startPulseLoop();                 // start pulsing highlighted dots (map)
-    await wait(3000);                 // keep pulsing for 3s
+    startPulseLoop();
+    await wait(3000);
 
     // Step 1b: Clear highlights and stop pulse before transition
     app.state.isHighlightMode = false;
@@ -1303,288 +1486,40 @@ async function executeResultSequence() {
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     await wait(1500);
 
-    // Step 2: Switch to circular view (no pulse during transition)
+    // Step 2: Switch to circular view
     app.state.isCircularView = true;
     ensureHighlightHasSamples();  
     const mapContainer = document.getElementById('map');
     if (mapContainer) mapContainer.classList.add('hidden-map');
 
-    // Animate transition to circular view
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, true);
 
-    // Approximate faster transition duration (1.5x faster note retained)
     const fadeDuration = 1500;
     const moveDuration = 800;
     const originalTransitionDuration = fadeDuration + moveDuration + 1000;
     const totalTransitionDuration = originalTransitionDuration / 2;
     await wait(totalTransitionDuration);
 
-    // Show full circular layout for a moment
     await wait(4000);
 
-    // Step 3: Activate highlight on circular view AND RESUME PULSE (persist after)
+    // Step 3: Activate highlight on circular view and resume pulse
     app.state.isHighlightMode = true;
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
 
-    // set period from BP just before (re)starting pulse
-    app.effects = app.effects || {};
-    app.effects.pulse = app.effects.pulse || { period: PULSE_BASE_PERIOD };
     app.effects.pulse.period = PULSE_BASE_PERIOD; 
-    startPulseLoop();                 // pulse continues on circular highlighted dots
+    startPulseLoop();
     await wait(1000);
 
     // Step 4: Start distribution curve animation loop
     const bpValue = parseFloat(document.getElementById('bpValueNumber')?.textContent) || 0.72;
     animateDistributionCurve(bpValue);
 
-    // (Pulse remains active until mode changes; clearAllTimersAndAnimations() stops it)
   } catch (error) {
     console.error('Error in result sequence:', error);
   }
 }
 
-/* ========== DASHBOARD FUNCTIONS ========== */
-function iconPathFor(key) {
-  const k = String(key || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g,'');
-  // Try .png first, then .webp
-  return [`img/classes/${k}.png`, `img/classes/${k}.webp`];
-}
-
-
-function updateTopElements(top3Names) {
-  const keys = (top3Names || []).map(toKey).filter(Boolean);
-
-  // keep the text line
-  const textEl = document.getElementById('topCategoryText');
-  if (textEl) textEl.textContent = keys.map(labelFromKey).join(', ');
-
-  const wrap = document.getElementById('topElements');
-  if (!wrap) return;
-  wrap.innerHTML = '';
-
-  keys.forEach((key) => {
-    if (!CATEGORY_LABELS[key]) return;
-
-    const [png, webp] = iconPathFor(key);
-
-    const card = document.createElement('div');
-    card.className = 'top-element';
-
-    const img = document.createElement('img');
-    img.alt = labelFromKey(key);
-    img.style.maxWidth = '100%';
-    img.style.maxHeight = '100%';
-    img.style.objectFit = 'contain';
-
-    let i = 0;
-    const sources = [png, webp];
-    img.onerror = () => { i += 1; if (i < sources.length) img.src = sources[i]; else { img.onerror = null; card.remove(); } };
-    img.src = sources[0];
-
-    // NOTE: no label created/appended here
-    card.appendChild(img);
-    wrap.appendChild(card);
-  });
-}
-
-
-  function updateBarChart(intensityData) {
-    const barChart  = document.getElementById('barChart');
-    const barLabels = document.getElementById('barLabels');
-    if (!barChart || !barLabels) return;
-  
-    // reset
-    barChart.innerHTML = '';
-    barLabels.innerHTML = '';
-  
-    // fixed scale to 0..1 (not normalized to max)
-    const maxHeight = 80; // px
-  
-    // a short name mapper; fallback trims long names neatly
-    const SHORT = {
-      'plant/flora': 'plant',
-      'animal/fauna': 'animal',
-      'living Being': 'living',
-      'greenscape': 'green',
-      'waterscape': 'water',
-      'landscape': 'land',
-      'waterfall': 'fall',
-      'palm Tree': 'palmtree',
-      'palmTree': 'palmtree',
-      'river': 'river',
-      'lake': 'lake',
-      'mountain': 'mount',
-      'swimming': 'pool',
-      'fireplace': 'fire'
-    };
-    const shorten = (s) => {
-      if (SHORT[s]) return SHORT[s];
-      const clean = String(s).replace(/_/g, ' ');
-      return clean.length > 12 ? clean.slice(0, 12).trim() : clean;
-    };
-  
-    // draw bars + labels (top-10 already applied by caller)
-    intensityData.forEach(item => {
-      const v = Math.max(0, Math.min(1, item.value));
-      const h = v * maxHeight;
-  
-      const bar = document.createElement('div');
-      bar.className = 'bar';
-      bar.style.height = `${h}px`;
-      // DISABLE MOUSE INTERACTIONS - Remove title attribute
-      // bar.title = `${item.name}: ${v.toFixed(2)}`;  // Comment out this line
-      bar.style.pointerEvents = 'none';  // Disable pointer events
-      barChart.appendChild(bar);
-  
-      const label = document.createElement('div');
-      label.className = 'bar-label';
-      label.textContent = shorten(item.name);
-      // Keep title for accessibility but disable hover
-      label.title = item.name;
-      label.style.pointerEvents = 'none';  // Disable pointer events
-      barLabels.appendChild(label);
-    });
-  }
-  
-
-  
-
-
-
-
-/* ========== DISTRIBUTION CHART - INTEGRATED FROM SCRIPT3 ========== */
-function updateDistributionChart(userBpValue) {
-  // Prefer distribution from current.json if Lambda provided it
-  let dist = (window.app && app.runtimeCurrent && Array.isArray(app.runtimeCurrent.distribution))
-    ? app.runtimeCurrent.distribution
-    : null;
-
-  const lineCanvas = document.getElementById('lineChart');
-  if (!lineCanvas) return;
-  if (!document.body.contains(lineCanvas)) return; 
-
-  const lineCtx = lineCanvas.getContext('2d');
-  if (!lineCtx) return;
-
-  let labels = [];
-  let histogram = [];
-
-  if (dist) {
-    // dist is [{bin:0.0,count:...}, ...]
-    labels = dist.map(d => Number(d.bin).toFixed(1));
-    histogram = dist.map(d => Number(d.count) || 0);
-  } else {
-    // Fallback: build from app.data.allParticipantsData
-    if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
-    const bins = 11;
-    const binSize = 1 / (bins - 1);
-    histogram = new Array(bins).fill(0);
-    app.data.allParticipantsData.forEach(value => {
-      const v = Number(value) || 0;
-      const binIndex = Math.min(Math.round(v / binSize), bins - 1);
-      histogram[binIndex]++;
-    });
-    labels = Array.from({ length: bins }, (_, i) => (i * binSize).toFixed(1));
-  }
-
-  const maxCount = Math.max(...histogram, 1);
-  const normalizedData = histogram.map(count => (count / maxCount) * 100);
-
-  // Clean up existing chart instance
-  if (window.lineChart && typeof window.lineChart.destroy === 'function') {
-    try { window.lineChart.destroy(); } catch (e) {}
-    window.lineChart = null;
-  }
-
-  // Ensure the custom tooltip positioner exists (even if tooltips are disabled)
-  if (!Chart.Tooltip.positioners) Chart.Tooltip.positioners = {};
-  if (!Chart.Tooltip.positioners.below) {
-    Chart.Tooltip.positioners.below = function (elements, eventPosition) {
-      if (!elements.length) return false;
-      const element = elements[0];
-      return { x: element.element.x, y: element.element.y + 35 };
-    };
-  }
-
-  try {
-    window.lineChart = new Chart(lineCtx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'All Participants',
-          data: normalizedData,
-          borderColor: '#666666',
-          backgroundColor: 'rgba(102, 102, 102, 0.1)',
-          tension: 0.4,
-          fill: true,
-          pointRadius: 0,
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { bottom: 15, right: 40 } },
-        // No hover tooltips
-        interaction: { intersect: false, mode: 'none' },
-        onHover: null,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            enabled: false,
-            position: 'below',
-            displayColors: false,
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            titleColor: 'white',
-            bodyColor: 'white',
-            borderColor: '#444',
-            borderWidth: 1,
-            cornerRadius: 6,
-            caretPadding: 10,
-            callbacks: {
-              title: () => `Your BiP Value: ${Number(userBpValue).toFixed(2)}`,
-              label: (context) => {
-                const binIndex = context.dataIndex;
-                const count = histogram[binIndex];
-                const pct = ((count / histogram.reduce((a,b)=>a+b,0)) * 100).toFixed(1);
-                return `Among Seoul locations: ${pct}% (${count} locations)`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            display: true,
-            position: 'bottom',
-            grid: { display: false, drawBorder: true },
-            ticks: {
-              display: true,
-              color: '#888',
-              font: { size: 11, weight: 'normal' },
-              padding: 5,
-              callback: function(value, index, ticks) {
-                if (index === 0) return '0';
-                if (index === ticks.length - 1) return '1';
-                if (index === Math.floor(ticks.length / 2)) return '0.5';
-                return '';
-              }
-            },
-            border: { display: true, color: '#444' }
-          },
-          y: { display: false, min: 0, grid: { display: false } }
-        },
-        animation: { duration: 1000 }
-      }
-    });
-  } catch (error) {
-    console.error('Error creating distribution chart:', error);
-  }
-}
-
-
-
-/* ========== DISTRIBUTION ANIMATION - INTEGRATED FROM SCRIPT3 ========== */
+/* ========== DISTRIBUTION ANIMATION ========== */
 function animateDistributionCurve(userBpValue) {
   if (!window.lineChart) {
     return Promise.resolve();
@@ -1596,7 +1531,6 @@ function animateDistributionCurve(userBpValue) {
     const binSize = 1 / (bins - 1);
     const userBinIndex = Math.min(Math.round(userBpValue / binSize), bins - 1);
 
-    // Calculate tooltip data once
     const histogram = [];
     app.data.allParticipantsData.forEach(value => {
       const idx = Math.min(Math.round(value / binSize), bins - 1);
@@ -1607,17 +1541,14 @@ function animateDistributionCurve(userBpValue) {
     const percentage = ((count / app.data.allParticipantsData.length) * 100).toFixed(1);
 
     function runFullAnimation() {
-      // Ensure chart starts with only the distribution curve (no dots)
       while (chart.data.datasets.length > 1) {
         chart.data.datasets.pop();
       }
 
-      
       if (!chart || !chart.canvas || !chart.canvas.ownerDocument) return;
 
       chart.update('none');
 
-      // Create animated dot dataset
       const animatedDotDataset = {
         label: 'Animated Dot',
         data: new Array(bins).fill(null),
@@ -1739,22 +1670,16 @@ function animateDistributionCurve(userBpValue) {
 
         document.body.appendChild(tooltip);
 
-// Measure after attaching, then clamp within the viewport
-const tipW = tooltip.offsetWidth;
-const tipH = tooltip.offsetHeight;
-let left = rect.left + point.x - tipW / 2;
-let top  = rect.top  + point.y + 25;
+        const tipW = tooltip.offsetWidth;
+        const tipH = tooltip.offsetHeight;
+        let left = rect.left + point.x - tipW / 2;
+        let top  = rect.top  + point.y + 25;
 
-// clamp horizontally with 8px padding
-left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
-// clamp vertically if needed
-top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
+        left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+        top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
 
-tooltip.style.left = `${left}px`;
-tooltip.style.top  = `${top}px`;
-
-
-        document.body.appendChild(tooltip);
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top  = `${top}px`;
       }
 
       function removeCustomTooltip() {
@@ -1769,70 +1694,11 @@ tooltip.style.top  = `${top}px`;
   });
 }
 
-
-/* --- Icon preload helpers (prevents first-time icon pop in Result mode) --- */
-function _iconKey(name) {
-  return String(name || '')
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-function _iconCandidates(name) {
-  const key = _iconKey(name);
-  const base = `img/classes/${key}`;
-  return [`${base}.svg`, `${base}.png`, `${base}.webp`];
-}
-function preloadTopElementIcons(names) {
-  app.assets = app.assets || {};
-  if (app.assets.topIconsPreloaded) return;
-  names.forEach((n) => {
-    _iconCandidates(n).forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-  });
-  app.assets.topIconsPreloaded = true;
-}
-
-function updateDashboardDisplay() {
-const data = (window.app && (app.runtimeCurrent || (app.data && app.data.dashboardData))) || null;
-if (!data) return;
-
-const bpValue = Number(data.bp) || 0;
-const numEl = document.getElementById('bpValueNumber');
-if (numEl) numEl.textContent = bpValue.toFixed(2);
-
-const top3 = (Array.isArray(data.intensity_top) && data.intensity_top.length)
-  ? data.intensity_top.slice(0, 3)
-  : Object.entries(data.intensities || {})
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([k]) => k);
-if (typeof updateTopElements === 'function') {
-  try { updateTopElements(top3); } catch (e) { console.error('[updateDashboardDisplay] updateTopElements', e); }
-}
-
-const top10 = Object.entries(data.intensities || {})
-  .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
-  .filter(d => d.value > 0)
-  .sort((a, b) => b.value - a.value)
-  .slice(0, 10);
-if (typeof updateBarChart === 'function') {
-  try { updateBarChart(top10); } catch (e) { console.error('[updateDashboardDisplay] updateBarChart', e); }
-}
-
-if (typeof updateDistributionChart === 'function') {
-  try { updateDistributionChart(bpValue); } catch (e) { console.error('[updateDashboardDisplay] updateDistributionChart', e); }
-}
-}
-
-
-
 /* ========== INITIALIZATION ========== */
 async function initializeApplication() {
   if (app.initialized || app._initializing) return;
   app._initializing = true;
+  
   try {
     app.elements.leftTop = document.querySelector('.left-column-top');
     app.elements.rightCol = document.querySelector('.right-column');
@@ -1840,9 +1706,7 @@ async function initializeApplication() {
     app.elements.mapContainer = document.getElementById('map');
     app.elements.canvas = document.getElementById('visualization-canvas');
 
-    //createAndSetupButtons();
     initializeMapbox();
-
     await setMode(Modes.LANDING);
 
     if (!app._resizeListenerAdded) {
@@ -1850,7 +1714,6 @@ async function initializeApplication() {
         const data = app.data.cache[`seoul_${app.state.currentDataType}`];
         if (!data) return;
     
-        // Only update canvas for result mode - landing mode uses video now
         if (app.mode === Modes.RESULT) {
           updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
         }
@@ -1859,27 +1722,28 @@ async function initializeApplication() {
     }
 
     app.initialized = true;
-
     app._initializing = false;
 
   } catch (error) {
     console.error('CRITICAL: Application initialization failed:', error);
-
+    
     try {
-      //createAndSetupButtons();
       app.mode = Modes.LANDING;
     } catch (fallbackError) {
       console.error('Even fallback failed:', fallbackError);
     }
+    
+    app._initializing = false;
   }
 }
 
+/* ========== EXTERNAL API ========== */
 // Make key functions available to the TV-1 poller
-window.setMode = typeof setMode === "function" ? setMode : undefined;
-window.updateTopElements = typeof updateTopElements === "function" ? updateTopElements : undefined;
-window.updateBarChart = typeof updateBarChart === "function" ? updateBarChart : undefined;
-window.updateDistributionChart = typeof updateDistributionChart === "function" ? updateDistributionChart : undefined;
-
+window.setMode = setMode;
+window.updateTopElements = (data) => dashboardManager.updateTopElements(data);
+window.updateBarChart = (data) => dashboardManager.updateBarChart(data);
+window.updateDistributionChart = (data) => dashboardManager.updateDistributionChart(data);
+window.updateDashboardDisplay = (data) => dashboardManager.updateAll(data);
 
 /* ========== EVENT LISTENERS ========== */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1889,7 +1753,3 @@ document.addEventListener('DOMContentLoaded', () => {
 if (document.readyState !== 'loading') {
   setTimeout(initializeApplication, 100);
 }
-
-
-
-
