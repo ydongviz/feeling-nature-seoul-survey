@@ -44,28 +44,67 @@ function applyCurrent(cur){
     const bp = Number(cur?.bp ?? 0);
     const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
     
+    console.log(`[applyCurrent] Setting BP: ${bp}`);
+    
     if (Number.isFinite(bp)) {
-      // Store BP value globally for line chart
+      // Store globally
       window.ACTUAL_BP_VALUE = bp;
       
-      // Update BP display element directly
+      // Method 1: Direct DOM update (immediate)
       const bpElement = document.getElementById('bpValueNumber');
       if (bpElement) {
         bpElement.textContent = bp.toFixed(2);
+        console.log(`[applyCurrent] Direct DOM update: ${bp.toFixed(2)}`);
+      } else {
+        console.warn('[applyCurrent] #bpValueNumber not found immediately');
       }
       
-      // Call app's BP setter
+      // Method 2: Call app BP manager
       if (typeof window.setUserBp === "function") {
         window.setUserBp(bp);
+        console.log(`[applyCurrent] Called setUserBp(${bp})`);
       }
+      
+      // Method 3: Delayed update as fallback
+      setTimeout(() => {
+        const delayedElement = document.getElementById('bpValueNumber');
+        if (delayedElement && delayedElement.textContent === '0.00') {
+          delayedElement.textContent = bp.toFixed(2);
+          console.log(`[applyCurrent] Delayed DOM update: ${bp.toFixed(2)}`);
+        }
+      }, 200);
+      
+      // Method 4: Force update after page stabilizes
+      setTimeout(() => {
+        const finalElement = document.getElementById('bpValueNumber');
+        if (finalElement) {
+          finalElement.textContent = bp.toFixed(2);
+          console.log(`[applyCurrent] Final DOM update: ${bp.toFixed(2)}`);
+        }
+      }, 1000);
     }
     
+    // Continue with other updates...
     if (typeof window.applyBPToUI === "function") window.applyBPToUI(bp);
     if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
     if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
     if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
     
-  }catch(e){ /* noop */ }
+  }catch(e){ 
+    console.error('[applyCurrent] Error:', e);
+  }
+}
+
+// DIAGNOSTIC HELPER: Add this to check element state
+function debugBPElement() {
+  const element = document.getElementById('bpValueNumber');
+  console.log('BP Element Debug:', {
+    found: !!element,
+    textContent: element?.textContent,
+    innerHTML: element?.innerHTML,
+    globalValue: window.ACTUAL_BP_VALUE,
+    appStateValue: window.app?.state?.bpValue
+  });
 }
 
 async function poll(){

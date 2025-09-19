@@ -110,7 +110,7 @@ class BPManager {
     window.HIGHLIGHT_MIN = app.state.highlightMin;
     window.HIGHLIGHT_MAX = app.state.highlightMax;
     
-    // Update DOM
+    // CRITICAL FIX: Always get fresh element reference and force update
     this.updateDOM();
     
     // Trigger repaints
@@ -118,12 +118,23 @@ class BPManager {
   }
 
   updateDOM() {
-    if (!this.elements.bpNumber) {
-      this.elements.bpNumber = document.getElementById('bpValueNumber');
-    }
+    // CRITICAL FIX: Always get fresh element reference - don't cache it
+    const bpElement = document.getElementById('bpValueNumber');
     
-    if (this.elements.bpNumber) {
-      this.elements.bpNumber.textContent = this.currentValue.toFixed(2);
+    if (bpElement) {
+      bpElement.textContent = this.currentValue.toFixed(2);
+      console.log(`[BPManager.updateDOM] Updated BP display: ${this.currentValue.toFixed(2)}`);
+    } else {
+      console.warn('[BPManager.updateDOM] #bpValueNumber element not found');
+      
+      // Fallback: try again after a short delay
+      setTimeout(() => {
+        const retryElement = document.getElementById('bpValueNumber');
+        if (retryElement) {
+          retryElement.textContent = this.currentValue.toFixed(2);
+          console.log(`[BPManager.updateDOM] Retry successful: ${this.currentValue.toFixed(2)}`);
+        }
+      }, 100);
     }
   }
 
