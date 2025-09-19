@@ -213,7 +213,7 @@ body:not(.result-mode) .header-logos {
 .right-column-top img,
 #rightColumnImage {
   max-width: 53%;
-  opacity: 0.9;
+  opacity: 0.8;
   height: auto;
   margin-left: auto; /* Push image to right edge */
   display: block; /* Make image behave as block element for margin auto */
