@@ -1281,6 +1281,7 @@ function showGif() {
   
   if (gif) {
     gif.style.display = 'block';
+    gif.style.transition = 'opacity 0.8s ease-in-out';
     gif.style.opacity = '1';
   }
   if (video) {
@@ -1291,23 +1292,54 @@ function showGif() {
   if (canvas) canvas.style.display = 'none';
 }
 
-function showVideo() {
+async function showVideo() {
   const gif = document.getElementById('landingGif');
   const video = document.getElementById('landingVideo');
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
   
-  if (gif) {
-    gif.style.display = 'none';
-  }
-  if (video) {
-    video.style.display = 'block';
-    video.style.opacity = '1';
-    video.currentTime = 0;
-    video.play();
-  }
-  if (map) map.style.display = 'none';
-  if (canvas) canvas.style.display = 'none';
+  return new Promise((resolve) => {
+    if (video) {
+      // Prepare video for smooth transition
+      video.style.display = 'block';
+      video.style.opacity = '0';
+      video.style.transition = 'opacity 0.8s ease-in-out';
+      video.currentTime = 0;
+      video.play();
+    }
+    
+    if (gif) {
+      // Fade out GIF
+      gif.style.transition = 'opacity 0.8s ease-in-out';
+      gif.style.opacity = '0';
+      
+      // Wait for GIF fade out, then fade in video
+      setTimeout(() => {
+        if (gif) {
+          gif.style.display = 'none';
+        }
+        if (video) {
+          video.style.opacity = '1';
+        }
+        
+        // Wait for video fade in to complete
+        setTimeout(() => {
+          resolve();
+        }, 800);
+      }, 800);
+    } else {
+      // If no GIF, just fade in video
+      if (video) {
+        video.style.opacity = '1';
+      }
+      setTimeout(() => {
+        resolve();
+      }, 800);
+    }
+    
+    if (map) map.style.display = 'none';
+    if (canvas) canvas.style.display = 'none';
+  });
 }
 
 function hideAllMedia() {
