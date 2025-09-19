@@ -239,12 +239,14 @@ class DashboardManager {
     });
     
     // Top 3 for icons and plant-category text (always show exactly 3)
-    const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
-      ? filterOutSky(data.intensity_top.slice(0, 6)).slice(0, 3)  // Take top 6, filter sky, then get 3
-      : filterOutSky(Object.entries(data.intensities || {}))
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 3)
-          .map(([k]) => k);
+   const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
+     ? filterOutSky(data.intensity_top.slice(0, 4)).slice(0, 3)  
+     : Object.entries(data.intensities || {})
+         .sort((a, b) => b[1] - a[1])
+         .slice(0, 4)          // Take top 4 first
+         .map(([k]) => k)      // Get just the keys
+         .filter(k => iconManager.normalizeKey(k) !== 'sky')  
+         .slice(0, 3);        
     
     this.updateTopElements(top3);
     
@@ -262,7 +264,7 @@ class DashboardManager {
     this.updateBarChart(top10);
     this.updateDistributionChart(bpValue, data.distribution);
   }
-  
+
 
   updateTopElements(top3Names) {
     const keys = (top3Names || []).map(iconManager.normalizeKey.bind(iconManager)).filter(Boolean);
