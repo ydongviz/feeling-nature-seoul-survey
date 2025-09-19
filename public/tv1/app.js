@@ -98,15 +98,23 @@ class BPManager {
     this.elements = {};
   }
 
+  // Add normalization method
+  normalizeBPValue(rawBP) {
+      const normalized = 0.1 + (rawBP - 0.25) * (0.8 - 0.1) / (0.35 - 0.25);
+      return Math.max(0, Math.min(1, normalized)); // Clamp between 0 and 1
+  }
+
   setValue(bp) {
     const v = Number(bp) || 0;
-    this.currentValue = v;
+    const normalizedValue = this.normalizeBPValue(rawValue);
+
+    this.currentValue = normalizedValue; 
     const EPS = 0.01;
     
     // Update app state
-    app.state.bpValue = v;
-    app.state.highlightMin = Math.max(0, v - EPS);
-    app.state.highlightMax = Math.min(1, v + EPS);
+    app.state.bpValue = normalizedValue;
+    app.state.highlightMin = Math.max(0, normalizedValue - EPS);
+    app.state.highlightMax = Math.min(1, normalizedValue + EPS);
     window.HIGHLIGHT_MIN = app.state.highlightMin;
     window.HIGHLIGHT_MAX = app.state.highlightMax;
     
@@ -231,7 +239,7 @@ class DashboardManager {
     bpManager.setValue(bpValue);
     
     // Helper function to filter out "sky" category
-    const filterOutSky = (arr) => arr.filter(item => {
+   const filterOutSky = (arr) => arr.filter(item => {
       const normalized = typeof item === 'string' ? 
         iconManager.normalizeKey(item) : 
         iconManager.normalizeKey(item.name || item[0]);
@@ -239,14 +247,14 @@ class DashboardManager {
     });
     
     // Top 3 for icons and plant-category text (always show exactly 3)
-  const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
-    ? filterOutSky(data.intensity_top.slice(0, 4)).slice(0, 3)  
-    : filterOutSky(
+   const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
+     ? filterOutSky(data.intensity_top.slice(0, 4)).slice(0, 3)  
+     : filterOutSky(
         Object.entries(data.intensities || {})
           .sort((a, b) => b[1] - a[1])
           .slice(0, 4)          // Take top 4 [key, value] pairs
       ).map(([k]) => k)         // Extract keys after filtering
-       .slice(0, 3);         
+       .slice(0, 3);             
     
     this.updateTopElements(top3);
     
