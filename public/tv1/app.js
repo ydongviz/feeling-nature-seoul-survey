@@ -118,18 +118,15 @@ class BPManager {
   }
 
   updateDOM() {
-    const needsRefetch =
-      !this.elements.bpNumber ||
-      !document.body.contains(this.elements.bpNumber);
-  
-    if (needsRefetch) {
+    if (!this.elements.bpNumber) {
       this.elements.bpNumber = document.getElementById('bpValueNumber');
     }
+    
     if (this.elements.bpNumber) {
       this.elements.bpNumber.textContent = this.currentValue.toFixed(2);
     }
   }
-  
+
   refreshVisualization() {
     safeExecute('refreshDotLayer');
     safeExecute('updateLegend');
@@ -1246,7 +1243,7 @@ function buildFooterContent() {
     <div class="footer-section">
       <h4>Your Biophilic Individual Perceptions (BiP) value</h4>
       <div class="bp-value" id="bpValueDisplay">
-        <span id="bpValueNumber">0.32</span>
+        <span id="bpValueNumber">0.72</span>
         <div class="bp-indicator"></div>
       </div>
       <p>Highlights similar BiP value in the city areas that could fit your perception</p>

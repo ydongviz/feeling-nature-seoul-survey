@@ -105,12 +105,8 @@ async function poll(){
         if (!changed || rendering) return;
         rendering = true;
         const c = await fetchJSON(RESULT_URL);
-
-        if (window.setMode) {
-          await window.setMode("result");   
-        }
+        window.setMode?.("result");
         if (!c.notModified && c.json) applyCurrent(c.json);
-       
         lastRenderedEt = curEt;
         rendering = false;
         return;
