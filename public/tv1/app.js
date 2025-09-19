@@ -1243,14 +1243,14 @@ function buildFooterContent() {
     <div class="footer-section">
       <h4>Your Biophilic Individual Perceptions (BiP) value</h4>
       <div class="bp-value" id="bpValueDisplay">
-        <span id="bpValueNumber">0.72</span>
+        <span id="bpValueNumber">0.00</span>
         <div class="bp-indicator"></div>
       </div>
       <p>Highlights similar BiP value in the city areas that could fit your perception</p>
     </div>
     <div class="footer-section">
       <div class="middle-section-title">Which natural element brings you most positive feeling</div>
-      <div class="plant-category" id="topCategoryText">Plant/Flora, grass, trees</div>
+      <div class="plant-category" id="topCategoryText">Loading...</div>
       <div class="chart-content">
         <div class="chart-left">
           <div class="top-elements" id="topElements"></div>

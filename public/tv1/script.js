@@ -1,4 +1,4 @@
-/* TV-1 kiosk adapter + state poller (production) */
+/* TV-1 kiosk adapter + state poller (production) - FIXED VERSION */
 const STATE_URL  = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 const RESULT_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
 
@@ -44,16 +44,29 @@ function applyCurrent(cur){
     const bp = Number(cur?.bp ?? 0);
     const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
     
-    // Single BP value update - handles both DOM and app state
-    if (Number.isFinite(bp) && typeof window.setUserBp === "function") {
-      window.setUserBp(bp);
+    // CRITICAL FIX: Set BP value first, then update UI components
+    if (Number.isFinite(bp)) {
+      // Update the DOM element directly to ensure it's set
+      const bpElement = document.getElementById('bpValueNumber');
+      if (bpElement) {
+        bpElement.textContent = bp.toFixed(2);
+      }
+      
+      // Then call the app's BP setter
+      if (typeof window.setUserBp === "function") {
+        window.setUserBp(bp);
+      }
     }
     
     if (typeof window.applyBPToUI === "function") window.applyBPToUI(bp);
     if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
     if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
     if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
-  }catch(e){ /* noop */ }
+    
+    console.log(`[applyCurrent] Applied BP: ${bp}, Top elements: ${top.length}`);
+  }catch(e){ 
+    console.error('[applyCurrent] Error:', e);
+  }
 }
 
 async function poll(){
@@ -99,22 +112,44 @@ async function poll(){
         else showNote(ov.message);
         window.setMode?.("landing"); return;
       }
+      
+      // CRITICAL FIX: Reorder the show_result logic
       if (stage === "show_result"){
         hideOverlay();
         const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
         if (!changed || rendering) return;
         rendering = true;
-        const c = await fetchJSON(RESULT_URL);
-        window.setMode?.("result");
-        if (!c.notModified && c.json) applyCurrent(c.json);
-        lastRenderedEt = curEt;
-        rendering = false;
+        
+        try {
+          // STEP 1: Fetch the current data FIRST
+          const c = await fetchJSON(RESULT_URL);
+          console.log(`[poll] Fetched result data:`, c.json);
+          
+          // STEP 2: Apply the data to ensure BP value is set correctly
+          if (!c.notModified && c.json) {
+            applyCurrent(c.json);
+          }
+          
+          // STEP 3: Small delay to ensure DOM updates are complete
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // STEP 4: THEN switch to result mode
+          window.setMode?.("result");
+          
+          lastRenderedEt = curEt;
+        } catch (error) {
+          console.error('[poll] Error in show_result:', error);
+        } finally {
+          rendering = false;
+        }
         return;
       }
+      
       hideOverlay(); window.setMode?.("landing");
-    }catch(e){ /* keep last view */ }
+    }catch(e){ 
+      console.error('[poll] Error:', e);
+    }
 }
-  
 
 window.addEventListener("load", () => {
   window.renderLanding   = async () => { hideOverlay(); window.setMode?.("landing"); };
