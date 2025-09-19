@@ -1376,7 +1376,7 @@ async function startLandingAnimationSequence() {
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      // Phase 2: Video sequence (28 seconds)
+      // Phase 2: Video sequence (17 seconds)
       showVideo();
       showHeaderLogos(true);
 
@@ -1385,7 +1385,7 @@ async function startLandingAnimationSequence() {
         'BS Map: the distribution of nature-based elements in Seoul urban environment.',
         true
       );
-      await wait(4000);
+      await wait(3000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
@@ -1413,21 +1413,22 @@ async function startLandingAnimationSequence() {
 
 async function animateTextForVideoGroupSequenceFixed() {
   const groups = [
-    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)' },
-    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)' },
-    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)' },
-    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)' }
+    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)', duration: 3000 }, // 7-9s (3 seconds)
+    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)', duration: 2000 },   // 10-11s (2 seconds)
+    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)', duration: 3000 }, // 12-14s (3 seconds)
+    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 3000 }    // 15-17s (3 seconds)
   ];
 
+  // Show first group immediately (starts at 7s mark)
   updateLandingTextForGroup(groups[0]);
+  await wait(groups[0].duration);
   
-  for (let i = 1; i < 4; i++) {
-    await wait(5000);
+  // Cycle through remaining groups with specific durations
+  for (let i = 1; i < groups.length; i++) {
     if (!app.landing.active || app.mode !== Modes.LANDING) break;
     updateLandingTextForGroup(groups[i]);
+    await wait(groups[i].duration);
   }
-  
-  await wait(5000);
 }
 
 function updateLandingTextForGroup(group) {
