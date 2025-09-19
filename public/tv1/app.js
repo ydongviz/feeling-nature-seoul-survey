@@ -222,6 +222,13 @@ class DashboardManager {
     };
   }
 
+  const filterOutSky = (arr) => arr.filter(item => {
+    const normalized = typeof item === 'string' ? 
+      iconManager.normalizeKey(item) : 
+      iconManager.normalizeKey(item.name || item[0]);
+    return normalized !== 'sky';
+  });
+
   updateAll(data) {
     if (!data) return;
     
@@ -231,15 +238,15 @@ class DashboardManager {
     bpManager.setValue(bpValue);
     
     const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
-      ? data.intensity_top.slice(0, 3)
-      : Object.entries(data.intensities || {})
+    ? filterOutSky(data.intensity_top).slice(0, 3)
+    : filterOutSky(Object.entries(data.intensities || {}))
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
           .map(([k]) => k);
     
     this.updateTopElements(top3);
     
-    const top10 = Object.entries(data.intensities || {})
+    const top10 = filterOutSky(Object.entries(data.intensities || {}))
       .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
       .filter(d => d.value > 0)
       .sort((a, b) => b.value - a.value)
