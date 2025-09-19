@@ -239,14 +239,14 @@ class DashboardManager {
     });
     
     // Top 3 for icons and plant-category text (always show exactly 3)
-   const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
-     ? filterOutSky(data.intensity_top.slice(0, 4)).slice(0, 3)  
-     : Object.entries(data.intensities || {})
-         .sort((a, b) => b[1] - a[1])
-         .slice(0, 4)          // Take top 4 first
-         .map(([k]) => k)      // Get just the keys
-         .filter(k => iconManager.normalizeKey(k) !== 'sky')  
-         .slice(0, 3);        
+  const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
+    ? filterOutSky(data.intensity_top.slice(0, 4)).slice(0, 3)  
+    : filterOutSky(
+        Object.entries(data.intensities || {})
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 4)          // Take top 4 [key, value] pairs
+      ).map(([k]) => k)         // Extract keys after filtering
+       .slice(0, 3);         
     
     this.updateTopElements(top3);
     
