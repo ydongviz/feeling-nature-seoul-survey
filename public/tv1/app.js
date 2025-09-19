@@ -105,7 +105,7 @@ class BPManager {
   }
 
   setValue(bp) {
-    const v = Number(bp) || 0;
+    const rawValue = Number(bp) || 0;
     const normalizedValue = this.normalizeBPValue(rawValue);
 
     this.currentValue = normalizedValue; 
