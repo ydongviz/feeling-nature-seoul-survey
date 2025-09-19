@@ -61,11 +61,12 @@ body.result-mode {
   }
 
   #kioskOverlay .box {
-    background: rgb(20 20 20 / 0%); 
+    background: rgb(20 20 20 / 91%);
     color:#fff; 
+    font-weight: 400;
     border-radius:12px;
-    padding: 18px 22px; 
-    min-width:320px; 
+    padding: 32px 32px; 
+    min-width:420px; 
     text-align:center; 
     box-shadow:0 6px 30px rgba(0,0,0,.35);
     transform: translateY(10vh);  /* ← Move box up by 20% of viewport height */
