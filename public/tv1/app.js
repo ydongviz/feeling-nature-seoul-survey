@@ -1416,7 +1416,7 @@ async function animateTextForVideoGroupSequenceFixed() {
     { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)', duration: 3000 }, // 7-9s (3 seconds)
     { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)', duration: 2000 },   // 10-11s (2 seconds)
     { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)', duration: 3000 }, // 12-14s (3 seconds)
-    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 2000 }    // 15-17s (3 seconds)
+    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 1500 }    // 15-17s (3 seconds)
   ];
 
   // Show first group immediately (starts at 7s mark)
