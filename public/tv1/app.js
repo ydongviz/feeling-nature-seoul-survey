@@ -1258,11 +1258,8 @@ async function startLandingAnimationSequence() {
     // Ensure text elements exist
     ensureLandingText();
 
-    // Loop counter for cycling
-    let loopCount = 0;
-    const maxLoops = 3; // Number of complete loops before restarting
-
-    while (app.landing.active && app.mode === Modes.LANDING && loopCount < maxLoops) {
+    // INFINITE LOOP - will restart from GIF every time
+    while (app.landing.active && app.mode === Modes.LANDING) {
       
       // === PHASE 1: GIF SEQUENCE (16 seconds total) ===
       
@@ -1288,48 +1285,65 @@ async function startLandingAnimationSequence() {
       
       showVideo();
       showHeaderLogos(true); // Show both logos
-      const video = document.getElementById('landingVideo');
 
-      // Step C: Video shows BS map + text (4s)
+      // Step C: Video shows BS map + text (4s) - FIXED TIMING
       updateLandingTexts(
         'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
         'BS Map: the distribution of nature-based elements in Seoul urban environment.',
         true
       );
-      await waitForVideoTime(video, 4);
+      await wait(4000); // Fixed 4 second timing
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      // Step D: Video shows BP map + text (4s more, total 8s)
+      // Step D: Video shows BP map + text (4s more) - FIXED TIMING  
       updateLandingTexts(
         'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
         'BP Map: the strength of perceived Biophilia in the city',
         true
       );
-      await waitForVideoTime(video, 8);
+      await wait(4000); // Fixed 4 second timing
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      // Step E: Video shows BP group highlighting with cycling text (20s more, total 28s)
-      await animateTextForVideoGroupSequence(video);
+      // Step E: Video shows BP group highlighting with cycling text (20s) - FIXED TIMING
+      await animateTextForVideoGroupSequenceFixed();
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
-
-      loopCount++;
       
-      // Brief pause before next loop
+      // Brief pause before restarting the entire sequence from GIF
       await wait(1000);
-    }
-
-    // After loops complete, restart the sequence
-    if (app.landing.active && app.mode === Modes.LANDING) {
-      setTimeout(() => startLandingAnimationSequence(), 500);
+      
+      // Loop continues automatically - will restart from Phase 1 (GIF)
     }
 
   } catch (error) {
     console.error('Error in landing animation sequence:', error);
     app.landing.active = false;
   }
+}
+
+// Add this NEW function to replace the old video timing approach:
+async function animateTextForVideoGroupSequenceFixed() {
+  const groups = [
+    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)' },
+    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)' },
+    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)' },
+    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)' }
+  ];
+
+  // Show first group immediately
+  updateLandingTextForGroup(groups[0]);
+  
+  // Cycle through remaining groups every 5 seconds
+  for (let i = 1; i < 4; i++) {
+    await wait(5000); // Fixed 5 second intervals
+    if (!app.landing.active || app.mode !== Modes.LANDING) break;
+    updateLandingTextForGroup(groups[i]);
+  }
+  
+  // Wait for final group display
+  await wait(5000);
 }
 
 // Handle text animation synchronized with video BP group sequence
