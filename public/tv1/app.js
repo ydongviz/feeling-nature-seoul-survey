@@ -15,8 +15,6 @@ window.HIGHLIGHT_MIN = window.HIGHLIGHT_MIN ?? 0.70;
 window.HIGHLIGHT_MAX = window.HIGHLIGHT_MAX ?? 0.75;
 
 const HIGHLIGHT_COLOR = '#92C043', NON_HIGHLIGHT_GRAY = '#666666';
-const userBp = (window.app?.data?.userBp ?? 0.5);  // default only if not set yet
-
 
 window.USE_CURRENT_JSON = true;
 
@@ -384,41 +382,28 @@ function enforceBpValue(bp) {
 
 // Prefer current.json written by Lambda; fall back to CSV if unavailable
 async function loadDashboardData() {
-try {
-  const base = (window.APP_CONFIG && window.APP_CONFIG.RUNTIME_BASE_URL) ? window.APP_CONFIG.RUNTIME_BASE_URL : window.RUNTIME_BASE;
-  const url  = `${base}/current.json`;
-  const cur  = (typeof fetchJSONNoCache === 'function') ? await fetchJSONNoCache(url) : await (await fetch(url + '?ts=' + Date.now(), {cache:'no-store'})).json();
+  try {
+    const url = `${window.APP_CONFIG?.RUNTIME_BASE_URL || window.RUNTIME_BASE}/current.json`;
+    const data = await fetchJSONNoCache(url);
+    
+    const normalized = {
+      bp: +(data?.bp || data?.BP || 0),
+      intensities: data?.intensities || data?.classes || {},
+      intensity_top: data?.intensity_top || data?.top || [],
+      distribution: data?.distribution || null,
+      meta: data?.meta || {}
+    };
 
-  const normalized = {
-    bp: Number(cur?.bp ?? cur?.BP ?? 0),
-    intensities: cur?.intensities ?? cur?.classes ?? null,
-    intensity_top: Array.isArray(cur?.intensity_top) ? cur.intensity_top : (Array.isArray(cur?.top) ? cur.top : []),
-    distribution: Array.isArray(cur?.distribution) ? cur.distribution : null,
-    meta: cur?.meta ?? {}
-  };
-
-  window.app = window.app || { state:{}, data:{} };
-  app.runtimeCurrent = normalized;
-  app.data.dashboardData = { source:'current.json', ...normalized };
-
-  if (typeof window.setUserBp === 'function') window.setUserBp(normalized.bp);
-  else {
-    const EPS = 0.01;
-    app.state.bpValue = normalized.bp;
-    app.state.highlightMin = Math.max(0, normalized.bp - EPS);
-    app.state.highlightMax = Math.min(1, normalized.bp + EPS);
-    window.HIGHLIGHT_MIN = app.state.highlightMin;
-    window.HIGHLIGHT_MAX = app.state.highlightMax;
+    app.data.dashboardData = normalized;
+    window.setUserBp?.(normalized.bp);
+    
+    return normalized;
+    
+  } catch (err) {
+    console.error('[loadDashboardData] failed:', err);
+    return null;
   }
-
-  return normalized;
-} catch (err) {
-  console.error('[loadDashboardData] failed:', err);
-  return null;
 }
-}
-
-
 
 async function loadAllParticipantsData() {
   if (app.data.allParticipantsData) return app.data.allParticipantsData;
@@ -504,9 +489,7 @@ function initializeMapbox() {
       const data = app.data.cache[`seoul_${app.state.currentDataType}`];
       if (!data) return;
 
-      if (app.mode === Modes.LANDING && app.landing.active && app.landing.currentGroup) {
-        updateVisualizationCanvasWithBPGroups(data, seoulData.coordinates.lat, seoulData.coordinates.lon);
-      } else {
+      if (app.mode === Modes.RESULT) {
         updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
       }
     }, 300);
@@ -635,40 +618,6 @@ function hideHeaderLogos() {
   }
 }
 
-function showVideo() {
-  const gif = document.getElementById('landingVideo');
-  const map = document.getElementById('map');
-  const canvas = document.getElementById('visualization-canvas');
-  
-  if (gif) {
-    gif.style.display = 'block';
-    gif.style.opacity = '1'; // Ensure it's visible
-  }
-  
-  if (map) map.style.display = 'none';
-  if (canvas) canvas.style.display = 'none';
-}
-
-function hideVideo() {
-  const gif = document.getElementById('landingVideo');
-  const map = document.getElementById('map');
-  const canvas = document.getElementById('visualization-canvas');
-  
-  if (gif) {
-    // Fade out the GIF first
-    gif.style.opacity = '0';
-    
-    // Hide it completely after fade completes
-    setTimeout(() => {
-      gif.style.display = 'none';
-      gif.style.opacity = '1'; // Reset for next time
-    }, 500); // Match the CSS transition duration
-  }
-  
-  if (map) map.style.display = 'block';
-  if (canvas) canvas.style.display = 'block';
-}
-
 function updateLandingTexts(line1Text, line2Text = '', showLine2 = true) {
   const texts = ensureLandingText();
   
@@ -724,65 +673,6 @@ function showDashboardLayout() {
     buttonsContainer.style.display = 'flex';
   }
 }
-
-
-/* ========== CANVAS VISUALIZATION ========== */
-/*function updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon) {
-  if (!data || !data.length) return;
-
-  const canvas =
-    (app?.elements?.canvas) ||
-    document.getElementById('visualization-canvas');
-  if (!canvas) return;
-
-  const container = canvas.parentElement || canvas;
-  const rect = container.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(dpr, dpr);
-
-  const width = rect.width;
-  const height = rect.height;
-
-  function getMapPosition(d) {
-    if (!app.map) return { x: 0, y: 0, radius: 0 };
-    const p = app.map.project([d.lon, d.lat]);
-    return { x: p.x, y: p.y, radius: sizeScale(d.biophilia_norm) };
-  }
-
-  const filtered = data.filter(d => {
-    if (!d || isNaN(d.lat) || isNaN(d.lon)) return false;
-    return calculateDistance(centerLat, centerLon, d.lat, d.lon) <= MAX_DISTANCE_METERS;
-  });
-
-  const group = app.landing.currentGroup; // {min,max}
-
-  ctx.clearRect(0, 0, width, height);
-
-  filtered.forEach(d => {
-    const { x, y, radius } = getMapPosition(d);
-    if (x < 0 || x > width || y < 0 || y > height) return;
-
-    const inGroup = group && d.biophilia_norm >= group.min && d.biophilia_norm < group.max;
-
-    ctx.beginPath();
-    ctx.arc(x, y, Math.max(1, radius), 0, Math.PI * 2);
-    // use the global scale everywhere (map & circular use the same palette)
-    ctx.fillStyle = colorScale(d.biophilia_norm);
-    // emphasize current bin with alpha only
-    ctx.globalAlpha = inGroup ? 0.9 : 0.1;
-    ctx.fill();
-  });
-
-  ctx.globalAlpha = 1;
-} */
 
 function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) {
   if (!data || data.length === 0) return;
@@ -1344,39 +1234,6 @@ async function animateTextForVideoGroupSequenceFixed() {
   
   // Wait for final group display
   await wait(5000);
-}
-
-// Handle text animation synchronized with video BP group sequence
-async function animateTextForVideoGroupSequence(video) {
-  const groups = [
-    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)' },
-    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)' },
-    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)' },
-    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)' }
-  ];
-
-  let groupIndex = 0;
-  const groupDuration = 5; // 5 seconds per group (20 seconds total)
-  
-  // Update text immediately for first group
-  updateLandingTextForGroup(groups[0]);
-  
-  // Set up interval for group text cycling
-  const intervalId = setInterval(() => {
-    if (!app.landing.active || app.mode !== Modes.LANDING) {
-      clearInterval(intervalId);
-      return;
-    }
-    
-    groupIndex = (groupIndex + 1) % groups.length;
-    updateLandingTextForGroup(groups[groupIndex]);
-  }, groupDuration * 1000);
-  
-  app.cleanup.timers.add(intervalId);
-  
-  // Wait for video to complete the BP group sequence
-  await waitForVideoTime(video, 28);
-  clearInterval(intervalId);
 }
 
 function updateLandingTextForGroup(group) {
