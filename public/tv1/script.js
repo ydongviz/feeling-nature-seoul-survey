@@ -42,16 +42,14 @@ async function fetchJSON(url, et){ const r=await fetch(url,{cache:"no-cache", he
 function applyCurrent(cur){
   try{
     const bp = Number(cur?.bp ?? 0);
-    if (typeof window.setUserBp === "function" && Number.isFinite(bp)) {
-        window.setUserBp(bp);
-      }
     const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
-    const num = document.getElementById("bpValueNumber");
-    if (num && Number.isFinite(bp)) num.textContent = bp.toFixed(2);
-    if (Number.isFinite(bp)) {
-           if (typeof window.setUserBp === "function") window.setUserBp(bp);
-           if (typeof window.applyBPToUI === "function") window.applyBPToUI(bp);
-         }      
+    
+    // Single BP value update - handles both DOM and app state
+    if (Number.isFinite(bp) && typeof window.setUserBp === "function") {
+      window.setUserBp(bp);
+    }
+    
+    if (typeof window.applyBPToUI === "function") window.applyBPToUI(bp);
     if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
     if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
     if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
