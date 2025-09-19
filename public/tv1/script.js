@@ -44,15 +44,17 @@ function applyCurrent(cur){
     const bp = Number(cur?.bp ?? 0);
     const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
     
-    // CRITICAL FIX: Set BP value first, then update UI components
     if (Number.isFinite(bp)) {
-      // Update the DOM element directly to ensure it's set
+      // Store BP value globally for line chart
+      window.ACTUAL_BP_VALUE = bp;
+      
+      // Update BP display element directly
       const bpElement = document.getElementById('bpValueNumber');
       if (bpElement) {
         bpElement.textContent = bp.toFixed(2);
       }
       
-      // Then call the app's BP setter
+      // Call app's BP setter
       if (typeof window.setUserBp === "function") {
         window.setUserBp(bp);
       }
@@ -63,10 +65,7 @@ function applyCurrent(cur){
     if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
     if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
     
-    console.log(`[applyCurrent] Applied BP: ${bp}, Top elements: ${top.length}`);
-  }catch(e){ 
-    console.error('[applyCurrent] Error:', e);
-  }
+  }catch(e){ /* noop */ }
 }
 
 async function poll(){

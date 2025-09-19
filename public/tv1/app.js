@@ -1472,56 +1472,51 @@ async function executeResultSequence() {
 
     const bpData = app.data.cache['seoul_BP'];
 
-    // Step 1: Activate highlight on map view with pulse
+    // Step 1: Map view with pulse
     app.state.isHighlightMode = true;
     ensureHighlightHasSamples();    
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-
     app.effects.pulse.period = PULSE_BASE_PERIOD;
     startPulseLoop();
     await wait(3000);
 
-    // Step 1b: Clear highlights and stop pulse before transition
+    // Step 2: Clear highlights
     app.state.isHighlightMode = false;
     stopPulseLoop();
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     await wait(1500);
 
-    // Step 2: Switch to circular view
+    // Step 3: Circular view
     app.state.isCircularView = true;
     ensureHighlightHasSamples();  
     const mapContainer = document.getElementById('map');
     if (mapContainer) mapContainer.classList.add('hidden-map');
-
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, true);
-
-    const fadeDuration = 1500;
-    const moveDuration = 800;
-    const originalTransitionDuration = fadeDuration + moveDuration + 1000;
-    const totalTransitionDuration = originalTransitionDuration / 2;
-    await wait(totalTransitionDuration);
-
+    await wait(2500);
     await wait(4000);
 
-    // Step 3: Activate highlight on circular view and resume pulse
+    // Step 4: Highlight in circular
     app.state.isHighlightMode = true;
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-
     app.effects.pulse.period = PULSE_BASE_PERIOD; 
     startPulseLoop();
     await wait(1000);
 
-    // Step 4: Start distribution curve animation loop
-    const bpValue = parseFloat(document.getElementById('bpValueNumber')?.textContent) || 0.72;
-    animateDistributionCurve(bpValue);
+    // Step 5: Line chart with CORRECT BP value
+    const correctBpValue = window.ACTUAL_BP_VALUE || 
+                          parseFloat(document.getElementById('bpValueNumber')?.textContent) || 0;
+    animateDistributionCurve(correctBpValue);
 
   } catch (error) {
     console.error('Error in result sequence:', error);
   }
 }
 
+
 /* ========== DISTRIBUTION ANIMATION ========== */
 function animateDistributionCurve(userBpValue) {
+  const actualBpValue = userBpValue || window.ACTUAL_BP_VALUE || 0;
+
   if (!window.lineChart) {
     return Promise.resolve();
   }
@@ -1629,59 +1624,52 @@ function animateDistributionCurve(userBpValue) {
               app.cleanup.timers.add(restartTimer);
             }, 10000);
             app.cleanup.timers.add(hideTimer);
-          } else {
-            const fallbackTimer = setTimeout(() => {
-              if (chart.data.datasets.length > 1) {
-                chart.data.datasets.pop();
-              }
-              chart.update('none');
-              const restartTimer = setTimeout(runFullAnimation, 2000);
-              app.cleanup.timers.add(restartTimer);
-            }, 1000);
-            app.cleanup.timers.add(fallbackTimer);
           }
         }
-      }
+     }
 
-      function createCustomTooltip(point, bpValue, percentage, count) {
-        removeCustomTooltip();
+    function createCustomTooltip(point, bpValue, percentage, count) {
+      removeCustomTooltip();
 
-        const canvas = chart.canvas;
-        const rect = canvas.getBoundingClientRect();
+      const canvas = chart.canvas;
+      const rect = canvas.getBoundingClientRect();
 
-        const tooltip = document.createElement('div');
-        tooltip.id = 'custom-chart-tooltip';
-        tooltip.style.cssText = `
-          position: absolute;
-          background: rgba(0, 0, 0, 0.9);
-          color: white;
-          padding: 8px 12px;
-          border-radius: 6px;
-          border: 1px solid #444;
-          font-size: 12px;
-          pointer-events: none;
-          z-index: 1000;
-          white-space: nowrap;
-        `;
+      const tooltip = document.createElement('div');
+      tooltip.id = 'custom-chart-tooltip';
+      tooltip.style.cssText = `
+        position: absolute;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        white-space: nowrap;
+      `;
 
-        tooltip.innerHTML = `
-          <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
-          <div>Among all dots: ${percentage}% (${count} dots)</div>
-        `;
+      // Use the correct BP value - NO hardcoded 0.72
+      tooltip.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
+        <div>Among all dots: ${percentage}% (${count} dots)</div>
+      `;
 
-        document.body.appendChild(tooltip);
+      document.body.appendChild(tooltip);
 
-        const tipW = tooltip.offsetWidth;
-        const tipH = tooltip.offsetHeight;
-        let left = rect.left + point.x - tipW / 2;
-        let top  = rect.top  + point.y + 25;
+      const tipW = tooltip.offsetWidth;
+      const tipH = tooltip.offsetHeight;
+      let left = rect.left + point.x - tipW / 2;
+      let top  = rect.top  + point.y + 25;
 
-        left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
-        top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
+      left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+      top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
 
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top  = `${top}px`;
-      }
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top  = `${top}px`;
+    }
+
+
 
       function removeCustomTooltip() {
         const existing = document.getElementById('custom-chart-tooltip');
