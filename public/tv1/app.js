@@ -222,21 +222,24 @@ class DashboardManager {
     };
   }
 
-  const filterOutSky = (arr) => arr.filter(item => {
-    const normalized = typeof item === 'string' ? 
-      iconManager.normalizeKey(item) : 
-      iconManager.normalizeKey(item.name || item[0]);
-    return normalized !== 'sky';
-  });
-
-  updateAll(data) {
+ updateAll(data) {
     if (!data) return;
     
     this.cacheElements();
+
+     
+    // Helper function to filter out "sky" category
+    const filterOutSky = (arr) => arr.filter(item => {
+        const normalized = typeof item === 'string' ? 
+              iconManager.normalizeKey(item) : 
+              iconManager.normalizeKey(item.name || item[0]);
+          return normalized !== 'sky';
+    });
     
+
     const bpValue = Number(data.bp) || 0;
     bpManager.setValue(bpValue);
-    
+
     const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
     ? filterOutSky(data.intensity_top).slice(0, 3)
     : filterOutSky(Object.entries(data.intensities || {}))
