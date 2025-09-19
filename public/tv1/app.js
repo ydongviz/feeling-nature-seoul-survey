@@ -222,42 +222,47 @@ class DashboardManager {
     };
   }
 
- updateAll(data) {
+  updateAll(data) {
     if (!data) return;
     
     this.cacheElements();
-
-     
-    // Helper function to filter out "sky" category
-    const filterOutSky = (arr) => arr.filter(item => {
-        const normalized = typeof item === 'string' ? 
-              iconManager.normalizeKey(item) : 
-              iconManager.normalizeKey(item.name || item[0]);
-          return normalized !== 'sky';
-    });
     
-
     const bpValue = Number(data.bp) || 0;
     bpManager.setValue(bpValue);
-
+    
+    // Helper function to filter out "sky" category
+    const filterOutSky = (arr) => arr.filter(item => {
+      const normalized = typeof item === 'string' ? 
+        iconManager.normalizeKey(item) : 
+        iconManager.normalizeKey(item.name || item[0]);
+      return normalized !== 'sky';
+    });
+    
+    // Top 3 for icons and plant-category text (always show exactly 3)
     const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
-    ? filterOutSky(data.intensity_top).slice(0, 3)
-    : filterOutSky(Object.entries(data.intensities || {}))
+      ? filterOutSky(data.intensity_top.slice(0, 6)).slice(0, 3)  // Take top 6, filter sky, then get 3
+      : filterOutSky(Object.entries(data.intensities || {}))
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
           .map(([k]) => k);
     
     this.updateTopElements(top3);
     
-    const top10 = filterOutSky(Object.entries(data.intensities || {}))
+    // Bar chart: filter sky + keep original value > 0 logic
+    const top10 = Object.entries(data.intensities || {})
       .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
-      .filter(d => d.value > 0)
+      .filter(d => {
+        // Apply both filters: remove sky AND keep only value > 0
+        const normalized = iconManager.normalizeKey(d.name);
+        return normalized !== 'sky' && d.value > 0;
+      })
       .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+      .slice(0, 10);  // Take up to 10 qualifying items
     
     this.updateBarChart(top10);
     this.updateDistributionChart(bpValue, data.distribution);
   }
+  
 
   updateTopElements(top3Names) {
     const keys = (top3Names || []).map(iconManager.normalizeKey.bind(iconManager)).filter(Boolean);
