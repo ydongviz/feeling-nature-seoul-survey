@@ -533,10 +533,14 @@ function clearAllTimersAndAnimations() {
   }
   app.cleanup.animations.clear();
 
-  // stop any result-mode pulsing
+  // Stop result-mode pulsing
   stopPulseLoop();
 
   removeAllCustomTooltips();
+
+  // Stop all media
+  const video = document.getElementById('landingVideo');
+  if (video) video.pause();
 
   app.landing.active = false;
   app.landing.currentGroup = null;
@@ -698,19 +702,9 @@ function showDashboardLayout() {
   removeLandingText();
   hideHeaderLogos();
   
-  // ADD: Ensure GIF is hidden when switching to result mode
-  const gif = document.getElementById('landingVideo');
-  if (gif) {
-    gif.style.display = 'none';
-    gif.style.opacity = '1'; // Reset opacity for next landing sequence
-  }
+  // Hide all landing media
+  hideAllMedia();
   
-  // ADD: Ensure map and canvas are visible
-  const map = document.getElementById('map');
-  const canvas = document.getElementById('visualization-canvas');
-  if (map) map.style.display = 'block';
-  if (canvas) canvas.style.display = 'block';
-
   if (app.elements.rightCol) {
     app.elements.rightCol.style.display = 'block';
   }
@@ -731,8 +725,9 @@ function showDashboardLayout() {
   }
 }
 
+
 /* ========== CANVAS VISUALIZATION ========== */
-function updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon) {
+/*function updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon) {
   if (!data || !data.length) return;
 
   const canvas =
@@ -787,7 +782,7 @@ function updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon) {
   });
 
   ctx.globalAlpha = 1;
-}
+} */
 
 function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) {
   if (!data || data.length === 0) return;
@@ -1066,9 +1061,13 @@ async function setMode(newMode) {
     hideHeaderLogos(); // Hide header in result mode
     buildAllContent();
 
-    await Promise.all([
+    // Ensure map is ready FIRST
+    await ensureMapReady();
+
+    // Load all data in parallel
+    const [, , dashboardData, participantsData] = await Promise.all([
       loadSeoulData('BS'),
-      loadSeoulData('BP'),
+      loadSeoulData('BP'), 
       loadDashboardData(),
       loadAllParticipantsData()
     ]);
@@ -1082,6 +1081,8 @@ async function setMode(newMode) {
     if (mapContainer) {
       mapContainer.classList.remove('hidden-map');
     }
+
+    await wait(100);
 
     await executeResultSequence();
   }
@@ -1155,61 +1156,175 @@ function buildFooterContent() {
 }
 
 /* ========== LANDING ANIMATION (UPDATED TEXT + 3s PAUSE) ========== */
+function showGif() {
+  const gif = document.getElementById('landingGif');
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (gif) {
+    gif.style.display = 'block';
+    gif.style.opacity = '1';
+  }
+  if (video) {
+    video.style.display = 'none';
+    video.pause();
+  }
+  if (map) map.style.display = 'none';
+  if (canvas) canvas.style.display = 'none';
+}
+
+function showVideo() {
+  const gif = document.getElementById('landingGif');
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (gif) {
+    gif.style.display = 'none';
+  }
+  if (video) {
+    video.style.display = 'block';
+    video.style.opacity = '1';
+    video.currentTime = 0; // Reset to beginning
+    video.play();
+  }
+  if (map) map.style.display = 'none';
+  if (canvas) canvas.style.display = 'none';
+}
+
+function hideAllMedia() {
+  const gif = document.getElementById('landingGif');
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (gif) {
+    gif.style.opacity = '0';
+    setTimeout(() => {
+      gif.style.display = 'none';
+      gif.style.opacity = '1';
+    }, 500);
+  }
+  
+  if (video) {
+    video.style.opacity = '0';
+    setTimeout(() => {
+      video.style.display = 'none';
+      video.pause();
+      video.style.opacity = '1';
+    }, 500);
+  }
+  
+  if (map) map.style.display = 'block';
+  if (canvas) canvas.style.display = 'block';
+}
+
+// Wait for video to reach specific time
+function waitForVideoTime(video, targetTime) {
+  return new Promise(resolve => {
+    const checkTime = () => {
+      if (!video || video.currentTime >= targetTime) {
+        resolve();
+      } else {
+        requestAnimationFrame(checkTime);
+      }
+    };
+    checkTime();
+  });
+}
+
+// Preload video for smoother playback
+function preloadVideo() {
+  const video = document.getElementById('landingVideo');
+  if (video && video.readyState < 4) {
+    return new Promise(resolve => {
+      video.addEventListener('canplaythrough', resolve, { once: true });
+      video.load(); // Force load if needed
+    });
+  }
+  return Promise.resolve();
+}
+
 async function startLandingAnimationSequence() {
   if (app.landing.active) return;
 
   app.landing.active = true;
 
   try {
+    // Preload video for smooth playback
+    await preloadVideo();
+    
     // Ensure text elements exist
     ensureLandingText();
 
-    // Step A: Video + "Feeling Nature Seoul" + partial header (7s)
-    //console.log('Landing Step A: Video + Feeling Nature Seoul');
-    showVideo();
-    showHeaderLogos(false); // Show only left logo
-    updateLandingTexts('Feeling Nature Seoul', '', false);
-    await wait(5000); // 5 seconds
+    // Loop counter for cycling
+    let loopCount = 0;
+    const maxLoops = 3; // Number of complete loops before restarting
 
-    // Step B: Video + Biophilia explanation + partial header (10s)
-    //console.log('Landing Step B: Biophilia explanation');
-    // Keep video and partial header
-    updateLandingTexts(
-      'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
-      'Explore how Seoul residents perceive nature.',
-      true
-    );
-    await wait(11000); // 10 seconds
+    while (app.landing.active && app.mode === Modes.LANDING && loopCount < maxLoops) {
+      
+      // === PHASE 1: GIF SEQUENCE (16 seconds total) ===
+      
+      // Step A: GIF + "Feeling Nature Seoul" + partial header (5s)
+      showGif();
+      showHeaderLogos(false); // Show only right logo
+      updateLandingTexts('Feeling Nature Seoul', '', false);
+      await wait(5000);
 
-    // Step C: BS map + full header (6s)
-    //console.log('Landing Step C: BS map visualization');
-    hideVideo();
-    showHeaderLogos(true); // Show both logos
-    app.state.currentDataType = 'BS';
-    const bsData = await loadSeoulData('BS');
-    updateVisualizationCanvas(bsData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-    updateLandingTexts(
-      'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-      'BS Map: the distribution of nature-based elements in Seoul urban environment.',
-      true
-    );
-    await wait(4000); // 4 seconds
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-    // Step D: BP map + full header (6s)
-    //console.log('Landing Step D: BP map visualization');
-    app.state.currentDataType = 'BP';
-    const bpData = await loadSeoulData('BP');
-    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-    updateLandingTexts(
-      'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-      'BP Map: the strength of perceived Biophilia in the city',
-      true
-    );
-    await wait(4000); // 4 seconds
+      // Step B: GIF + Biophilia explanation + partial header (11s)
+      updateLandingTexts(
+        'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
+        'Explore how Seoul residents perceive nature.',
+        true
+      );
+      await wait(11000);
 
-    // Step E: BP group highlighting + full header (24 seconds total)
-    //console.log('Landing Step E: BP group highlighting');
-    animateBPGroupHighlighting(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon);
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      // === PHASE 2: VIDEO SEQUENCE (28 seconds total) ===
+      
+      showVideo();
+      showHeaderLogos(true); // Show both logos
+      const video = document.getElementById('landingVideo');
+
+      // Step C: Video shows BS map + text (4s)
+      updateLandingTexts(
+        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+        'BS Map: the distribution of nature-based elements in Seoul urban environment.',
+        true
+      );
+      await waitForVideoTime(video, 4);
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      // Step D: Video shows BP map + text (4s more, total 8s)
+      updateLandingTexts(
+        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+        'BP Map: the strength of perceived Biophilia in the city',
+        true
+      );
+      await waitForVideoTime(video, 8);
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      // Step E: Video shows BP group highlighting with cycling text (20s more, total 28s)
+      await animateTextForVideoGroupSequence(video);
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      loopCount++;
+      
+      // Brief pause before next loop
+      await wait(1000);
+    }
+
+    // After loops complete, restart the sequence
+    if (app.landing.active && app.mode === Modes.LANDING) {
+      setTimeout(() => startLandingAnimationSequence(), 500);
+    }
 
   } catch (error) {
     console.error('Error in landing animation sequence:', error);
@@ -1217,54 +1332,42 @@ async function startLandingAnimationSequence() {
   }
 }
 
+// Handle text animation synchronized with video BP group sequence
+async function animateTextForVideoGroupSequence(video) {
+  const groups = [
+    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)' },
+    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)' },
+    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)' },
+    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)' }
+  ];
 
-function animateBPGroupHighlighting(data, centerLat, centerLon) {
-  const groups = [BP_GROUPS[0], BP_GROUPS[1], BP_GROUPS[2], BP_GROUPS[3]];
-  let i = 0;
-  let cycleCount = 0;
-  const maxCycles = 2; // Number of complete cycles before restarting sequence
-
-  // Initialize immediately
-  app.landing.currentGroup = groups[0];
-  updateLandingTextGroupDynamic(app.landing.currentGroup);
-  updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon);
-
-  // Cycle every 2500 ms
-  const tick = () => {
-    if (!app.landing.active || app.mode !== Modes.LANDING) return;
-    
-    i = (i + 1) % groups.length;
-    
-    // Check if we completed a full cycle
-    if (i === 0) {
-      cycleCount++;
-      if (cycleCount >= maxCycles) {
-        // Restart the entire sequence
-        //console.log('Restarting landing sequence...');
-        app.landing.active = false;
-        setTimeout(() => startLandingAnimationSequence(), 1000);
-        return;
-      }
+  let groupIndex = 0;
+  const groupDuration = 5; // 5 seconds per group (20 seconds total)
+  
+  // Update text immediately for first group
+  updateLandingTextForGroup(groups[0]);
+  
+  // Set up interval for group text cycling
+  const intervalId = setInterval(() => {
+    if (!app.landing.active || app.mode !== Modes.LANDING) {
+      clearInterval(intervalId);
+      return;
     }
     
-    app.landing.currentGroup = groups[i];
-    updateLandingTextGroupDynamic(app.landing.currentGroup);
-    updateVisualizationCanvasWithBPGroups(data, centerLat, centerLon);
-
-    app.landing.intervalId = setTimeout(tick, 2500);
-    app.cleanup.timers.add(app.landing.intervalId);
-  };
-
-  app.landing.intervalId = setTimeout(tick, 2500);
-  app.cleanup.timers.add(app.landing.intervalId);
+    groupIndex = (groupIndex + 1) % groups.length;
+    updateLandingTextForGroup(groups[groupIndex]);
+  }, groupDuration * 1000);
+  
+  app.cleanup.timers.add(intervalId);
+  
+  // Wait for video to complete the BP group sequence
+  await waitForVideoTime(video, 28);
+  clearInterval(intervalId);
 }
 
-// ADD this new function for BP group text updates
-function updateLandingTextGroupDynamic(group) {
-  if (!group) return;
-  
-  const min = (Math.round(group.min * 100) / 100).toFixed(2);
-  const max = (Math.round(group.max * 100) / 100).toFixed(2);
+function updateLandingTextForGroup(group) {
+  const min = group.min.toFixed(2);
+  const max = group.max.toFixed(2);
   
   updateLandingTexts(
     'Complete the survey to learn how you perceive and value nature in Seoul!',
@@ -1273,7 +1376,29 @@ function updateLandingTextGroupDynamic(group) {
   );
 }
 
+
 /* ========== RESULT SEQUENCE WITH PULSATION EFFECT ========== */
+// Add this to ensure map is ready when switching to result mode
+async function ensureMapReady() {
+  if (!app.map) {
+    initializeMapbox();
+  }
+  
+  // Wait for map to be fully loaded
+  if (app.map && !app.mapLoaded) {
+    return new Promise(resolve => {
+      app.map.once('load', () => {
+        app.mapLoaded = true;
+        resolve();
+      });
+    });
+  }
+  
+  return Promise.resolve();
+}
+
+
+
 async function executeResultSequence() {
   if (app.state.animationInProgress) return;
 
@@ -1851,15 +1976,14 @@ async function initializeApplication() {
 
     if (!app._resizeListenerAdded) {
       window.addEventListener('resize', debounce(() => {
-      const data = app.data.cache[`seoul_${app.state.currentDataType}`];
-      if (!data) return;
-
-      if (app.mode === Modes.LANDING && app.landing.active && app.landing.currentGroup) {
-        updateVisualizationCanvasWithBPGroups(data, seoulData.coordinates.lat, seoulData.coordinates.lon);
-      } else {
-        updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-      }
-    }, 300));
+        const data = app.data.cache[`seoul_${app.state.currentDataType}`];
+        if (!data) return;
+    
+        // Only update canvas for result mode - landing mode uses video now
+        if (app.mode === Modes.RESULT) {
+          updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+        }
+      }, 300));
       app._resizeListenerAdded = true;
     }
 
