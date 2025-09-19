@@ -50,45 +50,24 @@ function applyCurrent(cur){
       // Store globally
       window.ACTUAL_BP_VALUE = bp;
       
-      // Method 1: Direct DOM update (immediate)
-      const bpElement = document.getElementById('bpValueNumber');
-      if (bpElement) {
-        bpElement.textContent = bp.toFixed(2);
-        console.log(`[applyCurrent] Direct DOM update: ${bp.toFixed(2)}`);
-      } else {
-        console.warn('[applyCurrent] #bpValueNumber not found immediately');
-      }
-      
-      // Method 2: Call app BP manager
+      // ONLY call the BP manager - let it handle normalization and DOM updates
       if (typeof window.setUserBp === "function") {
         window.setUserBp(bp);
-        console.log(`[applyCurrent] Called setUserBp(${bp})`);
+        console.log(`[applyCurrent] Called setUserBp(${bp}) - BPManager will handle normalization`);
       }
       
-      // Method 3: Delayed update as fallback
-      setTimeout(() => {
-        const delayedElement = document.getElementById('bpValueNumber');
-        if (delayedElement && delayedElement.textContent === '0.00') {
-          delayedElement.textContent = bp.toFixed(2);
-          console.log(`[applyCurrent] Delayed DOM update: ${bp.toFixed(2)}`);
-        }
-      }, 200);
-      
-      // Method 4: Force update after page stabilizes
-      setTimeout(() => {
-        const finalElement = document.getElementById('bpValueNumber');
-        if (finalElement) {
-          finalElement.textContent = bp.toFixed(2);
-          console.log(`[applyCurrent] Final DOM update: ${bp.toFixed(2)}`);
-        }
-      }, 1000);
+      // REMOVE all direct DOM manipulation - let BPManager handle it
+      // DON'T call any setTimeout overrides
     }
     
     // Continue with other updates...
-    if (typeof window.applyBPToUI === "function") window.applyBPToUI(bp);
     if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
     if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
-    if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) window.updateDistributionChart(bp);
+    if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
+      // Use the normalized value from BPManager
+      const normalizedBP = window.bpManager ? window.bpManager.currentValue : bp;
+      window.updateDistributionChart(normalizedBP);
+    }
     
   }catch(e){ 
     console.error('[applyCurrent] Error:', e);

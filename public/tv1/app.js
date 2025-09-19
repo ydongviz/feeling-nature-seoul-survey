@@ -239,12 +239,13 @@ class DashboardManager {
     bpManager.setValue(bpValue);
     
     // Helper function to filter out "sky" category
-   const filterOutSky = (arr) => arr.filter(item => {
+    const filterOutSky = (arr) => arr.filter(item => {
       const normalized = typeof item === 'string' ? 
         iconManager.normalizeKey(item) : 
-        iconManager.normalizeKey(item.name || item[0]);
-      return normalized !== 'sky';
+        iconManager.normalizeKey(item[0]); // For [key, value] pairs
+      return normalized !== 'sky'; 
     });
+
     
     // Top 3 for icons and plant-category text (always show exactly 3)
    const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
