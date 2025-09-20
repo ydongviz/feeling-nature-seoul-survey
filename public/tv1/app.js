@@ -18,13 +18,6 @@ const PULSE_BASE_PERIOD = 1200;
 
 window.USE_CURRENT_JSON = true;
 
-const BP_GROUPS = [
-  { min: 0.00, max: 0.25, color: '#92C043', name: 'Very Low (0-0.25)' },
-  { min: 0.25, max: 0.50, color: '#92C043', name: 'Low (0.25-0.5)' },
-  { min: 0.50, max: 0.75, color: '#92C043', name: 'Medium (0.5-0.75)' },
-  { min: 0.75, max: 1.00, color: '#92C043', name: 'High (0.75-1.0)' }
-];
-
 const seoulData = {
   name: "Seoul",
   biomeName: "Temperate Forest",
@@ -35,7 +28,6 @@ const seoulData = {
   },
   BSDescription: 'The map shows how you perceive and value urban nature by quantifying and locating your Biophilic Individual Perceptions (BiP) value in the city.',
   BPDescription: 'The map shows how you perceive and value urban nature by quantifying and locating your Biophilic Individual Perceptions (BiP) value in the city.',
-  dashboardDataPath: "./data/SCL/test_FNdashbaord.csv" 
 };
 
 const sizeScale = d3.scaleLinear().domain([0, 0.2, 0.6, 0.8, 1]).range([0, 1, 2, 3, 6]);
@@ -68,14 +60,6 @@ class ColorManager {
     const v = d.biophilia_norm;
     const lo = window.HIGHLIGHT_MIN ?? 0.70;
     const hi = window.HIGHLIGHT_MAX ?? 0.75;
-
-    // ADD THIS DEBUG LINE:
-  /*if (!this.debugCounter) this.debugCounter = 0;
-  if (this.debugCounter % 1000 === 0) {
-    console.log(`[ColorManager.isHighlighted] Sample dot ${this.debugCounter}: CSV_value=${v.toFixed(3)}, highlight_range=${lo.toFixed(3)}-${hi.toFixed(3)}, user_normalized_bp=${window.ACTUAL_BP_VALUE?.toFixed(3)}, highlighted=${v >= lo && v <= hi}`);
-  }
-  this.debugCounter++;*/
-
 
     return v >= lo && v <= hi;
   }
@@ -302,7 +286,6 @@ class DashboardManager {
     
     // Get top 3 non-sky items for icons and text
     const top3 = filterOutSkyAndEnsureThree(data.intensity_top, data.intensities);
-    
     //console.log(`[DashboardManager] Top 3 after filtering sky:`, top3);
     
     this.updateTopElements(top3);
@@ -400,33 +383,6 @@ class DashboardManager {
 
     let labels = [];
     let histogram = [];
-
-    
-    if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
-        
-        // UNIFIED: Use ±0.03 range matching highlighting
-        const EPS = 0.03;
-        const minRange = Math.max(0, userBpValue - EPS);
-        const maxRange = Math.min(1, userBpValue + EPS);
-        const bins = 11;
-        const binSize = (maxRange - minRange) / (bins - 1);
-        
-        histogram = new Array(bins).fill(0);
-        
-        app.data.allParticipantsData.forEach(value => {
-            const v = Number(value) || 0;
-            if (v >= minRange && v <= maxRange) {
-                const binIndex = Math.min(Math.floor((v - minRange) / binSize), bins - 1);
-                histogram[binIndex]++;
-            }
-        });
-        
-        // Create labels for the focused range
-        labels = Array.from({ length: bins }, (_, i) => 
-            (minRange + i * binSize).toFixed(2)
-        );
-        
-        //console.log(`[Distribution] Focused range: ${minRange.toFixed(3)}-${maxRange.toFixed(3)}, Total dots in range: ${histogram.reduce((a,b) => a+b, 0)}`);
 
     if (distribution && Array.isArray(distribution)) {
       labels = distribution.map(d => Number(d.bin).toFixed(1));

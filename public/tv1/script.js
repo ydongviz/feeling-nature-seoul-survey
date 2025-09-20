@@ -65,7 +65,7 @@ function applyCurrent(cur){
         intensity_top: top,
         distribution: cur?.distribution || null
       });
-      console.log(`[applyCurrent] Called updateDashboardDisplay with full data including intensities`);
+      //console.log(`[applyCurrent] Called updateDashboardDisplay with full data including intensities`);
     }
     
   } catch(e){ 
