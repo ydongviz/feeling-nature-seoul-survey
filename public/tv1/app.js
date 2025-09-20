@@ -398,15 +398,8 @@ updateDistributionChart(userBpValue, distribution) {
 
     let labels = [];
     let histogram = [];
-
-    // Check if we have pre-computed distribution data from current.json
-    if (distribution && Array.isArray(distribution)) {
-        // Use pre-computed distribution (if available from server)
-        labels = distribution.map(d => Number(d.bin).toFixed(1));
-        histogram = distribution.map(d => Number(d.count) || 0);
-    } else {
-        // Calculate distribution from CSV data with focused range
-        if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
+    
+    if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
         
         // UNIFIED: Use ±0.03 range matching highlighting
         const EPS = 0.03;
@@ -487,12 +480,11 @@ updateDistributionChart(userBpValue, distribution) {
                             font: { size: 11, weight: 'normal' },
                             padding: 5,
                             callback: function(value, index, ticks) {
-                                // Show actual range values instead of fixed 0, 0.5, 1
-                                if (index === 0) return labels[0];
-                                if (index === ticks.length - 1) return labels[labels.length - 1];
-                                if (index === Math.floor(ticks.length / 2)) return labels[Math.floor(labels.length / 2)];
-                                return '';
-                            }
+                              if (index === 0) return '0.0';
+                              if (index === ticks.length - 1) return '1.0';
+                              if (index === Math.floor(ticks.length / 2)) return '0.5';
+                              return '';
+                          }                             
                         },
                         border: { display: true, color: '#444' }
                     },
