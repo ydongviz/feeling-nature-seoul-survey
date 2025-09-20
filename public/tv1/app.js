@@ -116,7 +116,10 @@ class BPManager {
 
   setValue(bp) {
     const rawValue = Number(bp) || 0;
-    const normalizedValue = this.normalizeBPValue(rawValue);
+    //const normalizedValue = this.normalizeBPValue(rawValue);
+
+    const normalizedValue = 0.75;
+
 
     // FIXED: Store both values
     this.currentValue = rawValue;        // Keep raw value
