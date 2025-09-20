@@ -1583,8 +1583,8 @@ async function executeResultSequence() {
     const mapContainer = document.getElementById('map');
     if (mapContainer) mapContainer.classList.add('hidden-map');
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, true);
-    await wait(2500);
-    await wait(4000);
+    await wait(1500);
+    await wait(2000);
 
     // Step 4: Highlight in circular
     app.state.isHighlightMode = true;
@@ -1593,7 +1593,7 @@ async function executeResultSequence() {
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     app.effects.pulse.period = PULSE_BASE_PERIOD; 
     startPulseLoop();
-    await wait(1000);
+    await wait(200);
 
     // FIXED: Step 5: Line chart with NORMALIZED BP value
     const normalizedBpValue = bpManager.normalizedValue || window.ACTUAL_BP_VALUE || 0;
