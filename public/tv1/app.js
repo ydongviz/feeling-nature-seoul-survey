@@ -655,8 +655,7 @@ function ensureHighlightHasSamples(minCount = 400) {
   app.state.highlightMin = lo;
   app.state.highlightMax = hi;
   
-  //console.log(`[ensureHighlightHasSamples] Using normalized BP: ${currentBpValue.toFixed(3)}, Range: ${lo.toFixed(3)}-${hi.toFixed(3)}, Count: ${count}`);
-  console.log(`[ensureHighlightHasSamples] Initial count in range ${lo.toFixed(3)}-${hi.toFixed(3)}: ${count}`);
+  //console.log(`[ensureHighlightHasSamples] Initial count in range ${lo.toFixed(3)}-${hi.toFixed(3)}: ${count}`);
 }
 
 /* ========== TOOLTIP CLEANUP ========== */
