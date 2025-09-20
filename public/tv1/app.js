@@ -32,6 +32,77 @@ const seoulData = {
 
 const sizeScale = d3.scaleLinear().domain([0, 0.2, 0.6, 0.8, 1]).range([0, 1, 2, 3, 6]);
 
+// Simple Media Cache for offline reliability
+class SimpleMediaCache {
+  constructor() {
+    this.cache = new Map();
+  }
+
+  getCachedUrl(url) {
+    return this.cache.get(url) || url;
+  }
+
+  async preloadMedia() {
+    const mediaFiles = ['img/fn-landing2.gif', 'img/fn-landing4.mov'];
+    for (const url of mediaFiles) {
+      try {
+        const response = await fetch(url, { cache: 'force-cache' });
+        if (response.ok) {
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          this.cache.set(url, objectUrl);
+          console.log(`[SimpleMediaCache] Cached ${url}`);
+        }
+      } catch (e) {
+        console.warn('[SimpleMediaCache] Failed to cache:', url);
+      }
+    }
+  }
+
+  cleanup() {
+    for (const url of this.cache.values()) {
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    }
+    this.cache.clear();
+  }
+}
+
+class SimpleMemoryManager {
+  cleanup() {
+    // Clear Chart.js instances
+    if (window.lineChart) {
+      try {
+        window.lineChart.destroy();
+        window.lineChart = null;
+        console.log('[SimpleMemoryManager] Cleared Chart.js instance');
+      } catch (e) {}
+    }
+    
+    // Limit large data caches
+    if (app?.data?.cache) {
+      Object.keys(app.data.cache).forEach(key => {
+        if (app.data.cache[key]?.length > 10000) {
+          app.data.cache[key] = app.data.cache[key].slice(0, 5000);
+          console.log(`[SimpleMemoryManager] Trimmed cache ${key}`);
+        }
+      });
+    }
+  }
+
+  startPeriodicCleanup() {
+    setInterval(() => {
+      console.log('[SimpleMemoryManager] Running periodic cleanup...');
+      this.cleanup();
+    }, 10 * 60 * 1000); // Every 10 minutes
+  }
+}
+
+// Initialize simple managers
+const simpleMediaCache = new SimpleMediaCache();
+const simpleMemoryManager = new SimpleMemoryManager();
+
 /* ========== UNIFIED MANAGERS ========== */
 
 // Unified Color Management
@@ -856,6 +927,8 @@ function clearAllTimersAndAnimations() {
   }
 
   app.state.animationInProgress = false;
+
+  simpleMemoryManager.cleanup();
 }
 
 /* ========== LAYOUT FUNCTIONS ========== */
@@ -1360,6 +1433,8 @@ function showGif() {
   const canvas = document.getElementById('visualization-canvas');
   
   if (gif) {
+    // Use cached version if available
+    gif.src = simpleMediaCache.getCachedUrl('img/fn-landing2.gif');
     gif.style.display = 'block';
     gif.style.opacity = '1';
   }
@@ -1377,15 +1452,27 @@ function showVideo() {
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
   
-  if (gif) {
-    gif.style.display = 'none';
-  }
+  if (gif) gif.style.display = 'none';
+  
   if (video) {
+    // Use cached version if available
+    video.src = simpleMediaCache.getCachedUrl('img/fn-landing4.mov');
     video.style.display = 'block';
     video.style.opacity = '1';
     video.currentTime = 0;
-    video.play();
+    
+    // Enhanced error handling with fallback
+    video.onerror = () => {
+      console.warn('[Video] Playback failed, falling back to GIF');
+      showGif();
+    };
+    
+    video.play().catch(error => {
+      console.warn('[Video] Play failed:', error);
+      showGif();
+    });
   }
+  
   if (map) map.style.display = 'none';
   if (canvas) canvas.style.display = 'none';
 }
@@ -1419,12 +1506,23 @@ function hideAllMedia() {
 
 function preloadVideo() {
   const video = document.getElementById('landingVideo');
-  if (video && video.readyState < 4) {
-    return new Promise(resolve => {
-      video.addEventListener('canplaythrough', resolve, { once: true });
-      video.load();
-    });
+  if (!video) return Promise.resolve();
+
+  try {
+    // Use cached version if available
+    video.src = simpleMediaCache.getCachedUrl('img/fn-landing4.mov');
+    
+    if (video.readyState < 4) {
+      return new Promise(resolve => {
+        video.addEventListener('canplaythrough', resolve, { once: true });
+        video.addEventListener('error', resolve, { once: true }); // Resolve even on error
+        video.load();
+      });
+    }
+  } catch (error) {
+    console.warn('[Video] Preload failed:', error);
   }
+  
   return Promise.resolve();
 }
 
@@ -1784,6 +1882,9 @@ async function initializeApplication() {
   app._initializing = true;
   
   try {
+    simpleMemoryManager.startPeriodicCleanup();
+    simpleMediaCache.preloadMedia().catch(console.warn);
+
     app.elements.leftTop = document.querySelector('.left-column-top');
     app.elements.rightCol = document.querySelector('.right-column');
     app.elements.footer = document.querySelector('footer');
@@ -1837,3 +1938,8 @@ document.addEventListener('DOMContentLoaded', () => {
 if (document.readyState !== 'loading') {
   setTimeout(initializeApplication, 100);
 }
+
+window.addEventListener('beforeunload', () => {
+  simpleMediaCache.cleanup();
+  simpleMemoryManager.cleanup();
+});
