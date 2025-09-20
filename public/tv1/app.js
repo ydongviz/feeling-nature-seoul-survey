@@ -2,13 +2,16 @@
 window.RUNTIME_BASE = window.RUNTIME_BASE || 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
 window.APP_CONFIG  = window.APP_CONFIG  || { RUNTIME_BASE_URL: window.RUNTIME_BASE };
 // ==========================================================================
-/* EVENT-OPTIMIZED BIOPHILIC VISUALIZATION - OPTIMIZED VERSION
-   Addresses critical redundancies:
+/* EVENT-OPTIMIZED BIOPHILIC VISUALIZATION - PERFORMANCE OPTIMIZED VERSION
+   Addresses critical redundancies + performance optimizations:
    1. Unified color management
    2. Consolidated BP value handling
    3. Single dashboard update system
    4. Unified icon management
    5. Centralized safe execution
+   6. Media caching for offline reliability
+   7. Memory leak prevention
+   8. Performance optimizations for intensive use
 */
 
 /* ========== CONFIGURATION ========== */
@@ -32,7 +35,182 @@ const seoulData = {
 
 const sizeScale = d3.scaleLinear().domain([0, 0.2, 0.6, 0.8, 1]).range([0, 1, 2, 3, 6]);
 
-/* ========== UNIFIED MANAGERS ========== */
+/* ========== PERFORMANCE OPTIMIZATION CLASSES ========== */
+
+// Media Cache Manager for offline reliability
+class MediaCacheManager {
+  constructor() {
+    this.cache = new Map();
+    this.criticalMedia = [
+      { url: 'img/fn-landing2.gif', type: 'gif', priority: 1 },
+      { url: 'img/fn-landing4.mov', type: 'video', priority: 1 },
+      { url: 'img/bg-img.gif', type: 'gif', priority: 2 },
+      { url: 'img/fn-logofinal3.gif', type: 'gif', priority: 2 }
+    ];
+  }
+
+  async preloadCriticalMedia() {
+    console.log('[MediaCache] Starting critical media preload...');
+    for (const media of this.criticalMedia) {
+      try {
+        await this.cacheMedia(media.url, media.type);
+      } catch (error) {
+        console.warn(`[MediaCache] Failed to cache ${media.url}:`, error);
+      }
+    }
+    console.log('[MediaCache] Critical media preload complete');
+  }
+
+  async cacheMedia(url, type) {
+    if (this.cache.has(url)) return this.cache.get(url);
+
+    try {
+      const response = await fetch(url, { cache: 'force-cache', mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      
+      const cacheEntry = { objectUrl, blob, type, timestamp: Date.now(), size: blob.size };
+      this.cache.set(url, cacheEntry);
+      console.log(`[MediaCache] Cached ${url} (${(blob.size / 1024).toFixed(1)}KB)`);
+      return cacheEntry;
+    } catch (error) {
+      console.error(`[MediaCache] Failed to cache ${url}:`, error);
+      throw error;
+    }
+  }
+
+  getCachedUrl(originalUrl) {
+    const cached = this.cache.get(originalUrl);
+    return cached ? cached.objectUrl : originalUrl;
+  }
+
+  cleanup() {
+    for (const [url, cached] of this.cache.entries()) {
+      if (cached.objectUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(cached.objectUrl);
+      }
+    }
+    this.cache.clear();
+  }
+}
+
+// Memory Manager for leak prevention
+class MemoryManager {
+  constructor() {
+    this.objectUrls = new Set();
+    this.intervalCleanup = null;
+    this.lastCleanup = Date.now();
+  }
+
+  trackObjectUrl(url) {
+    this.objectUrls.add(url);
+  }
+
+  forceCleanup() {
+    // Cleanup blob URLs
+    for (const url of this.objectUrls) {
+      try { URL.revokeObjectURL(url); } catch (e) {}
+    }
+    this.objectUrls.clear();
+
+    // Clear Chart.js instances
+    if (window.lineChart) {
+      try {
+        window.lineChart.destroy();
+        window.lineChart = null;
+      } catch (e) {}
+    }
+
+    // Clear cached DOM references
+    app.elements = {
+      leftTop: null, rightCol: null, footer: null,
+      mapContainer: null, canvas: null, buttons: null
+    };
+
+    this.lastCleanup = Date.now();
+    console.log('[MemoryManager] Forced cleanup completed');
+  }
+
+  startPeriodicCleanup() {
+    if (this.intervalCleanup) return;
+    
+    this.intervalCleanup = setInterval(() => {
+      const now = Date.now();
+      if (now - this.lastCleanup > 15 * 60 * 1000) { // Every 15 minutes
+        console.log('[MemoryManager] Periodic cleanup triggered');
+        this.forceCleanup();
+      }
+    }, 60000); // Check every minute
+  }
+
+  stopPeriodicCleanup() {
+    if (this.intervalCleanup) {
+      clearInterval(this.intervalCleanup);
+      this.intervalCleanup = null;
+    }
+  }
+}
+
+// Data Loader with deduplication
+class OptimizedDataLoader {
+  constructor() {
+    this.loadPromises = new Map();
+    this.lastLoadTime = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  }
+
+  async loadWithDeduplication(key, loadFunction) {
+    const now = Date.now();
+    
+    if (this.loadPromises.has(key)) {
+      return this.loadPromises.get(key);
+    }
+
+    const lastLoad = this.lastLoadTime.get(key);
+    if (lastLoad && (now - lastLoad) < this.cacheTimeout) {
+      const cachedData = app.data.cache[key];
+      if (cachedData && cachedData.length > 0) {
+        return cachedData;
+      }
+    }
+
+    const loadPromise = loadFunction().finally(() => {
+      this.loadPromises.delete(key);
+      this.lastLoadTime.set(key, now);
+    });
+
+    this.loadPromises.set(key, loadPromise);
+    return loadPromise;
+  }
+}
+
+// Canvas Performance Optimizer
+class CanvasOptimizer {
+  constructor() {
+    this.lastRenderTime = 0;
+    this.renderThrottle = 16; // ~60fps max
+  }
+
+  throttledRender(renderFunction) {
+    const now = performance.now();
+    if (now - this.lastRenderTime < this.renderThrottle) {
+      return false;
+    }
+    this.lastRenderTime = now;
+    renderFunction();
+    return true;
+  }
+}
+
+/* ========== INITIALIZE PERFORMANCE MANAGERS ========== */
+const mediaCache = new MediaCacheManager();
+const memoryManager = new MemoryManager();
+const dataLoader = new OptimizedDataLoader();
+const canvasOptimizer = new CanvasOptimizer();
+
+/* ========== UNIFIED MANAGERS (EXISTING CODE) ========== */
 
 // Unified Color Management
 class ColorManager {
@@ -60,7 +238,6 @@ class ColorManager {
     const v = d.biophilia_norm;
     const lo = window.HIGHLIGHT_MIN ?? 0.70;
     const hi = window.HIGHLIGHT_MAX ?? 0.75;
-
     return v >= lo && v <= hi;
   }
 
@@ -88,72 +265,55 @@ class ColorManager {
 class BPManager {
   constructor() {
     this.currentValue = 0;
-    this.normalizedValue = 0; // FIXED: Track both raw and normalized values
+    this.normalizedValue = 0;
     this.elements = {};
   }
 
-  // Add normalization method
   normalizeBPValue(rawBP) {
-      const normalized = 0.1 + (rawBP - 0.25) * (0.8 - 0.1) / (0.35 - 0.25);
-      return Math.max(0, Math.min(1, normalized)); // Clamp between 0 and 1
+    const normalized = 0.1 + (rawBP - 0.25) * (0.8 - 0.1) / (0.35 - 0.25);
+    return Math.max(0, Math.min(1, normalized));
   }
 
   setValue(bp) {
     const rawValue = Number(bp) || 0;
     const normalizedValue = this.normalizeBPValue(rawValue);
-    //const normalizedValue = 0.75;
 
-    // FIXED: Store both values
-    this.currentValue = rawValue;        // Keep raw value
-    this.normalizedValue = normalizedValue; // Store normalized for display
+    this.currentValue = rawValue;
+    this.normalizedValue = normalizedValue;
     
     const EPS = 0.03;
     
-    // FIXED: Use normalized value for app state and highlighting
     app.state.bpValue = normalizedValue;
     app.state.highlightMin = Math.max(0, normalizedValue - EPS);
     app.state.highlightMax = Math.min(1, normalizedValue + EPS);
     window.HIGHLIGHT_MIN = app.state.highlightMin;
     window.HIGHLIGHT_MAX = app.state.highlightMax;
-    
-    // FIXED: Store normalized value globally for other components
     window.ACTUAL_BP_VALUE = normalizedValue;
     
-    // CRITICAL FIX: Always get fresh element reference and force update
     this.updateDOM();
-    
-    // Trigger repaints
     this.refreshVisualization();
   }
 
   updateDOM() {
-    // CRITICAL FIX: Always get fresh element reference - don't cache it
     const bpElement = document.getElementById('bpValueNumber');
     
     if (bpElement) {
-      // FIXED: Use normalized value for display
       bpElement.textContent = this.normalizedValue.toFixed(2);
-      //console.log(`[BPManager.updateDOM] Updated BP display: ${this.normalizedValue.toFixed(2)} (from raw: ${this.currentValue.toFixed(3)})`);
     } else {
       console.warn('[BPManager.updateDOM] #bpValueNumber element not found');
-      
-      // Fallback: try again after a short delay
       setTimeout(() => {
         const retryElement = document.getElementById('bpValueNumber');
         if (retryElement) {
           retryElement.textContent = this.normalizedValue.toFixed(2);
-          console.log(`[BPManager.updateDOM] Retry successful: ${this.normalizedValue.toFixed(2)}`);
         }
       }, 100);
     }
   }
 
   refreshVisualization() {
-    // FIXED: Ensure highlight samples are recalculated when BP value changes
     if (app.mode === Modes.RESULT && app.state.isHighlightMode) {
       ensureHighlightHasSamples();
     }
-    
     safeExecute('refreshDotLayer');
     safeExecute('updateLegend');
     safeExecute('updateCenterViz');
@@ -245,11 +405,9 @@ class DashboardManager {
     const bpValue = Number(data.bp) || 0;
     bpManager.setValue(bpValue);
     
-    // FIXED: Helper function to filter out "sky" category and ensure exactly 3 items
     const filterOutSkyAndEnsureThree = (items, intensities) => {
       let candidates = [];
       
-      // If we have intensity_top array, use it first
       if (Array.isArray(items) && items.length) {
         candidates = items.filter(item => {
           const normalized = iconManager.normalizeKey(item);
@@ -257,17 +415,15 @@ class DashboardManager {
         });
       }
       
-      // If we don't have enough non-sky items, supplement from intensities
       if (candidates.length < 3 && intensities) {
         const sortedIntensities = Object.entries(intensities)
           .filter(([key, value]) => {
             const normalized = iconManager.normalizeKey(key);
             return normalized !== 'sky' && Number(value) > 0;
           })
-          .sort((a, b) => b[1] - a[1]) // Sort by value descending
+          .sort((a, b) => b[1] - a[1])
           .map(([key]) => key);
         
-        // Add missing items from sorted intensities
         for (const key of sortedIntensities) {
           if (candidates.length >= 3) break;
           const normalized = iconManager.normalizeKey(key);
@@ -280,31 +436,22 @@ class DashboardManager {
         }
       }
       
-      // Always return exactly 3 items (or as many as available)
       return candidates.slice(0, 3);
     };
     
-    // Get top 3 non-sky items for icons and text
     const top3 = filterOutSkyAndEnsureThree(data.intensity_top, data.intensities);
-    
-    //console.log(`[DashboardManager] Top 3 after filtering sky:`, top3);
-    
     this.updateTopElements(top3);
     
-    // Bar chart: filter sky + keep original value > 0 logic
     const top10 = Object.entries(data.intensities || {})
       .map(([k, v]) => ({ name: k, value: Number(v) || 0 }))
       .filter(d => {
-        // Apply both filters: remove sky AND keep only value > 0
         const normalized = iconManager.normalizeKey(d.name);
         return normalized !== 'sky' && d.value > 0;
       })
       .sort((a, b) => b.value - a.value)
-      .slice(0, 10);  // Take up to 10 qualifying items
+      .slice(0, 10);
     
     this.updateBarChart(top10);
-    
-    // FIXED: Use normalized BP value for distribution chart
     this.updateDistributionChart(bpManager.normalizedValue, data.distribution);
   }
 
@@ -615,7 +762,6 @@ function ensureHighlightHasSamples(minCount = 400) {
   const key = `seoul_${app.state.currentDataType || 'BP'}`;
   const data = app.data.cache[key] || [];
 
-  // FIXED: Use normalized BP value consistently
   const currentBpValue = bpManager.normalizedValue || app.state.bpValue || window.ACTUAL_BP_VALUE || 0;
   
   if (!data.length || !Number.isFinite(currentBpValue)) return;
@@ -628,19 +774,15 @@ function ensureHighlightHasSamples(minCount = 400) {
   let count = countInBand();
   while (count < minCount && widen < 0.05) {
     widen += 0.005;
-    // FIXED: Use the normalized BP value for range calculation
     lo = Math.max(0, currentBpValue - (0.01 + widen));
     hi = Math.min(1, currentBpValue + (0.01 + widen));
     count = countInBand();
   }
   
-  // FIXED: Update both global and app state with normalized values
   window.HIGHLIGHT_MIN = lo;
   window.HIGHLIGHT_MAX = hi;
   app.state.highlightMin = lo;
   app.state.highlightMax = hi;
-
-  //console.log(`[ensureHighlightHasSamples] Initial count in range ${lo.toFixed(3)}-${hi.toFixed(3)}: ${count}`);
 }
 
 /* ========== TOOLTIP CLEANUP ========== */
@@ -664,7 +806,7 @@ function removeAllCustomTooltips() {
   }
 }
 
-/* ========== DATA LOADING ========== */
+/* ========== DATA LOADING WITH OPTIMIZATION ========== */
 function parseData(d, weighted = false) {
   const biophiliaValue = weighted ? +d.biophilia_weighted_norm : +d.coverage_norm;
   return {
@@ -676,28 +818,28 @@ function parseData(d, weighted = false) {
 }
 
 async function loadSeoulData(dataType) {
-  const cacheKey = `seoul_${dataType}`;
-  if (app.data.cache[cacheKey]) return app.data.cache[cacheKey];
+  return dataLoader.loadWithDeduplication(`seoul_${dataType}`, async () => {
+    try {
+      const dataPath = seoulData.dataFiles[dataType];
+      const rawData = await d3.csv(dataPath);
+      const data = rawData.map(d => parseData(d, dataType === 'BP')).filter(d => {
+        return !isNaN(d.lat) && !isNaN(d.lon) && !isNaN(d.biophilia_norm) &&
+               d.lat !== 0 && d.lon !== 0;
+      });
 
-  try {
-    const dataPath = seoulData.dataFiles[dataType];
-    const rawData = await d3.csv(dataPath);
-    const data = rawData.map(d => parseData(d, dataType === 'BP')).filter(d => {
-      return !isNaN(d.lat) && !isNaN(d.lon) && !isNaN(d.biophilia_norm) &&
-             d.lat !== 0 && d.lon !== 0;
-    });
-
-    if (data && data.length > 0) {
-      app.data.cache[cacheKey] = data;
-    } else {
-      throw new Error('No valid data points after parsing');
+      if (data && data.length > 0) {
+        app.data.cache[`seoul_${dataType}`] = data;
+        return data;
+      } else {
+        throw new Error('No valid data points after parsing');
+      }
+    } catch (error) {
+      console.error(`Error loading ${dataType} data:`, error);
+      const fallbackData = generateSampleData();
+      app.data.cache[`seoul_${dataType}`] = fallbackData;
+      return fallbackData;
     }
-  } catch (error) {
-    console.error(`Error loading ${dataType} data:`, error);
-    app.data.cache[cacheKey] = generateSampleData();
-  }
-
-  return app.data.cache[cacheKey];
+  });
 }
 
 async function fetchJSONNoCache(url) {
@@ -829,7 +971,7 @@ function initializeMapbox() {
   return app.map;
 }
 
-/* ========== CLEANUP FUNCTIONS ========== */
+/* ========== ENHANCED CLEANUP FUNCTIONS ========== */
 function clearAllTimersAndAnimations() {
   for (const timerId of app.cleanup.timers) {
     clearTimeout(timerId);
@@ -846,7 +988,11 @@ function clearAllTimersAndAnimations() {
   removeAllCustomTooltips();
 
   const video = document.getElementById('landingVideo');
-  if (video) video.pause();
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
 
   app.landing.active = false;
   app.landing.currentGroup = null;
@@ -856,6 +1002,9 @@ function clearAllTimersAndAnimations() {
   }
 
   app.state.animationInProgress = false;
+  
+  // Enhanced cleanup with memory management
+  memoryManager.forceCleanup();
 }
 
 /* ========== LAYOUT FUNCTIONS ========== */
@@ -988,22 +1137,145 @@ function showDashboardLayout() {
   }
 }
 
-/* ========== VISUALIZATION CANVAS ========== */
+/* ========== ENHANCED MEDIA FUNCTIONS ========== */
+function showGif() {
+  const gif = document.getElementById('landingGif');
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (gif) {
+    // Use cached version if available
+    const cachedUrl = mediaCache.getCachedUrl('img/fn-landing2.gif');
+    if (gif.src !== cachedUrl) {
+      gif.src = cachedUrl;
+    }
+    gif.style.display = 'block';
+    gif.style.opacity = '1';
+  }
+  
+  if (video) {
+    video.style.display = 'none';
+    video.pause();
+  }
+  if (map) map.style.display = 'none';
+  if (canvas) canvas.style.display = 'none';
+}
+
+function showVideo() {
+  const gif = document.getElementById('landingGif');
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (gif) gif.style.display = 'none';
+  
+  if (video) {
+    // Use cached version if available
+    const cachedUrl = mediaCache.getCachedUrl('img/fn-landing4.mov');
+    if (video.src !== cachedUrl) {
+      video.src = cachedUrl;
+    }
+    
+    video.style.display = 'block';
+    video.style.opacity = '1';
+    video.currentTime = 0;
+    
+    // Enhanced video error handling
+    video.onerror = () => {
+      console.warn('[Video] Playback failed, falling back to GIF');
+      showGif(); // Fallback to GIF if video fails
+    };
+    
+    video.play().catch(error => {
+      console.warn('[Video] Play failed:', error);
+      showGif(); // Fallback to GIF
+    });
+  }
+  
+  if (map) map.style.display = 'none';
+  if (canvas) canvas.style.display = 'none';
+}
+
+function hideAllMedia() {
+  const gif = document.getElementById('landingGif');
+  const video = document.getElementById('landingVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  
+  if (gif) {
+    gif.style.opacity = '0';
+    setTimeout(() => {
+      gif.style.display = 'none';
+      gif.style.opacity = '1';
+    }, 500);
+  }
+  
+  if (video) {
+    video.style.opacity = '0';
+    setTimeout(() => {
+      video.style.display = 'none';
+      video.pause();
+      video.style.opacity = '1';
+    }, 500);
+  }
+  
+  if (map) map.style.display = 'block';
+  if (canvas) canvas.style.display = 'block';
+}
+
+async function preloadVideo() {
+  const video = document.getElementById('landingVideo');
+  if (!video) return Promise.resolve();
+
+  try {
+    // Try to cache the video first
+    await mediaCache.cacheMedia('img/fn-landing4.mov', 'video');
+    
+    // Set the cached URL
+    video.src = mediaCache.getCachedUrl('img/fn-landing4.mov');
+    
+    if (video.readyState < 4) {
+      return new Promise(resolve => {
+        video.addEventListener('canplaythrough', resolve, { once: true });
+        video.addEventListener('error', resolve, { once: true }); // Resolve even on error
+        video.load();
+      });
+    }
+  } catch (error) {
+    console.warn('[Video] Preload failed:', error);
+  }
+  
+  return Promise.resolve();
+}
+
+/* ========== OPTIMIZED VISUALIZATION CANVAS ========== */
 function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) {
   if (!data || data.length === 0) return;
+  
   const canvas = app.elements.canvas;
   if (!canvas) return;
 
+  // Throttle rapid updates for performance
+  if (!animate && !canvasOptimizer.throttledRender(() => {})) {
+    return;
+  }
+
   const container = canvas.parentElement;
   const rect = container.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap DPR for performance
 
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
+  // Only resize canvas if dimensions changed
+  const newWidth = rect.width * dpr;
+  const newHeight = rect.height * dpr;
+  if (canvas.width !== newWidth || canvas.height !== newHeight) {
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
 
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha for performance
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
@@ -1101,7 +1373,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
     return;
   }
 
-  // Animation logic
+  // Animation logic (unchanged for brevity - same as original)
   app.state.animationInProgress = true;
 
   let initialPositions, targetPositions;
@@ -1223,12 +1495,13 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
   app.cleanup.animations.add(animationId);
 }
 
-/* ========== MODE CONTROL ========== */
+/* ========== OPTIMIZED MODE CONTROL ========== */
 async function setMode(newMode) {
   if (app.mode === newMode) return;
 
   clearAllTimersAndAnimations();
 
+  // Cache DOM elements once
   if (!app.elements.leftTop) {
     app.elements.leftTop = document.querySelector('.left-column-top');
     app.elements.rightCol = document.querySelector('.right-column');
@@ -1244,35 +1517,9 @@ async function setMode(newMode) {
     showLandingLayout();
     
     app.state.currentDataType = 'BP';
-    await loadSeoulData('BP');
-
-    app.state.isCircularView = false;
-    app.state.isHighlightMode = false;
-
-    const mapContainer = document.getElementById('map');
-    if (mapContainer) {
-      mapContainer.classList.remove('hidden-map');
-    }
-
-    await startLandingAnimationSequence();
-
-  } else if (newMode === Modes.RESULT) {
-    showDashboardLayout();
-    hideHeaderLogos();
-    buildAllContent();
-
-    await ensureMapReady();
-
-    const [, , dashboardData, participantsData] = await Promise.all([
-      loadSeoulData('BS'),
-      loadSeoulData('BP'), 
-      loadDashboardData(),
-      loadAllParticipantsData()
-    ]);
-
-    if (dashboardData) {
-      dashboardManager.updateAll(dashboardData);
-    }
+    
+    // Use optimized data loading
+    await dataLoader.loadWithDeduplication('seoul_BP', () => loadSeoulData('BP'));
 
     app.state.isCircularView = false;
     app.state.isHighlightMode = false;
@@ -1352,82 +1599,7 @@ function buildFooterContent() {
   `;
 }
 
-/* ========== LANDING ANIMATION ========== */
-function showGif() {
-  const gif = document.getElementById('landingGif');
-  const video = document.getElementById('landingVideo');
-  const map = document.getElementById('map');
-  const canvas = document.getElementById('visualization-canvas');
-  
-  if (gif) {
-    gif.style.display = 'block';
-    gif.style.opacity = '1';
-  }
-  if (video) {
-    video.style.display = 'none';
-    video.pause();
-  }
-  if (map) map.style.display = 'none';
-  if (canvas) canvas.style.display = 'none';
-}
-
-function showVideo() {
-  const gif = document.getElementById('landingGif');
-  const video = document.getElementById('landingVideo');
-  const map = document.getElementById('map');
-  const canvas = document.getElementById('visualization-canvas');
-  
-  if (gif) {
-    gif.style.display = 'none';
-  }
-  if (video) {
-    video.style.display = 'block';
-    video.style.opacity = '1';
-    video.currentTime = 0;
-    video.play();
-  }
-  if (map) map.style.display = 'none';
-  if (canvas) canvas.style.display = 'none';
-}
-
-function hideAllMedia() {
-  const gif = document.getElementById('landingGif');
-  const video = document.getElementById('landingVideo');
-  const map = document.getElementById('map');
-  const canvas = document.getElementById('visualization-canvas');
-  
-  if (gif) {
-    gif.style.opacity = '0';
-    setTimeout(() => {
-      gif.style.display = 'none';
-      gif.style.opacity = '1';
-    }, 500);
-  }
-  
-  if (video) {
-    video.style.opacity = '0';
-    setTimeout(() => {
-      video.style.display = 'none';
-      video.pause();
-      video.style.opacity = '1';
-    }, 500);
-  }
-  
-  if (map) map.style.display = 'block';
-  if (canvas) canvas.style.display = 'block';
-}
-
-function preloadVideo() {
-  const video = document.getElementById('landingVideo');
-  if (video && video.readyState < 4) {
-    return new Promise(resolve => {
-      video.addEventListener('canplaythrough', resolve, { once: true });
-      video.load();
-    });
-  }
-  return Promise.resolve();
-}
-
+/* ========== LANDING ANIMATION WITH CACHED MEDIA ========== */
 async function startLandingAnimationSequence() {
   if (app.landing.active) return;
 
@@ -1493,17 +1665,15 @@ async function startLandingAnimationSequence() {
 
 async function animateTextForVideoGroupSequenceFixed() {
   const groups = [
-    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)', duration: 3000 }, // 7-9s (3 seconds)
-    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)', duration: 2000 },   // 10-11s (2 seconds)
-    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)', duration: 3000 }, // 12-14s (3 seconds)
-    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 1500 }    // 15-17s (3 seconds)
+    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)', duration: 3000 },
+    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)', duration: 2000 },
+    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)', duration: 3000 },
+    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 1500 }
   ];
 
-  // Show first group immediately (starts at 7s mark)
   updateLandingTextForGroup(groups[0]);
   await wait(groups[0].duration);
   
-  // Cycle through remaining groups with specific durations
   for (let i = 1; i < groups.length; i++) {
     if (!app.landing.active || app.mode !== Modes.LANDING) break;
     updateLandingTextForGroup(groups[i]);
@@ -1517,7 +1687,7 @@ function updateLandingTextForGroup(group) {
   
   updateLandingTexts(
     'Complete the survey to learn how you perceive and value nature in Seoul!',
-    `Biophilic Perceptions (BP) group value located in Seoul: ${min}—${max}`,
+    `Biophilic Perceptions (BP) group value located in Seoul: ${min}â€"${max}`,
     true
   );
 }
@@ -1552,8 +1722,6 @@ async function executeResultSequence() {
 
     const bpData = app.data.cache['seoul_BP'];
 
-    // FIXED: Ensure BP value is properly normalized before highlighting
-    // Wait a bit to ensure BPManager has processed the value
     await wait(200);
 
     // Step 1: Map view with pulse
@@ -1572,7 +1740,6 @@ async function executeResultSequence() {
 
     // Step 3: Circular view
     app.state.isCircularView = true;
-    // FIXED: Re-ensure highlights with normalized value before circular view
     ensureHighlightHasSamples();  
     const mapContainer = document.getElementById('map');
     if (mapContainer) mapContainer.classList.add('hidden-map');
@@ -1582,7 +1749,6 @@ async function executeResultSequence() {
 
     // Step 4: Highlight in circular
     app.state.isHighlightMode = true;
-    // FIXED: Ensure highlights are recalculated with current normalized value
     ensureHighlightHasSamples();
     
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
@@ -1590,7 +1756,7 @@ async function executeResultSequence() {
     startPulseLoop();
     await wait(200);
 
-    // FIXED: Step 5: Line chart with NORMALIZED BP value
+    // Step 5: Line chart with normalized BP value
     const normalizedBpValue = bpManager.normalizedValue || window.ACTUAL_BP_VALUE || 0;
     animateDistributionCurve(normalizedBpValue);
 
@@ -1601,7 +1767,6 @@ async function executeResultSequence() {
 
 /* ========== DISTRIBUTION ANIMATION ========== */
 function animateDistributionCurve(userBpValue) {
-  // FIXED: Use the passed normalized value directly
   const actualBpValue = userBpValue;
 
   if (!window.lineChart) {
@@ -1721,7 +1886,6 @@ function animateDistributionCurve(userBpValue) {
       const canvas = chart.canvas;
       const rect = canvas.getBoundingClientRect();
   
-      // Calculate actual highlighted dots count
       const data = app.data.cache[`seoul_${app.state.currentDataType}`] || [];
       const lo = window.HIGHLIGHT_MIN;
       const hi = window.HIGHLIGHT_MAX;
@@ -1744,7 +1908,6 @@ function animateDistributionCurve(userBpValue) {
           white-space: nowrap;
       `;
   
-      // Use actual highlighted dot count instead of distribution bin count
       tooltip.innerHTML = `
           <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
           <div>Among all dots: ${actualPercentage}% (${highlightedCount} dots)</div>
@@ -1764,8 +1927,6 @@ function animateDistributionCurve(userBpValue) {
       tooltip.style.top  = `${top}px`;
    }
 
-    
-
    function removeCustomTooltip() {
         const existing = document.getElementById('custom-chart-tooltip');
         if (existing) existing.remove();
@@ -1778,12 +1939,19 @@ function animateDistributionCurve(userBpValue) {
   });
 }
 
-/* ========== INITIALIZATION ========== */
+/* ========== OPTIMIZED INITIALIZATION ========== */
 async function initializeApplication() {
   if (app.initialized || app._initializing) return;
   app._initializing = true;
   
   try {
+    // Start performance managers
+    memoryManager.startPeriodicCleanup();
+    
+    // Start media caching early (non-blocking)
+    mediaCache.preloadCriticalMedia().catch(console.warn);
+    
+    // Cache DOM elements
     app.elements.leftTop = document.querySelector('.left-column-top');
     app.elements.rightCol = document.querySelector('.right-column');
     app.elements.footer = document.querySelector('footer');
@@ -1794,14 +1962,13 @@ async function initializeApplication() {
     await setMode(Modes.LANDING);
 
     if (!app._resizeListenerAdded) {
-      window.addEventListener('resize', debounce(() => {
+      const debouncedResize = debounce(() => {
         const data = app.data.cache[`seoul_${app.state.currentDataType}`];
-        if (!data) return;
-    
-        if (app.mode === Modes.RESULT) {
-          updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-        }
-      }, 300));
+        if (!data || app.mode !== Modes.RESULT) return;
+        updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+      }, 300);
+      
+      window.addEventListener('resize', debouncedResize);
       app._resizeListenerAdded = true;
     }
 
@@ -1810,13 +1977,6 @@ async function initializeApplication() {
 
   } catch (error) {
     console.error('CRITICAL: Application initialization failed:', error);
-    
-    try {
-      app.mode = Modes.LANDING;
-    } catch (fallbackError) {
-      console.error('Even fallback failed:', fallbackError);
-    }
-    
     app._initializing = false;
   }
 }
@@ -1829,6 +1989,10 @@ window.updateBarChart = (data) => dashboardManager.updateBarChart(data);
 window.updateDistributionChart = (data) => dashboardManager.updateDistributionChart(data);
 window.updateDashboardDisplay = (data) => dashboardManager.updateAll(data);
 
+// Performance optimization exports
+window.mediaCache = mediaCache;
+window.memoryManager = memoryManager;
+
 /* ========== EVENT LISTENERS ========== */
 document.addEventListener('DOMContentLoaded', () => {
   initializeApplication();
@@ -1837,3 +2001,39 @@ document.addEventListener('DOMContentLoaded', () => {
 if (document.readyState !== 'loading') {
   setTimeout(initializeApplication, 100);
 }
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  memoryManager.stopPeriodicCleanup();
+  mediaCache.cleanup();
+  clearAllTimersAndAnimations();
+});
+
+    const mapContainer = document.getElementById('map');
+    if (mapContainer) {
+      mapContainer.classList.remove('hidden-map');
+    }
+
+    await startLandingAnimationSequence();
+
+  } else if (newMode === Modes.RESULT) {
+    showDashboardLayout();
+    hideHeaderLogos();
+    buildAllContent();
+
+    await ensureMapReady();
+
+    // Parallel loading with deduplication
+    const [, , dashboardData, participantsData] = await Promise.all([
+      dataLoader.loadWithDeduplication('seoul_BS', () => loadSeoulData('BS')),
+      dataLoader.loadWithDeduplication('seoul_BP', () => loadSeoulData('BP')), 
+      loadDashboardData(),
+      loadAllParticipantsData()
+    ]);
+
+    if (dashboardData) {
+      dashboardManager.updateAll(dashboardData);
+    }
+
+    app.state.isCircularView = false;
+    app.state.isHighlightMode = false;
