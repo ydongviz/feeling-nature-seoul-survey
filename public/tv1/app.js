@@ -68,6 +68,15 @@ class ColorManager {
     const v = d.biophilia_norm;
     const lo = window.HIGHLIGHT_MIN ?? 0.70;
     const hi = window.HIGHLIGHT_MAX ?? 0.75;
+
+    // ADD THIS DEBUG LINE:
+  if (!this.debugCounter) this.debugCounter = 0;
+  if (this.debugCounter % 1000 === 0) {
+    console.log(`[ColorManager.isHighlighted] Sample dot ${this.debugCounter}: CSV_value=${v.toFixed(3)}, highlight_range=${lo.toFixed(3)}-${hi.toFixed(3)}, user_normalized_bp=${window.ACTUAL_BP_VALUE?.toFixed(3)}, highlighted=${v >= lo && v <= hi}`);
+  }
+  this.debugCounter++;
+
+
     return v >= lo && v <= hi;
   }
 
