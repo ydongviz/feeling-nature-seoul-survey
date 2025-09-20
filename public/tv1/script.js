@@ -44,46 +44,33 @@ function applyCurrent(cur){
     const bp = Number(cur?.bp ?? 0);
     const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
     
-    console.log(`[applyCurrent] Setting BP: ${bp}`);
+    console.log(`[applyCurrent] Setting BP: ${bp}, Intensities:`, cur?.intensities);
     
     if (Number.isFinite(bp)) {
-      // Store globally
-      window.ACTUAL_BP_VALUE = bp;
+      // Store the raw BP value globally for reference
+      window.RAW_BP_VALUE = bp;
       
       // ONLY call the BP manager - let it handle normalization and DOM updates
       if (typeof window.setUserBp === "function") {
         window.setUserBp(bp);
         console.log(`[applyCurrent] Called setUserBp(${bp}) - BPManager will handle normalization`);
       }
-      
-      // REMOVE all direct DOM manipulation - let BPManager handle it
-      // DON'T call any setTimeout overrides
     }
     
-    // Continue with other updates...
-    if (typeof window.updateTopElements === "function") window.updateTopElements(top.slice(0,3));
-    if (typeof window.updateBarChart   === "function") window.updateBarChart(top.slice(0,10));
-    if (typeof window.updateDistributionChart === "function" && Number.isFinite(bp)) {
-      // Use the normalized value from BPManager
-      const normalizedBP = window.bpManager ? window.bpManager.currentValue : bp;
-      window.updateDistributionChart(normalizedBP);
+    // FIXED: Pass full data object to dashboard manager for proper filtering
+    if (typeof window.updateDashboardDisplay === "function") {
+      window.updateDashboardDisplay({
+        bp: bp,
+        intensities: cur?.intensities || {},
+        intensity_top: top,
+        distribution: cur?.distribution || null
+      });
+      console.log(`[applyCurrent] Called updateDashboardDisplay with full data including intensities`);
     }
     
-  }catch(e){ 
+  } catch(e){ 
     console.error('[applyCurrent] Error:', e);
   }
-}
-
-// DIAGNOSTIC HELPER: Add this to check element state
-function debugBPElement() {
-  const element = document.getElementById('bpValueNumber');
-  console.log('BP Element Debug:', {
-    found: !!element,
-    textContent: element?.textContent,
-    innerHTML: element?.innerHTML,
-    globalValue: window.ACTUAL_BP_VALUE,
-    appStateValue: window.app?.state?.bpValue
-  });
 }
 
 async function poll(){
@@ -130,7 +117,7 @@ async function poll(){
         window.setMode?.("landing"); return;
       }
       
-      // CRITICAL FIX: Reorder the show_result logic
+      // FIXED: Reorder the show_result logic
       if (stage === "show_result"){
         hideOverlay();
         const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
@@ -148,10 +135,10 @@ async function poll(){
           }
           
           // STEP 3: Small delay to ensure DOM updates are complete
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
           
           // STEP 4: THEN switch to result mode
-          window.setMode?.("result");
+          await window.setMode?.("result");
           
           lastRenderedEt = curEt;
         } catch (error) {

@@ -95,6 +95,7 @@ class ColorManager {
 class BPManager {
   constructor() {
     this.currentValue = 0;
+    this.normalizedValue = 0; // FIXED: Track both raw and normalized values
     this.elements = {};
   }
 
@@ -108,15 +109,21 @@ class BPManager {
     const rawValue = Number(bp) || 0;
     const normalizedValue = this.normalizeBPValue(rawValue);
 
-    this.currentValue = normalizedValue; 
+    // FIXED: Store both values
+    this.currentValue = rawValue;        // Keep raw value
+    this.normalizedValue = normalizedValue; // Store normalized for display
+    
     const EPS = 0.01;
     
-    // Update app state
+    // FIXED: Use normalized value for app state and highlighting
     app.state.bpValue = normalizedValue;
     app.state.highlightMin = Math.max(0, normalizedValue - EPS);
     app.state.highlightMax = Math.min(1, normalizedValue + EPS);
     window.HIGHLIGHT_MIN = app.state.highlightMin;
     window.HIGHLIGHT_MAX = app.state.highlightMax;
+    
+    // FIXED: Store normalized value globally for other components
+    window.ACTUAL_BP_VALUE = normalizedValue;
     
     // CRITICAL FIX: Always get fresh element reference and force update
     this.updateDOM();
@@ -130,8 +137,9 @@ class BPManager {
     const bpElement = document.getElementById('bpValueNumber');
     
     if (bpElement) {
-      bpElement.textContent = this.currentValue.toFixed(2);
-      console.log(`[BPManager.updateDOM] Updated BP display: ${this.currentValue.toFixed(2)}`);
+      // FIXED: Use normalized value for display
+      bpElement.textContent = this.normalizedValue.toFixed(2);
+      console.log(`[BPManager.updateDOM] Updated BP display: ${this.normalizedValue.toFixed(2)} (from raw: ${this.currentValue.toFixed(3)})`);
     } else {
       console.warn('[BPManager.updateDOM] #bpValueNumber element not found');
       
@@ -139,8 +147,8 @@ class BPManager {
       setTimeout(() => {
         const retryElement = document.getElementById('bpValueNumber');
         if (retryElement) {
-          retryElement.textContent = this.currentValue.toFixed(2);
-          console.log(`[BPManager.updateDOM] Retry successful: ${this.currentValue.toFixed(2)}`);
+          retryElement.textContent = this.normalizedValue.toFixed(2);
+          console.log(`[BPManager.updateDOM] Retry successful: ${this.normalizedValue.toFixed(2)}`);
         }
       }, 100);
     }
@@ -238,24 +246,49 @@ class DashboardManager {
     const bpValue = Number(data.bp) || 0;
     bpManager.setValue(bpValue);
     
-    // Helper function to filter out "sky" category
-    const filterOutSky = (arr) => arr.filter(item => {
-      const normalized = typeof item === 'string' ? 
-        iconManager.normalizeKey(item) : 
-        iconManager.normalizeKey(item[0]); // For [key, value] pairs
-      return normalized !== 'sky'; 
-    });
-
+    // FIXED: Helper function to filter out "sky" category and ensure exactly 3 items
+    const filterOutSkyAndEnsureThree = (items, intensities) => {
+      let candidates = [];
+      
+      // If we have intensity_top array, use it first
+      if (Array.isArray(items) && items.length) {
+        candidates = items.filter(item => {
+          const normalized = iconManager.normalizeKey(item);
+          return normalized !== 'sky';
+        });
+      }
+      
+      // If we don't have enough non-sky items, supplement from intensities
+      if (candidates.length < 3 && intensities) {
+        const sortedIntensities = Object.entries(intensities)
+          .filter(([key, value]) => {
+            const normalized = iconManager.normalizeKey(key);
+            return normalized !== 'sky' && Number(value) > 0;
+          })
+          .sort((a, b) => b[1] - a[1]) // Sort by value descending
+          .map(([key]) => key);
+        
+        // Add missing items from sorted intensities
+        for (const key of sortedIntensities) {
+          if (candidates.length >= 3) break;
+          const normalized = iconManager.normalizeKey(key);
+          const alreadyIncluded = candidates.some(existing => 
+            iconManager.normalizeKey(existing) === normalized
+          );
+          if (!alreadyIncluded) {
+            candidates.push(key);
+          }
+        }
+      }
+      
+      // Always return exactly 3 items (or as many as available)
+      return candidates.slice(0, 3);
+    };
     
-    // Top 3 for icons and plant-category text (always show exactly 3)
-   const top3 = Array.isArray(data.intensity_top) && data.intensity_top.length 
-     ? filterOutSky(data.intensity_top.slice(0, 4)).slice(0, 3)  
-     : filterOutSky(
-        Object.entries(data.intensities || {})
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 4)          // Take top 4 [key, value] pairs
-      ).map(([k]) => k)         // Extract keys after filtering
-       .slice(0, 3);             
+    // Get top 3 non-sky items for icons and text
+    const top3 = filterOutSkyAndEnsureThree(data.intensity_top, data.intensities);
+    
+    console.log(`[DashboardManager] Top 3 after filtering sky:`, top3);
     
     this.updateTopElements(top3);
     
@@ -271,9 +304,10 @@ class DashboardManager {
       .slice(0, 10);  // Take up to 10 qualifying items
     
     this.updateBarChart(top10);
-    this.updateDistributionChart(bpValue, data.distribution);
+    
+    // FIXED: Use normalized BP value for distribution chart
+    this.updateDistributionChart(bpManager.normalizedValue, data.distribution);
   }
-
 
   updateTopElements(top3Names) {
     const keys = (top3Names || []).map(iconManager.normalizeKey.bind(iconManager)).filter(Boolean);
@@ -1539,20 +1573,19 @@ async function executeResultSequence() {
     startPulseLoop();
     await wait(1000);
 
-    // Step 5: Line chart with CORRECT BP value
-    const correctBpValue = window.ACTUAL_BP_VALUE || 
-                          parseFloat(document.getElementById('bpValueNumber')?.textContent) || 0;
-    animateDistributionCurve(correctBpValue);
+    // FIXED: Step 5: Line chart with NORMALIZED BP value
+    const normalizedBpValue = bpManager.normalizedValue || window.ACTUAL_BP_VALUE || 0;
+    animateDistributionCurve(normalizedBpValue);
 
   } catch (error) {
     console.error('Error in result sequence:', error);
   }
 }
 
-
 /* ========== DISTRIBUTION ANIMATION ========== */
 function animateDistributionCurve(userBpValue) {
-  const actualBpValue = userBpValue || window.ACTUAL_BP_VALUE || 0;
+  // FIXED: Use the passed normalized value directly
+  const actualBpValue = userBpValue;
 
   if (!window.lineChart) {
     return Promise.resolve();
@@ -1686,7 +1719,7 @@ function animateDistributionCurve(userBpValue) {
         white-space: nowrap;
       `;
 
-      // Use the correct BP value - NO hardcoded 0.72
+      // FIXED: Use the correct normalized BP value
       tooltip.innerHTML = `
         <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
         <div>Among all dots: ${percentage}% (${count} dots)</div>
@@ -1705,8 +1738,6 @@ function animateDistributionCurve(userBpValue) {
       tooltip.style.left = `${left}px`;
       tooltip.style.top  = `${top}px`;
     }
-
-
 
       function removeCustomTooltip() {
         const existing = document.getElementById('custom-chart-tooltip');
