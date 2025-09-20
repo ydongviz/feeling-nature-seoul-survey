@@ -1496,6 +1496,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
 }
 
 /* ========== OPTIMIZED MODE CONTROL ========== */
+/* ========== OPTIMIZED MODE CONTROL ========== */
 async function setMode(newMode) {
   if (app.mode === newMode) return;
 
@@ -1520,6 +1521,35 @@ async function setMode(newMode) {
     
     // Use optimized data loading
     await dataLoader.loadWithDeduplication('seoul_BP', () => loadSeoulData('BP'));
+
+    app.state.isCircularView = false;
+    app.state.isHighlightMode = false;
+
+    const mapContainer = document.getElementById('map');
+    if (mapContainer) {
+      mapContainer.classList.remove('hidden-map');
+    }
+
+    await startLandingAnimationSequence();
+
+  } else if (newMode === Modes.RESULT) {
+    showDashboardLayout();
+    hideHeaderLogos();
+    buildAllContent();
+
+    await ensureMapReady();
+
+    // Parallel loading with deduplication
+    const [, , dashboardData, participantsData] = await Promise.all([
+      dataLoader.loadWithDeduplication('seoul_BS', () => loadSeoulData('BS')),
+      dataLoader.loadWithDeduplication('seoul_BP', () => loadSeoulData('BP')), 
+      loadDashboardData(),
+      loadAllParticipantsData()
+    ]);
+
+    if (dashboardData) {
+      dashboardManager.updateAll(dashboardData);
+    }
 
     app.state.isCircularView = false;
     app.state.isHighlightMode = false;
