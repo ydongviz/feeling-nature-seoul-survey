@@ -1,6 +1,487 @@
 // === RUNTIME BASE SHIM (injected) ==========================================
 window.RUNTIME_BASE = window.RUNTIME_BASE || 'https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime';
-window.APP_CONFIG  = window.APP_CONFIG  || { RUNTIME_BASE_URL: window.RUNTIME_BASE };
+window.APP_CONFIG  = window.APP_CONFIG  || { RUNTIME_BASE_URL: window.RUNTIME_BASE }
+
+/* ========== BUILD CONTENT FUNCTIONS ========== */
+function buildAllContent() {
+  buildLeftColumnContent();
+  buildRightColumnContent();
+  buildFooterContent();
+}
+
+function buildLeftColumnContent() {
+  const leftTop = app.elements.leftTop;
+  if (!leftTop) return;
+
+  leftTop.innerHTML = `
+    <h2 id="locationTitle">Seoul (Temperate Forest)</h2>
+    <p id="locationDescription">
+      ${app.state.currentDataType === 'BP' ? seoulData.BPDescription : seoulData.BSDescription}
+    </p>
+  `;
+}
+
+function buildRightColumnContent() {
+  if (!app.elements.rightCol) return;
+
+  app.elements.rightCol.innerHTML = `
+    <div class="right-column-top">
+      <img id="rightColumnImage" src="img/seoul_label.svg" alt="Seoul Label" />
+    </div>
+  `;
+}
+
+function buildFooterContent() {
+  if (!app.elements.footer) return;
+
+  app.elements.footer.innerHTML = `
+    <div class="footer-section">
+      <h4>Your Biophilic Individual Perceptions (BiP) value</h4>
+      <div class="bp-value" id="bpValueDisplay">
+        <span id="bpValueNumber">0.00</span>
+        <div class="bp-indicator"></div>
+      </div>
+      <p>Highlights similar BiP value in the city areas that could fit your perception</p>
+    </div>
+    <div class="footer-section">
+      <div class="middle-section-title">Which natural element brings you most positive feeling</div>
+      <div class="plant-category" id="topCategoryText">Loading...</div>
+      <div class="chart-content">
+        <div class="chart-left">
+          <div class="top-elements" id="topElements"></div>
+        </div>
+        <div class="chart-right">
+          <div class="chart-container">
+            <div class="bar-chart" id="barChart"></div>
+            <div class="bar-labels" id="barLabels"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-section">
+      <div class="chart-title">Your BiP value among the city</div>
+      <div class="chart-wrapper">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+  `;
+}
+
+/* ========== LANDING ANIMATION WITH CACHED MEDIA ========== */
+async function startLandingAnimationSequence() {
+  if (app.landing.active) return;
+
+  app.landing.active = true;
+
+  try {
+    await preloadVideo();
+    ensureLandingText();
+
+    while (app.landing.active && app.mode === Modes.LANDING) {
+      
+      // Phase 1: GIF sequence (16 seconds)
+      showGif();
+      showHeaderLogos(false);
+      updateLandingTexts('Feeling Nature Seoul', '', false);
+      await wait(5000);
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      updateLandingTexts(
+        'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
+        'Explore how Seoul residents perceive nature.',
+        true
+      );
+      await wait(11000);
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      // Phase 2: Video sequence (17 seconds)
+      showVideo();
+      showHeaderLogos(true);
+
+      updateLandingTexts(
+        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+        'BS Map: the distribution of nature-based elements in Seoul urban environment.',
+        true
+      );
+      await wait(3000);
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      updateLandingTexts(
+        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+        'BP Map: the strength of perceived Biophilia in the city',
+        true
+      );
+      await wait(4000);
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+
+      await animateTextForVideoGroupSequenceFixed();
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+      
+      await wait(1000);
+    }
+
+  } catch (error) {
+    console.error('Error in landing animation sequence:', error);
+    app.landing.active = false;
+  }
+}
+
+async function animateTextForVideoGroupSequenceFixed() {
+  const groups = [
+    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)', duration: 3000 },
+    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)', duration: 2000 },
+    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)', duration: 3000 },
+    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 1500 }
+  ];
+
+  updateLandingTextForGroup(groups[0]);
+  await wait(groups[0].duration);
+  
+  for (let i = 1; i < groups.length; i++) {
+    if (!app.landing.active || app.mode !== Modes.LANDING) break;
+    updateLandingTextForGroup(groups[i]);
+    await wait(groups[i].duration);
+  }
+}
+
+function updateLandingTextForGroup(group) {
+  const min = group.min.toFixed(2);
+  const max = group.max.toFixed(2);
+  
+  updateLandingTexts(
+    'Complete the survey to learn how you perceive and value nature in Seoul!',
+    `Biophilic Perceptions (BP) group value located in Seoul: ${min}–${max}`,
+    true
+  );
+}
+
+/* ========== RESULT SEQUENCE ========== */
+async function ensureMapReady() {
+  if (!app.map) {
+    initializeMapbox();
+  }
+  
+  if (app.map && !app.mapLoaded) {
+    return new Promise(resolve => {
+      app.map.once('load', () => {
+        app.mapLoaded = true;
+        resolve();
+      });
+    });
+  }
+  
+  return Promise.resolve();
+}
+
+async function executeResultSequence() {
+  if (app.state.animationInProgress) return;
+
+  try {
+    if (app.state.currentDataType !== 'BP') {
+      app.state.currentDataType = 'BP';
+      await loadSeoulData('BP');
+      await wait(500);
+    }
+
+    const bpData = app.data.cache['seoul_BP'];
+
+    await wait(200);
+
+    // Step 1: Map view with pulse
+    app.state.isHighlightMode = true;
+    ensureHighlightHasSamples();    
+    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+    app.effects.pulse.period = PULSE_BASE_PERIOD;
+    startPulseLoop();
+    await wait(3000);
+
+    // Step 2: Clear highlights
+    app.state.isHighlightMode = false;
+    stopPulseLoop();
+    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+    await wait(1500);
+
+    // Step 3: Circular view
+    app.state.isCircularView = true;
+    ensureHighlightHasSamples();  
+    const mapContainer = document.getElementById('map');
+    if (mapContainer) mapContainer.classList.add('hidden-map');
+    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, true);
+    await wait(1500);
+    await wait(2000);
+
+    // Step 4: Highlight in circular
+    app.state.isHighlightMode = true;
+    ensureHighlightHasSamples();
+    
+    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+    app.effects.pulse.period = PULSE_BASE_PERIOD; 
+    startPulseLoop();
+    await wait(200);
+
+    // Step 5: Line chart with normalized BP value
+    const normalizedBpValue = bpManager.normalizedValue || window.ACTUAL_BP_VALUE || 0;
+    animateDistributionCurve(normalizedBpValue);
+
+  } catch (error) {
+    console.error('Error in result sequence:', error);
+  }
+}
+
+/* ========== DISTRIBUTION ANIMATION ========== */
+function animateDistributionCurve(userBpValue) {
+  const actualBpValue = userBpValue;
+
+  if (!window.lineChart) {
+    return Promise.resolve();
+  }
+
+  return new Promise(() => {
+    const chart = window.lineChart;
+    const bins = 11;
+    const binSize = 1 / (bins - 1);
+    const userBinIndex = Math.min(Math.round(userBpValue / binSize), bins - 1);
+
+    const histogram = [];
+    app.data.allParticipantsData.forEach(value => {
+      const idx = Math.min(Math.round(value / binSize), bins - 1);
+      histogram[idx] = (histogram[idx] || 0) + 1;
+    });
+
+    const count = histogram[userBinIndex] || 0;
+    const percentage = ((count / app.data.allParticipantsData.length) * 100).toFixed(1);
+
+    function runFullAnimation() {
+      while (chart.data.datasets.length > 1) {
+        chart.data.datasets.pop();
+      }
+
+      if (!chart || !chart.canvas || !chart.canvas.ownerDocument) return;
+
+      chart.update('none');
+
+      const animatedDotDataset = {
+        label: 'Animated Dot',
+        data: new Array(bins).fill(null),
+        borderColor: '#888888',
+        backgroundColor: 'transparent',
+        pointRadius: 5,
+        pointBorderWidth: 1,
+        pointBorderColor: '#888888',
+        showLine: false,
+        pointHoverRadius: 6
+      };
+
+      chart.data.datasets.push(animatedDotDataset);
+
+      let currentIndex = 0;
+      const animationDuration = 3000;
+      const stepDuration = animationDuration / Math.max(1, userBinIndex);
+
+      function animateStep() {
+        if (currentIndex <= userBinIndex && app.mode === Modes.RESULT) {
+          animatedDotDataset.data.fill(null);
+          const yValue = chart.data.datasets[0].data[currentIndex];
+          animatedDotDataset.data[currentIndex] = yValue;
+          chart.update('none');
+          currentIndex++;
+
+          if (currentIndex <= userBinIndex) {
+            const timerId = setTimeout(animateStep, stepDuration);
+            app.cleanup.timers.add(timerId);
+          } else {
+            const timerId = setTimeout(showTooltipAtEnd, 500);
+            app.cleanup.timers.add(timerId);
+          }
+        }
+      }
+
+      function showTooltipAtEnd() {
+        if (app.mode !== Modes.RESULT) return;
+
+        const animatedDataset = chart.data.datasets[1];
+
+        if (animatedDataset) {
+          animatedDataset.backgroundColor = '#92C043';
+          animatedDataset.borderColor = '#ffffff';
+          animatedDataset.pointBackgroundColor = '#92C043';
+          animatedDataset.pointBorderColor = '#ffffff';
+          animatedDataset.pointRadius = 6;
+          animatedDataset.pointHoverRadius = 6;
+          animatedDataset.pointHoverBackgroundColor = '#92C043';
+          animatedDataset.pointHoverBorderColor = '#ffffff';
+          animatedDataset.label = 'You Final';
+
+          chart.update('none');
+
+          const meta = chart.getDatasetMeta(1);
+          if (meta.data[userBinIndex]) {
+            const pointElement = meta.data[userBinIndex];
+
+            pointElement.options = {
+              backgroundColor: '#92C043',
+              borderColor: '#ffffff',
+              borderWidth: 2,
+              radius: 6,
+              hoverRadius: 6,
+              hoverBackgroundColor: '#92C043',
+              hoverBorderColor: '#ffffff'
+            };
+
+            chart.render();
+            createCustomTooltip(pointElement, userBpValue, percentage, count);
+
+            const hideTimer = setTimeout(() => {
+              removeCustomTooltip();
+              chart.data.datasets.pop();
+              chart.update('none');
+              const restartTimer = setTimeout(runFullAnimation, 2000);
+              app.cleanup.timers.add(restartTimer);
+            }, 10000);
+            app.cleanup.timers.add(hideTimer);
+          }
+        }
+     }
+
+    function createCustomTooltip(point, bpValue, percentage, count) {
+      removeCustomTooltip();
+  
+      const canvas = chart.canvas;
+      const rect = canvas.getBoundingClientRect();
+  
+      const data = app.data.cache[`seoul_${app.state.currentDataType}`] || [];
+      const lo = window.HIGHLIGHT_MIN;
+      const hi = window.HIGHLIGHT_MAX;
+      const highlightedCount = data.filter(d => d.biophilia_norm >= lo && d.biophilia_norm <= hi).length;
+      const totalDots = data.length;
+      const actualPercentage = ((highlightedCount / totalDots) * 100).toFixed(1);
+  
+      const tooltip = document.createElement('div');
+      tooltip.id = 'custom-chart-tooltip';
+      tooltip.style.cssText = `
+          position: absolute;
+          background: rgba(0, 0, 0, 0.9);
+          color: white;
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid #444;
+          font-size: 12px;
+          pointer-events: none;
+          z-index: 1000;
+          white-space: nowrap;
+      `;
+  
+      tooltip.innerHTML = `
+          <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
+          <div>Among all dots: ${actualPercentage}% (${highlightedCount} dots)</div>
+      `;
+  
+      document.body.appendChild(tooltip);
+  
+      const tipW = tooltip.offsetWidth;
+      const tipH = tooltip.offsetHeight;
+      let left = rect.left + point.x - tipW / 2;
+      let top  = rect.top  + point.y + 25;
+  
+      left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
+      top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
+  
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top  = `${top}px`;
+   }
+
+   function removeCustomTooltip() {
+        const existing = document.getElementById('custom-chart-tooltip');
+        if (existing) existing.remove();
+      }
+
+      animateStep();
+    }
+
+    runFullAnimation();
+  });
+}
+
+/* ========== OPTIMIZED INITIALIZATION ========== */
+async function initializeApplication() {
+  if (app.initialized || app._initializing) return;
+  app._initializing = true;
+  
+  try {
+    // Start performance managers
+    memoryManager.startPeriodicCleanup();
+    
+    // Start media caching early (non-blocking)
+    mediaCache.preloadCriticalMedia().catch(console.warn);
+    
+    // Cache DOM elements
+    app.elements.leftTop = document.querySelector('.left-column-top');
+    app.elements.rightCol = document.querySelector('.right-column');
+    app.elements.footer = document.querySelector('footer');
+    app.elements.mapContainer = document.getElementById('map');
+    app.elements.canvas = document.getElementById('visualization-canvas');
+
+    initializeMapbox();
+    await setMode(Modes.LANDING);
+
+    if (!app._resizeListenerAdded) {
+      const debouncedResize = debounce(() => {
+        const data = app.data.cache[`seoul_${app.state.currentDataType}`];
+        if (!data || app.mode !== Modes.RESULT) return;
+        updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+      }, 300);
+      
+      window.addEventListener('resize', debouncedResize);
+      app._resizeListenerAdded = true;
+    }
+
+    app.initialized = true;
+    app._initializing = false;
+
+  } catch (error) {
+    console.error('CRITICAL: Application initialization failed:', error);
+    app._initializing = false;
+  }
+}
+
+/* ========== EXTERNAL API ========== */
+// Make key functions available to the TV-1 poller
+window.setMode = setMode;
+window.updateTopElements = (data) => dashboardManager.updateTopElements(data);
+window.updateBarChart = (data) => dashboardManager.updateBarChart(data);
+window.updateDistributionChart = (data) => dashboardManager.updateDistributionChart(data);
+window.updateDashboardDisplay = (data) => dashboardManager.updateAll(data);
+
+// Performance optimization exports
+window.mediaCache = mediaCache;
+window.memoryManager = memoryManager;
+
+/* ========== EVENT LISTENERS ========== */
+document.addEventListener('DOMContentLoaded', () => {
+  initializeApplication().catch(error => {
+    console.error('Failed to initialize application:', error);
+  });
+});
+
+if (document.readyState !== 'loading') {
+  setTimeout(() => {
+    initializeApplication().catch(error => {
+      console.error('Failed to initialize application:', error);
+    });
+  }, 100);
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  memoryManager.stopPeriodicCleanup();
+  mediaCache.cleanup();
+  clearAllTimersAndAnimations();
+});;
 // ==========================================================================
 /* EVENT-OPTIMIZED BIOPHILIC VISUALIZATION - PERFORMANCE OPTIMIZED VERSION
    Addresses critical redundancies + performance optimizations:
@@ -1373,7 +1854,7 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
     return;
   }
 
-  // Animation logic (unchanged for brevity - same as original)
+  // Animation logic
   app.state.animationInProgress = true;
 
   let initialPositions, targetPositions;
@@ -1496,7 +1977,6 @@ function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) 
 }
 
 /* ========== OPTIMIZED MODE CONTROL ========== */
-/* ========== OPTIMIZED MODE CONTROL ========== */
 async function setMode(newMode) {
   if (app.mode === newMode) return;
 
@@ -1563,513 +2043,3 @@ async function setMode(newMode) {
     await executeResultSequence();
   }
 }
-
-/* ========== BUILD CONTENT FUNCTIONS ========== */
-function buildAllContent() {
-  buildLeftColumnContent();
-  buildRightColumnContent();
-  buildFooterContent();
-}
-
-function buildLeftColumnContent() {
-  const leftTop = app.elements.leftTop;
-  if (!leftTop) return;
-
-  leftTop.innerHTML = `
-    <h2 id="locationTitle">Seoul (Temperate Forest)</h2>
-    <p id="locationDescription">
-      ${app.state.currentDataType === 'BP' ? seoulData.BPDescription : seoulData.BSDescription}
-    </p>
-  `;
-}
-
-function buildRightColumnContent() {
-  if (!app.elements.rightCol) return;
-
-  app.elements.rightCol.innerHTML = `
-    <div class="right-column-top">
-      <img id="rightColumnImage" src="img/seoul_label.svg" alt="Seoul Label" />
-    </div>
-  `;
-}
-
-function buildFooterContent() {
-  if (!app.elements.footer) return;
-
-  app.elements.footer.innerHTML = `
-    <div class="footer-section">
-      <h4>Your Biophilic Individual Perceptions (BiP) value</h4>
-      <div class="bp-value" id="bpValueDisplay">
-        <span id="bpValueNumber">0.00</span>
-        <div class="bp-indicator"></div>
-      </div>
-      <p>Highlights similar BiP value in the city areas that could fit your perception</p>
-    </div>
-    <div class="footer-section">
-      <div class="middle-section-title">Which natural element brings you most positive feeling</div>
-      <div class="plant-category" id="topCategoryText">Loading...</div>
-      <div class="chart-content">
-        <div class="chart-left">
-          <div class="top-elements" id="topElements"></div>
-        </div>
-        <div class="chart-right">
-          <div class="chart-container">
-            <div class="bar-chart" id="barChart"></div>
-            <div class="bar-labels" id="barLabels"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="footer-section">
-      <div class="chart-title">Your BiP value among the city</div>
-      <div class="chart-wrapper">
-        <canvas id="lineChart"></canvas>
-      </div>
-    </div>
-  `;
-}
-
-/* ========== LANDING ANIMATION WITH CACHED MEDIA ========== */
-async function startLandingAnimationSequence() {
-  if (app.landing.active) return;
-
-  app.landing.active = true;
-
-  try {
-    await preloadVideo();
-    ensureLandingText();
-
-    while (app.landing.active && app.mode === Modes.LANDING) {
-      
-      // Phase 1: GIF sequence (16 seconds)
-      showGif();
-      showHeaderLogos(false);
-      updateLandingTexts('Feeling Nature Seoul', '', false);
-      await wait(5000);
-
-      if (!app.landing.active || app.mode !== Modes.LANDING) break;
-
-      updateLandingTexts(
-        'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
-        'Explore how Seoul residents perceive nature.',
-        true
-      );
-      await wait(11000);
-
-      if (!app.landing.active || app.mode !== Modes.LANDING) break;
-
-      // Phase 2: Video sequence (17 seconds)
-      showVideo();
-      showHeaderLogos(true);
-
-      updateLandingTexts(
-        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-        'BS Map: the distribution of nature-based elements in Seoul urban environment.',
-        true
-      );
-      await wait(3000);
-
-      if (!app.landing.active || app.mode !== Modes.LANDING) break;
-
-      updateLandingTexts(
-        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-        'BP Map: the strength of perceived Biophilia in the city',
-        true
-      );
-      await wait(4000);
-
-      if (!app.landing.active || app.mode !== Modes.LANDING) break;
-
-      await animateTextForVideoGroupSequenceFixed();
-
-      if (!app.landing.active || app.mode !== Modes.LANDING) break;
-      
-      await wait(1000);
-    }
-
-  } catch (error) {
-    console.error('Error in landing animation sequence:', error);
-    app.landing.active = false;
-  }
-}
-
-async function animateTextForVideoGroupSequenceFixed() {
-  const groups = [
-    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)', duration: 3000 },
-    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)', duration: 2000 },
-    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)', duration: 3000 },
-    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 1500 }
-  ];
-
-  updateLandingTextForGroup(groups[0]);
-  await wait(groups[0].duration);
-  
-  for (let i = 1; i < groups.length; i++) {
-    if (!app.landing.active || app.mode !== Modes.LANDING) break;
-    updateLandingTextForGroup(groups[i]);
-    await wait(groups[i].duration);
-  }
-}
-
-function updateLandingTextForGroup(group) {
-  const min = group.min.toFixed(2);
-  const max = group.max.toFixed(2);
-  
-  updateLandingTexts(
-    'Complete the survey to learn how you perceive and value nature in Seoul!',
-    `Biophilic Perceptions (BP) group value located in Seoul: ${min}â€"${max}`,
-    true
-  );
-}
-
-/* ========== RESULT SEQUENCE ========== */
-async function ensureMapReady() {
-  if (!app.map) {
-    initializeMapbox();
-  }
-  
-  if (app.map && !app.mapLoaded) {
-    return new Promise(resolve => {
-      app.map.once('load', () => {
-        app.mapLoaded = true;
-        resolve();
-      });
-    });
-  }
-  
-  return Promise.resolve();
-}
-
-async function executeResultSequence() {
-  if (app.state.animationInProgress) return;
-
-  try {
-    if (app.state.currentDataType !== 'BP') {
-      app.state.currentDataType = 'BP';
-      await loadSeoulData('BP');
-      await wait(500);
-    }
-
-    const bpData = app.data.cache['seoul_BP'];
-
-    await wait(200);
-
-    // Step 1: Map view with pulse
-    app.state.isHighlightMode = true;
-    ensureHighlightHasSamples();    
-    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-    app.effects.pulse.period = PULSE_BASE_PERIOD;
-    startPulseLoop();
-    await wait(3000);
-
-    // Step 2: Clear highlights
-    app.state.isHighlightMode = false;
-    stopPulseLoop();
-    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-    await wait(1500);
-
-    // Step 3: Circular view
-    app.state.isCircularView = true;
-    ensureHighlightHasSamples();  
-    const mapContainer = document.getElementById('map');
-    if (mapContainer) mapContainer.classList.add('hidden-map');
-    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, true);
-    await wait(1500);
-    await wait(2000);
-
-    // Step 4: Highlight in circular
-    app.state.isHighlightMode = true;
-    ensureHighlightHasSamples();
-    
-    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-    app.effects.pulse.period = PULSE_BASE_PERIOD; 
-    startPulseLoop();
-    await wait(200);
-
-    // Step 5: Line chart with normalized BP value
-    const normalizedBpValue = bpManager.normalizedValue || window.ACTUAL_BP_VALUE || 0;
-    animateDistributionCurve(normalizedBpValue);
-
-  } catch (error) {
-    console.error('Error in result sequence:', error);
-  }
-}
-
-/* ========== DISTRIBUTION ANIMATION ========== */
-function animateDistributionCurve(userBpValue) {
-  const actualBpValue = userBpValue;
-
-  if (!window.lineChart) {
-    return Promise.resolve();
-  }
-
-  return new Promise(() => {
-    const chart = window.lineChart;
-    const bins = 11;
-    const binSize = 1 / (bins - 1);
-    const userBinIndex = Math.min(Math.round(userBpValue / binSize), bins - 1);
-
-    const histogram = [];
-    app.data.allParticipantsData.forEach(value => {
-      const idx = Math.min(Math.round(value / binSize), bins - 1);
-      histogram[idx] = (histogram[idx] || 0) + 1;
-    });
-
-    const count = histogram[userBinIndex] || 0;
-    const percentage = ((count / app.data.allParticipantsData.length) * 100).toFixed(1);
-
-    function runFullAnimation() {
-      while (chart.data.datasets.length > 1) {
-        chart.data.datasets.pop();
-      }
-
-      if (!chart || !chart.canvas || !chart.canvas.ownerDocument) return;
-
-      chart.update('none');
-
-      const animatedDotDataset = {
-        label: 'Animated Dot',
-        data: new Array(bins).fill(null),
-        borderColor: '#888888',
-        backgroundColor: 'transparent',
-        pointRadius: 5,
-        pointBorderWidth: 1,
-        pointBorderColor: '#888888',
-        showLine: false,
-        pointHoverRadius: 6
-      };
-
-      chart.data.datasets.push(animatedDotDataset);
-
-      let currentIndex = 0;
-      const animationDuration = 3000;
-      const stepDuration = animationDuration / Math.max(1, userBinIndex);
-
-      function animateStep() {
-        if (currentIndex <= userBinIndex && app.mode === Modes.RESULT) {
-          animatedDotDataset.data.fill(null);
-          const yValue = chart.data.datasets[0].data[currentIndex];
-          animatedDotDataset.data[currentIndex] = yValue;
-          chart.update('none');
-          currentIndex++;
-
-          if (currentIndex <= userBinIndex) {
-            const timerId = setTimeout(animateStep, stepDuration);
-            app.cleanup.timers.add(timerId);
-          } else {
-            const timerId = setTimeout(showTooltipAtEnd, 500);
-            app.cleanup.timers.add(timerId);
-          }
-        }
-      }
-
-      function showTooltipAtEnd() {
-        if (app.mode !== Modes.RESULT) return;
-
-        const animatedDataset = chart.data.datasets[1];
-
-        if (animatedDataset) {
-          animatedDataset.backgroundColor = '#92C043';
-          animatedDataset.borderColor = '#ffffff';
-          animatedDataset.pointBackgroundColor = '#92C043';
-          animatedDataset.pointBorderColor = '#ffffff';
-          animatedDataset.pointRadius = 6;
-          animatedDataset.pointHoverRadius = 6;
-          animatedDataset.pointHoverBackgroundColor = '#92C043';
-          animatedDataset.pointHoverBorderColor = '#ffffff';
-          animatedDataset.label = 'You Final';
-
-          chart.update('none');
-
-          const meta = chart.getDatasetMeta(1);
-          if (meta.data[userBinIndex]) {
-            const pointElement = meta.data[userBinIndex];
-
-            pointElement.options = {
-              backgroundColor: '#92C043',
-              borderColor: '#ffffff',
-              borderWidth: 2,
-              radius: 6,
-              hoverRadius: 6,
-              hoverBackgroundColor: '#92C043',
-              hoverBorderColor: '#ffffff'
-            };
-
-            chart.render();
-            createCustomTooltip(pointElement, userBpValue, percentage, count);
-
-            const hideTimer = setTimeout(() => {
-              removeCustomTooltip();
-              chart.data.datasets.pop();
-              chart.update('none');
-              const restartTimer = setTimeout(runFullAnimation, 2000);
-              app.cleanup.timers.add(restartTimer);
-            }, 10000);
-            app.cleanup.timers.add(hideTimer);
-          }
-        }
-     }
-
-    function createCustomTooltip(point, bpValue, percentage, count) {
-      removeCustomTooltip();
-  
-      const canvas = chart.canvas;
-      const rect = canvas.getBoundingClientRect();
-  
-      const data = app.data.cache[`seoul_${app.state.currentDataType}`] || [];
-      const lo = window.HIGHLIGHT_MIN;
-      const hi = window.HIGHLIGHT_MAX;
-      const highlightedCount = data.filter(d => d.biophilia_norm >= lo && d.biophilia_norm <= hi).length;
-      const totalDots = data.length;
-      const actualPercentage = ((highlightedCount / totalDots) * 100).toFixed(1);
-  
-      const tooltip = document.createElement('div');
-      tooltip.id = 'custom-chart-tooltip';
-      tooltip.style.cssText = `
-          position: absolute;
-          background: rgba(0, 0, 0, 0.9);
-          color: white;
-          padding: 8px 12px;
-          border-radius: 6px;
-          border: 1px solid #444;
-          font-size: 12px;
-          pointer-events: none;
-          z-index: 1000;
-          white-space: nowrap;
-      `;
-  
-      tooltip.innerHTML = `
-          <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
-          <div>Among all dots: ${actualPercentage}% (${highlightedCount} dots)</div>
-      `;
-  
-      document.body.appendChild(tooltip);
-  
-      const tipW = tooltip.offsetWidth;
-      const tipH = tooltip.offsetHeight;
-      let left = rect.left + point.x - tipW / 2;
-      let top  = rect.top  + point.y + 25;
-  
-      left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
-      top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
-  
-      tooltip.style.left = `${left}px`;
-      tooltip.style.top  = `${top}px`;
-   }
-
-   function removeCustomTooltip() {
-        const existing = document.getElementById('custom-chart-tooltip');
-        if (existing) existing.remove();
-      }
-
-      animateStep();
-    }
-
-    runFullAnimation();
-  });
-}
-
-/* ========== OPTIMIZED INITIALIZATION ========== */
-async function initializeApplication() {
-  if (app.initialized || app._initializing) return;
-  app._initializing = true;
-  
-  try {
-    // Start performance managers
-    memoryManager.startPeriodicCleanup();
-    
-    // Start media caching early (non-blocking)
-    mediaCache.preloadCriticalMedia().catch(console.warn);
-    
-    // Cache DOM elements
-    app.elements.leftTop = document.querySelector('.left-column-top');
-    app.elements.rightCol = document.querySelector('.right-column');
-    app.elements.footer = document.querySelector('footer');
-    app.elements.mapContainer = document.getElementById('map');
-    app.elements.canvas = document.getElementById('visualization-canvas');
-
-    initializeMapbox();
-    await setMode(Modes.LANDING);
-
-    if (!app._resizeListenerAdded) {
-      const debouncedResize = debounce(() => {
-        const data = app.data.cache[`seoul_${app.state.currentDataType}`];
-        if (!data || app.mode !== Modes.RESULT) return;
-        updateVisualizationCanvas(data, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
-      }, 300);
-      
-      window.addEventListener('resize', debouncedResize);
-      app._resizeListenerAdded = true;
-    }
-
-    app.initialized = true;
-    app._initializing = false;
-
-  } catch (error) {
-    console.error('CRITICAL: Application initialization failed:', error);
-    app._initializing = false;
-  }
-}
-
-/* ========== EXTERNAL API ========== */
-// Make key functions available to the TV-1 poller
-window.setMode = setMode;
-window.updateTopElements = (data) => dashboardManager.updateTopElements(data);
-window.updateBarChart = (data) => dashboardManager.updateBarChart(data);
-window.updateDistributionChart = (data) => dashboardManager.updateDistributionChart(data);
-window.updateDashboardDisplay = (data) => dashboardManager.updateAll(data);
-
-// Performance optimization exports
-window.mediaCache = mediaCache;
-window.memoryManager = memoryManager;
-
-/* ========== EVENT LISTENERS ========== */
-document.addEventListener('DOMContentLoaded', () => {
-  initializeApplication().catch(error => {
-    console.error('Failed to initialize application:', error);
-  });
-});
-
-if (document.readyState !== 'loading') {
-  setTimeout(() => {
-    initializeApplication().catch(error => {
-      console.error('Failed to initialize application:', error);
-    });
-  }, 100);
-}
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-  memoryManager.stopPeriodicCleanup();
-  mediaCache.cleanup();
-  clearAllTimersAndAnimations();
-});
-
-    const mapContainer = document.getElementById('map');
-    if (mapContainer) {
-      mapContainer.classList.remove('hidden-map');
-    }
-
-    await startLandingAnimationSequence();
-
-  } else if (newMode === Modes.RESULT) {
-    showDashboardLayout();
-    hideHeaderLogos();
-    buildAllContent();
-
-    await ensureMapReady();
-
-    // Parallel loading with deduplication
-    const [, , dashboardData, participantsData] = await Promise.all([
-      dataLoader.loadWithDeduplication('seoul_BS', () => loadSeoulData('BS')),
-      dataLoader.loadWithDeduplication('seoul_BP', () => loadSeoulData('BP')), 
-      loadDashboardData(),
-      loadAllParticipantsData()
-    ]);
-
-    if (dashboardData) {
-      dashboardManager.updateAll(dashboardData);
-    }
-
-    app.state.isCircularView = false;
-    app.state.isHighlightMode = false;
