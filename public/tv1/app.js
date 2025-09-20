@@ -82,10 +82,12 @@ class SimpleMemoryManager {
     
     // Limit large data caches
     if (app?.data?.cache) {
+      // Only clear truly large temporary caches, not core data
       Object.keys(app.data.cache).forEach(key => {
-        if (app.data.cache[key]?.length > 10000) {
-          app.data.cache[key] = app.data.cache[key].slice(0, 5000);
-          console.log(`[SimpleMemoryManager] Trimmed cache ${key}`);
+        // Only clean up if cache is extremely large (50k+ items) and not core Seoul data
+        if (app.data.cache[key]?.length > 50000 && !key.includes('seoul')) {
+          console.log(`[SimpleMemoryManager] Clearing very large non-core cache: ${key}`);
+          delete app.data.cache[key];
         }
       });
     }
