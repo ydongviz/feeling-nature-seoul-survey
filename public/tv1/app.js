@@ -1600,6 +1600,11 @@ async function executeResultSequence() {
     app.state.isHighlightMode = true;
     // FIXED: Ensure highlights are recalculated with current normalized value
     ensureHighlightHasSamples();
+
+    console.log(`[ensureHighlightHasSamples] FINAL range: ${lo.toFixed(3)}-${hi.toFixed(3)}, Count: ${count}, Widen: ${widen}`);
+    window.HIGHLIGHT_MIN = lo;
+    window.HIGHLIGHT_MAX = hi;   
+
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     app.effects.pulse.period = PULSE_BASE_PERIOD; 
     startPulseLoop();
@@ -1613,6 +1618,9 @@ async function executeResultSequence() {
     console.error('Error in result sequence:', error);
   }
 }
+
+console.log(`[ensureHighlightHasSamples] Called from:`, new Error().stack.split('\n')[2]);
+
 
 /* ========== DISTRIBUTION ANIMATION ========== */
 function animateDistributionCurve(userBpValue) {
