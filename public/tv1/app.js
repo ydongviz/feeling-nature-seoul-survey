@@ -99,122 +99,76 @@ async function preloadVideo() {
   return Promise.resolve();
 }
 
-/* ========== ENHANCED VISUALIZATION CANVAS WITH STABILITY ========== */
-// Enhanced canvas update with throttling and error handling
+/* ========== ORIGINAL VISUALIZATION CANVAS (REVERTED) ========== */
 function updateVisualizationCanvas(data, centerLat, centerLon, animate = false) {
-  const now = performance.now();
-  
-  // Throttle updates to prevent excessive redraws
-  if (!animate && (now - animationManager.lastCanvasUpdate) < animationManager.frameThrottle) {
-    return;
-  }
-  animationManager.lastCanvasUpdate = now;
+  if (!data || data.length === 0) return;
+  const canvas = app.elements.canvas;
+  if (!canvas) return;
 
-  // Use animation queue for animated updates
-  if (animate) {
-    return animationManager.queueAnimation(() => 
-      updateVisualizationCanvasInternal(data, centerLat, centerLon, animate)
-    );
-  } else {
-    return updateVisualizationCanvasInternal(data, centerLat, centerLon, animate);
-  }
-}
+  const container = canvas.parentElement;
+  const rect = container.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
 
-// Internal canvas update function with enhanced error handling
-function updateVisualizationCanvasInternal(data, centerLat, centerLon, animate = false) {
-  return new Promise((resolve) => {
-    try {
-      if (!data || data.length === 0) {
-        resolve();
-        return;
-      }
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
 
-      const canvas = app.elements.canvas;
-      if (!canvas || !canvas.parentElement) {
-        resolve();
-        return;
-      }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
 
-      const container = canvas.parentElement;
-      const rect = container.getBoundingClientRect();
-      
-      // Validate container dimensions
-      if (rect.width <= 0 || rect.height <= 0) {
-        resolve();
-        return;
-      }
+  const width = rect.width;
+  const height = rect.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap DPR to prevent huge canvases
-
-      // Ensure canvas dimensions are reasonable
-      const maxSize = 2048; // Prevent canvas memory issues
-      const width = Math.min(rect.width, maxSize);
-      const height = Math.min(rect.height, maxSize);
-
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = width + 'px';
-      canvas.style.height = height + 'px';
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve();
-        return;
-      }
-
-      // Reset transform and scale
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.scale(dpr, dpr);
-
-      if (!animate) {
-        renderStaticFrame(ctx, data, width, height, centerLat, centerLon);
-        resolve();
-        return;
-      }
-
-      // Enhanced animation with proper cleanup
-      renderAnimatedSequence(ctx, data, width, height, centerLat, centerLon)
-        .then(resolve)
-        .catch((error) => {
-          console.error('[Canvas Animation] Error:', error);
-          resolve();
-        });
-
-    } catch (error) {
-      console.error('[Canvas Update] Critical error:', error);
-      resolve();
-    }
-  });
-}
-
-// Separate static rendering for performance
-function renderStaticFrame(ctx, data, width, height, centerLat, centerLon) {
-  try {
-    ctx.clearRect(0, 0, width, height);
-    
-    const centerX = width / 2;
-    const centerY = height / 2;
-    
-    // Batch rendering for better performance
-    const dots = prepareDotsForRendering(data, centerLat, centerLon, width, height, centerX, centerY);
-    
-    // Sort by highlight status to render non-highlighted first
-    dots.sort((a, b) => a.highlighted - b.highlighted);
-    
-    // Render in batches to prevent blocking
-    renderDotsBatched(ctx, dots);
-    
-  } catch (error) {
-    console.error('[Static Render] Error:', error);
-  }
-}
-
-// Helper function to prepare dot data for rendering
-function prepareDotsForRendering(data, centerLat, centerLon, width, height, centerX, centerY) {
   const radiusScale = d3.scaleLinear()
     .domain([0, MAX_DISTANCE_METERS])
     .range([0, (Math.min(centerX, centerY) - 5) * 0.98])
     .clamp(true);
+
+  function getCircularPosition(d) {
+    const distance = calculateDistance(centerLat, centerLon, d.lat, d.lon);
+    const angle = calculateBearing(centerLat, centerLon, d.lat, d.lon);
+    const quantizedDistance = Math.floor(distance / 500) * 500;
+    const adjustedRadius = radiusScale(quantizedDistance);
+    return {
+      x: centerX + adjustedRadius * Math.cos(angle),
+      y: centerY + adjustedRadius * Math.sin(angle),
+      radius: sizeScale(d.biophilia_norm),
+      opacity: 0.7
+    };
+  }
+
+  function getMapPosition(d) {
+    if (!app.map) return { x: 0, y: 0, radius: 0, opacity: 0 };
+    const projected = app.map.project([d.lon, d.lat]);
+    return {
+      x: projected.x,
+      y: projected.y,
+      radius: sizeScale(d.biophilia_norm),
+      opacity: 0.7
+    };
+  }
+
+  function getDotColor(d) {
+    const now = performance.now();
+    const pe = app.effects.pulse;
+    const phase = pe.active ? ((now - pe.t0) % pe.period) / pe.period : 0;
+    const pulseIntensity = pe.active ? (1 + Math.sin(2 * Math.PI * phase)) / 2 : 0;
+    
+    return colorManager.getColor(d, {
+      isHighlightMode: app.state.isHighlightMode,
+      pulseActive: pe.active && colorManager.isHighlighted(d),
+      pulseIntensity
+    });
+  }
+
+  function getDotOpacity(d) {
+    if (!app.state.isHighlightMode) return 0.7;
+    return colorManager.isHighlighted(d) ? 0.7 : 0.15;
+  }
 
   const filteredData = data.filter(d => {
     if (!d.lat || !d.lon || isNaN(d.lat) || isNaN(d.lon)) return false;
@@ -222,132 +176,114 @@ function prepareDotsForRendering(data, centerLat, centerLon, width, height, cent
     return dist <= MAX_DISTANCE_METERS;
   });
 
-  return filteredData.map(d => {
-    let x, y, radius;
-    
-    if (app.state.isCircularView) {
-      const distance = calculateDistance(centerLat, centerLon, d.lat, d.lon);
-      const angle = calculateBearing(centerLat, centerLon, d.lat, d.lon);
-      const quantizedDistance = Math.floor(distance / 500) * 500;
-      const adjustedRadius = radiusScale(quantizedDistance);
-      
-      x = centerX + adjustedRadius * Math.cos(angle);
-      y = centerY + adjustedRadius * Math.sin(angle);
-      radius = sizeScale(d.biophilia_norm);
-    } else {
-      if (!app.map) return null;
-      const projected = app.map.project([d.lon, d.lat]);
-      x = projected.x;
-      y = projected.y;
-      radius = sizeScale(d.biophilia_norm);
-    }
+  if (!animate) {
+    ctx.clearRect(0, 0, width, height);
 
-    const highlighted = colorManager.isHighlighted(d);
-    const color = getDotColor(d);
-    const opacity = getDotOpacity(d);
+    const nonHighlighted = app.state.isHighlightMode ? filteredData.filter(d => !colorManager.isHighlighted(d)) : filteredData;
+    const highlighted = app.state.isHighlightMode ? filteredData.filter(d => colorManager.isHighlighted(d)) : [];
 
-    return {
-      x, y, radius: Math.max(1, radius),
-      color, opacity, highlighted: highlighted ? 1 : 0
-    };
-  }).filter(Boolean);
-}
-
-// Batched dot rendering for performance
-function renderDotsBatched(ctx, dots, batchSize = 500) {
-  const renderBatch = (startIndex) => {
-    const endIndex = Math.min(startIndex + batchSize, dots.length);
-    
-    for (let i = startIndex; i < endIndex; i++) {
-      const dot = dots[i];
-      if (dot.x >= 0 && dot.x <= ctx.canvas.width && dot.y >= 0 && dot.y <= ctx.canvas.height) {
+    // Draw non-highlighted dots first
+    nonHighlighted.forEach(d => {
+      const p = app.state.isCircularView ? getCircularPosition(d) : getMapPosition(d);
+      if (p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height) {
         ctx.beginPath();
-        ctx.arc(dot.x, dot.y, dot.radius, 0, 2 * Math.PI);
-        ctx.fillStyle = dot.color;
-        ctx.globalAlpha = dot.opacity;
+        const radius = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
+        ctx.arc(p.x, p.y, Math.max(1, radius), 0, 2 * Math.PI);
+        ctx.fillStyle = getDotColor(d);
+        ctx.globalAlpha = getDotOpacity(d);
         ctx.fill();
       }
-    }
-    
-    if (endIndex < dots.length) {
-      // Use setTimeout instead of requestAnimationFrame for immediate processing
-      setTimeout(() => renderBatch(endIndex), 0);
-    } else {
-      ctx.globalAlpha = 1; // Reset
-    }
-  };
-  
-  renderBatch(0);
-}
+   });
 
-// Enhanced animation sequence
-function renderAnimatedSequence(ctx, data, width, height, centerLat, centerLon) {
-  return new Promise((resolve) => {
-    app.state.animationInProgress = true;
-
-    const filteredData = data.filter(d => {
-      if (!d.lat || !d.lon || isNaN(d.lat) || isNaN(d.lon)) return false;
-      const dist = calculateDistance(centerLat, centerLon, d.lat, d.lon);
-      return dist <= MAX_DISTANCE_METERS;
+    // Draw highlighted dots on top
+    highlighted.forEach(d => {
+      const p = app.state.isCircularView ? getCircularPosition(d) : getMapPosition(d);
+      if (p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height) {
+        ctx.beginPath();
+        const radius = app.state.isCircularView ? p.radius : sizeScale(d.biophilia_norm);
+        ctx.arc(p.x, p.y, Math.max(1, radius), 0, 2 * Math.PI);
+        ctx.fillStyle = getDotColor(d);
+        ctx.globalAlpha = getDotOpacity(d);
+        ctx.fill();
+      }
     });
 
-    let initialPositions, targetPositions;
-    if (app.state.isCircularView) {
-      initialPositions = filteredData.map(d => getMapPosition(d));
-      targetPositions = filteredData.map(d => getCircularPosition(d, width, height));
-    } else {
-      initialPositions = filteredData.map(d => getCircularPosition(d, width, height));
-      targetPositions = filteredData.map(d => getMapPosition(d));
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  // Animation logic
+  app.state.animationInProgress = true;
+
+  let initialPositions, targetPositions;
+  if (app.state.isCircularView) {
+    initialPositions = filteredData.map(d => getMapPosition(d));
+    targetPositions = filteredData.map(d => getCircularPosition(d));
+  } else {
+    initialPositions = filteredData.map(d => getCircularPosition(d));
+    targetPositions = filteredData.map(d => getMapPosition(d));
+  }
+
+  const firstGroupCount = Math.floor(filteredData.length * 0.3);
+  const fadeDuration = 800;
+  const moveDurationFirst = 500;
+  const dotDelayFirst = 0.05;
+  const moveDurationSecond = 200;
+  const dotDelaySecond = 0.01;
+
+  const totalMoveDurationGroup1 = firstGroupCount > 0 ? ((firstGroupCount - 1) * dotDelayFirst + moveDurationFirst) : 0;
+  const totalMoveDurationGroup2 = (filteredData.length - firstGroupCount) > 0 ?
+    (firstGroupCount * dotDelayFirst + ((filteredData.length - firstGroupCount - 1) * dotDelaySecond) + moveDurationSecond) : 0;
+  const totalMoveDuration = Math.max(totalMoveDurationGroup1, totalMoveDurationGroup2);
+  const totalDuration = fadeDuration + totalMoveDuration;
+
+  let startTime = null;
+
+  function drawDotAt(d, i, easedT) {
+    const init = initialPositions[i];
+    const target = targetPositions[i];
+    const x = init.x + (target.x - init.x) * easedT;
+    const y = init.y + (target.y - init.y) * easedT;
+    const radius = init.radius + (target.radius - init.radius) * easedT;
+    const baseOpacity = 0.2 + (1 - 0.2) * easedT;
+    const finalOpacity = app.state.isHighlightMode ? (colorManager.isHighlighted(d) ? baseOpacity * 1.3 : baseOpacity * 0.3) : baseOpacity;
+
+    if (x >= 0 && x <= width && y >= 0 && y <= height) {
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1, radius), 0, 2 * Math.PI);
+      ctx.fillStyle = getDotColor(d);
+      ctx.globalAlpha = finalOpacity;
+      ctx.fill();
     }
+  }
 
-    const firstGroupCount = Math.floor(filteredData.length * 0.3);
-    const fadeDuration = 800;
-    const moveDurationFirst = 500;
-    const dotDelayFirst = 0.05;
-    const moveDurationSecond = 200;
-    const dotDelaySecond = 0.01;
+  function animateFrame(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+    ctx.clearRect(0, 0, width, height);
 
-    const totalMoveDurationGroup1 = firstGroupCount > 0 ? ((firstGroupCount - 1) * dotDelayFirst + moveDurationFirst) : 0;
-    const totalMoveDurationGroup2 = (filteredData.length - firstGroupCount) > 0 ?
-      (firstGroupCount * dotDelayFirst + ((filteredData.length - firstGroupCount - 1) * dotDelaySecond) + moveDurationSecond) : 0;
-    const totalMoveDuration = Math.max(totalMoveDurationGroup1, totalMoveDurationGroup2);
-    const totalDuration = fadeDuration + totalMoveDuration;
+    if (elapsed < fadeDuration) {
+      const tFade = Math.min(1, elapsed / fadeDuration);
+      const currentOpacity = 1 + (0.2 - 1) * tFade;
 
-    let startTime = null;
+      filteredData.forEach((d, i) => {
+        if (!app.state.isHighlightMode || !colorManager.isHighlighted(d)) {
+          const pos = initialPositions[i];
+          if (pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height) {
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, Math.max(1, pos.radius), 0, 2 * Math.PI);
+            ctx.fillStyle = getDotColor(d);
+            ctx.globalAlpha = currentOpacity * (getDotOpacity(d) / 0.7);
+            ctx.fill();
+          }
+        }
+      });
 
-    function drawDotAt(d, i, easedT) {
-      const init = initialPositions[i];
-      const target = targetPositions[i];
-      if (!init || !target) return;
-      
-      const x = init.x + (target.x - init.x) * easedT;
-      const y = init.y + (target.y - init.y) * easedT;
-      const radius = init.radius + (target.radius - init.radius) * easedT;
-      const baseOpacity = 0.2 + (1 - 0.2) * easedT;
-      const finalOpacity = app.state.isHighlightMode ? (colorManager.isHighlighted(d) ? baseOpacity * 1.3 : baseOpacity * 0.3) : baseOpacity;
-
-      if (x >= 0 && x <= width && y >= 0 && y <= height) {
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(1, radius), 0, 2 * Math.PI);
-        ctx.fillStyle = getDotColor(d);
-        ctx.globalAlpha = finalOpacity;
-        ctx.fill();
-      }
-    }
-
-    function animateFrame(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      ctx.clearRect(0, 0, width, height);
-
-      if (elapsed < fadeDuration) {
-        const tFade = Math.min(1, elapsed / fadeDuration);
-        const currentOpacity = 1 + (0.2 - 1) * tFade;
-
+      if (app.state.isHighlightMode) {
         filteredData.forEach((d, i) => {
-          if (!app.state.isHighlightMode || !colorManager.isHighlighted(d)) {
+          if (colorManager.isHighlighted(d)) {
             const pos = initialPositions[i];
-            if (pos && pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height) {
+            if (pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height) {
               ctx.beginPath();
               ctx.arc(pos.x, pos.y, Math.max(1, pos.radius), 0, 2 * Math.PI);
               ctx.fillStyle = getDotColor(d);
@@ -356,113 +292,46 @@ function renderAnimatedSequence(ctx, data, width, height, centerLat, centerLon) 
             }
           }
         });
-
-        if (app.state.isHighlightMode) {
-          filteredData.forEach((d, i) => {
-            if (colorManager.isHighlighted(d)) {
-              const pos = initialPositions[i];
-              if (pos && pos.x >= 0 && pos.x <= width && pos.y >= 0 && pos.y <= height) {
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, Math.max(1, pos.radius), 0, 2 * Math.PI);
-                ctx.fillStyle = getDotColor(d);
-                ctx.globalAlpha = currentOpacity * (getDotOpacity(d) / 0.7);
-                ctx.fill();
-              }
-            }
-          });
-        }
-      } else {
-        const moveElapsedTotal = elapsed - fadeDuration;
-
-        const drawByGroup = (predicate) => {
-          filteredData.forEach((d, i) => {
-            if (predicate(d)) {
-              let currentMoveDuration, currentDotDelay, localDelay;
-              if (i < firstGroupCount) {
-                currentMoveDuration = moveDurationFirst;
-                currentDotDelay = dotDelayFirst;
-                localDelay = i * currentDotDelay;
-              } else {
-                currentMoveDuration = moveDurationSecond;
-                currentDotDelay = dotDelaySecond;
-                localDelay = firstGroupCount * dotDelayFirst + (i - firstGroupCount) * currentDotDelay;
-              }
-              const localElapsed = moveElapsedTotal - localDelay;
-              const tRaw = localElapsed > 0 ? Math.min(1, localElapsed / currentMoveDuration) : 0;
-              const easedT = d3.easeCubicInOut(tRaw);
-              drawDotAt(d, i, easedT);
-            }
-          });
-        };
-
-        drawByGroup(d => !app.state.isHighlightMode || !colorManager.isHighlighted(d));
-        if (app.state.isHighlightMode) drawByGroup(d => colorManager.isHighlighted(d));
       }
+    } else {
+      const moveElapsedTotal = elapsed - fadeDuration;
 
-      ctx.globalAlpha = 1;
-      if (elapsed < totalDuration) {
-        const animationId = requestAnimationFrame(animateFrame);
-        app.cleanup.animations.add(animationId);
-      } else {
-        app.state.animationInProgress = false;
-        resolve();
-      }
+      const drawByGroup = (predicate) => {
+        filteredData.forEach((d, i) => {
+          if (predicate(d)) {
+            let currentMoveDuration, currentDotDelay, localDelay;
+            if (i < firstGroupCount) {
+              currentMoveDuration = moveDurationFirst;
+              currentDotDelay = dotDelayFirst;
+              localDelay = i * currentDotDelay;
+            } else {
+              currentMoveDuration = moveDurationSecond;
+              currentDotDelay = dotDelaySecond;
+              localDelay = firstGroupCount * dotDelayFirst + (i - firstGroupCount) * currentDotDelay;
+            }
+            const localElapsed = moveElapsedTotal - localDelay;
+            const tRaw = localElapsed > 0 ? Math.min(1, localElapsed / currentMoveDuration) : 0;
+            const easedT = d3.easeCubicInOut(tRaw);
+            drawDotAt(d, i, easedT);
+          }
+        });
+      };
+
+      drawByGroup(d => !app.state.isHighlightMode || !colorManager.isHighlighted(d));
+      if (app.state.isHighlightMode) drawByGroup(d => colorManager.isHighlighted(d));
     }
 
-    const animationId = requestAnimationFrame(animateFrame);
-    app.cleanup.animations.add(animationId);
-  });
-}
+    ctx.globalAlpha = 1;
+    if (elapsed < totalDuration) {
+      const animationId = requestAnimationFrame(animateFrame);
+      app.cleanup.animations.add(animationId);
+    } else {
+      app.state.animationInProgress = false;
+    }
+  }
 
-// Helper functions for position calculations
-function getCircularPosition(d, width, height) {
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const radiusScale = d3.scaleLinear()
-    .domain([0, MAX_DISTANCE_METERS])
-    .range([0, (Math.min(centerX, centerY) - 5) * 0.98])
-    .clamp(true);
-
-  const distance = calculateDistance(seoulData.coordinates.lat, seoulData.coordinates.lon, d.lat, d.lon);
-  const angle = calculateBearing(seoulData.coordinates.lat, seoulData.coordinates.lon, d.lat, d.lon);
-  const quantizedDistance = Math.floor(distance / 500) * 500;
-  const adjustedRadius = radiusScale(quantizedDistance);
-  
-  return {
-    x: centerX + adjustedRadius * Math.cos(angle),
-    y: centerY + adjustedRadius * Math.sin(angle),
-    radius: sizeScale(d.biophilia_norm),
-    opacity: 0.7
-  };
-}
-
-function getMapPosition(d) {
-  if (!app.map) return { x: 0, y: 0, radius: 0, opacity: 0 };
-  const projected = app.map.project([d.lon, d.lat]);
-  return {
-    x: projected.x,
-    y: projected.y,
-    radius: sizeScale(d.biophilia_norm),
-    opacity: 0.7
-  };
-}
-
-function getDotColor(d) {
-  const now = performance.now();
-  const pe = app.effects.pulse;
-  const phase = pe.active ? ((now - pe.t0) % pe.period) / pe.period : 0;
-  const pulseIntensity = pe.active ? (1 + Math.sin(2 * Math.PI * phase)) / 2 : 0;
-  
-  return colorManager.getColor(d, {
-    isHighlightMode: app.state.isHighlightMode,
-    pulseActive: pe.active && colorManager.isHighlighted(d),
-    pulseIntensity
-  });
-}
-
-function getDotOpacity(d) {
-  if (!app.state.isHighlightMode) return 0.7;
-  return colorManager.isHighlighted(d) ? 0.7 : 0.15;
+  const animationId = requestAnimationFrame(animateFrame);
+  app.cleanup.animations.add(animationId);
 }
 
 /* ========== MODE CONTROL WITH DURABILITY ========== */
@@ -717,7 +586,7 @@ function updateLandingTextForGroup(group) {
   );
 }
 
-/* ========== ENHANCED RESULT SEQUENCE WITH STABILITY ========== */
+/* ========== ENSUREMAPREREADY AND SETMODE - ORIGINAL STRUCTURE ========== */
 async function ensureMapReady() {
   if (!app.map) {
     initializeMapbox();
@@ -735,18 +604,97 @@ async function ensureMapReady() {
   return Promise.resolve();
 }
 
-async function executeResultSequence() {
-  if (app.state.animationInProgress) {
-    console.warn('[Result Sequence] Already in progress, skipping');
-    return;
-  }
-
+/* ========== MODE CONTROL WITH DURABILITY TRACKING ONLY ========== */
+async function setMode(newMode) {
+  const startTime = performance.now();
+  
   try {
-    app.state.animationInProgress = true;
+    // Track cycle for durability
+    if (app.mode && app.mode !== newMode) {
+      durabilityManager.incrementCycle();
+    }
     
-    // Ensure data is loaded before starting
-    if (app.state.currentDataType !== 'BP') {
+    // Perform cleanup before mode switch
+    if (app.mode !== newMode) {
+      clearAllTimersAndAnimations();
+    }
+
+    if (app.mode === newMode) return;
+
+    if (!app.elements.leftTop) {
+      app.elements.leftTop = document.querySelector('.left-column-top');
+      app.elements.rightCol = document.querySelector('.right-column');
+      app.elements.footer = document.querySelector('footer');
+      app.elements.mapContainer = document.getElementById('map');
+      app.elements.canvas = document.getElementById('visualization-canvas');
+    }
+
+    app.mode = newMode;
+    document.body.className = newMode === Modes.RESULT ? 'result-mode' : '';
+
+    if (newMode === Modes.LANDING) {
+      showLandingLayout();
+      
       app.state.currentDataType = 'BP';
+      await loadSeoulData('BP');
+
+      app.state.isCircularView = false;
+      app.state.isHighlightMode = false;
+
+      const mapContainer = document.getElementById('map');
+      if (mapContainer) {
+        mapContainer.classList.remove('hidden-map');
+      }
+
+      await startLandingAnimationSequence();
+
+    } else if (newMode === Modes.RESULT) {
+      showDashboardLayout();
+      hideHeaderLogos();
+      buildAllContent();
+
+      await ensureMapReady();
+
+      const [, , dashboardData, participantsData] = await Promise.all([
+        loadSeoulData('BS'),
+        loadSeoulData('BP'), 
+        loadDashboardData(),
+        loadAllParticipantsData()
+      ]);
+
+      if (dashboardData) {
+        dashboardManager.updateAll(dashboardData);
+      }
+
+      app.state.isCircularView = false;
+      app.state.isHighlightMode = false;
+
+      const mapContainer = document.getElementById('map');
+      if (mapContainer) {
+        mapContainer.classList.remove('hidden-map');
+      }
+
+      await wait(100);
+      await executeResultSequence();
+    }
+    
+    const renderTime = performance.now() - startTime;
+    console.log(`[Durability] Mode switch to ${newMode} took ${renderTime.toFixed(2)}ms`);
+    
+  } catch (error) {
+    durabilityManager.logError(error, `setMode(${newMode})`);
+    
+    // Attempt recovery
+    try {
+      durabilityManager.forceCleanup();
+      await wait(1000);
+      await setMode(Modes.LANDING); // Safe fallback
+    } catch (recoveryError) {
+      durabilityManager.logError(recoveryError, 'mode switch recovery');
+      console.error('[Durability] Critical failure, consider page reload');
+    }
+  }
+}'BP';
       await loadSeoulData('BP');
       await wait(300); // Allow data to settle
     }
