@@ -116,16 +116,14 @@ class BPManager {
 
   setValue(bp) {
     const rawValue = Number(bp) || 0;
-    //const normalizedValue = this.normalizeBPValue(rawValue);
-
-    const normalizedValue = 0.75;
-
+    const normalizedValue = this.normalizeBPValue(rawValue);
+    //const normalizedValue = 0.75;
 
     // FIXED: Store both values
     this.currentValue = rawValue;        // Keep raw value
     this.normalizedValue = normalizedValue; // Store normalized for display
     
-    const EPS = 0.01;
+    const EPS = 0.03;
     
     // FIXED: Use normalized value for app state and highlighting
     app.state.bpValue = normalizedValue;
@@ -1764,46 +1762,56 @@ function animateDistributionCurve(userBpValue) {
 
     function createCustomTooltip(point, bpValue, percentage, count) {
       removeCustomTooltip();
-
+  
       const canvas = chart.canvas;
       const rect = canvas.getBoundingClientRect();
-
+  
+      // Calculate actual highlighted dots count
+      const data = app.data.cache[`seoul_${app.state.currentDataType}`] || [];
+      const lo = window.HIGHLIGHT_MIN;
+      const hi = window.HIGHLIGHT_MAX;
+      const highlightedCount = data.filter(d => d.biophilia_norm >= lo && d.biophilia_norm <= hi).length;
+      const totalDots = data.length;
+      const actualPercentage = ((highlightedCount / totalDots) * 100).toFixed(1);
+  
       const tooltip = document.createElement('div');
       tooltip.id = 'custom-chart-tooltip';
       tooltip.style.cssText = `
-        position: absolute;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        border: 1px solid #444;
-        font-size: 12px;
-        pointer-events: none;
-        z-index: 1000;
-        white-space: nowrap;
+          position: absolute;
+          background: rgba(0, 0, 0, 0.9);
+          color: white;
+          padding: 8px 12px;
+          border-radius: 6px;
+          border: 1px solid #444;
+          font-size: 12px;
+          pointer-events: none;
+          z-index: 1000;
+          white-space: nowrap;
       `;
-
-      // FIXED: Use the correct normalized BP value
+  
+      // Use actual highlighted dot count instead of distribution bin count
       tooltip.innerHTML = `
-        <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
-        <div>Among all dots: ${percentage}% (${count} dots)</div>
+          <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
+          <div>Among all dots: ${actualPercentage}% (${highlightedCount} dots)</div>
       `;
-
+  
       document.body.appendChild(tooltip);
-
+  
       const tipW = tooltip.offsetWidth;
       const tipH = tooltip.offsetHeight;
       let left = rect.left + point.x - tipW / 2;
       let top  = rect.top  + point.y + 25;
-
+  
       left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
       top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
-
+  
       tooltip.style.left = `${left}px`;
       tooltip.style.top  = `${top}px`;
-    }
+   }
 
-      function removeCustomTooltip() {
+    
+
+   function removeCustomTooltip() {
         const existing = document.getElementById('custom-chart-tooltip');
         if (existing) existing.remove();
       }
