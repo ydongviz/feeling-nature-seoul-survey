@@ -155,6 +155,11 @@ class BPManager {
   }
 
   refreshVisualization() {
+    // FIXED: Ensure highlight samples are recalculated when BP value changes
+    if (app.mode === Modes.RESULT && app.state.isHighlightMode) {
+      ensureHighlightHasSamples();
+    }
+    
     safeExecute('refreshDotLayer');
     safeExecute('updateLegend');
     safeExecute('updateCenterViz');
@@ -616,7 +621,10 @@ function ensureHighlightHasSamples(minCount = 400) {
   const key = `seoul_${app.state.currentDataType || 'BP'}`;
   const data = app.data.cache[key] || [];
 
-  if (!data.length || !Number.isFinite(app.state.bpValue)) return;
+  // FIXED: Use normalized BP value consistently
+  const currentBpValue = bpManager.normalizedValue || app.state.bpValue || window.ACTUAL_BP_VALUE || 0;
+  
+  if (!data.length || !Number.isFinite(currentBpValue)) return;
 
   let lo = app.state.highlightMin;
   let hi = app.state.highlightMax;
@@ -626,12 +634,19 @@ function ensureHighlightHasSamples(minCount = 400) {
   let count = countInBand();
   while (count < minCount && widen < 0.05) {
     widen += 0.005;
-    lo = Math.max(0, app.state.bpValue - (0.01 + widen));
-    hi = Math.min(1, app.state.bpValue + (0.01 + widen));
+    // FIXED: Use the normalized BP value for range calculation
+    lo = Math.max(0, currentBpValue - (0.01 + widen));
+    hi = Math.min(1, currentBpValue + (0.01 + widen));
     count = countInBand();
   }
+  
+  // FIXED: Update both global and app state with normalized values
   window.HIGHLIGHT_MIN = lo;
   window.HIGHLIGHT_MAX = hi;
+  app.state.highlightMin = lo;
+  app.state.highlightMax = hi;
+  
+  console.log(`[ensureHighlightHasSamples] Using normalized BP: ${currentBpValue.toFixed(3)}, Range: ${lo.toFixed(3)}-${hi.toFixed(3)}, Count: ${count}`);
 }
 
 /* ========== TOOLTIP CLEANUP ========== */
@@ -1543,6 +1558,10 @@ async function executeResultSequence() {
 
     const bpData = app.data.cache['seoul_BP'];
 
+    // FIXED: Ensure BP value is properly normalized before highlighting
+    // Wait a bit to ensure BPManager has processed the value
+    await wait(200);
+
     // Step 1: Map view with pulse
     app.state.isHighlightMode = true;
     ensureHighlightHasSamples();    
@@ -1559,6 +1578,7 @@ async function executeResultSequence() {
 
     // Step 3: Circular view
     app.state.isCircularView = true;
+    // FIXED: Re-ensure highlights with normalized value before circular view
     ensureHighlightHasSamples();  
     const mapContainer = document.getElementById('map');
     if (mapContainer) mapContainer.classList.add('hidden-map');
@@ -1568,6 +1588,8 @@ async function executeResultSequence() {
 
     // Step 4: Highlight in circular
     app.state.isHighlightMode = true;
+    // FIXED: Ensure highlights are recalculated with current normalized value
+    ensureHighlightHasSamples();
     updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
     app.effects.pulse.period = PULSE_BASE_PERIOD; 
     startPulseLoop();
