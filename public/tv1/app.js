@@ -71,33 +71,28 @@ class SimpleMediaCache {
 
 class SimpleMemoryManager {
   cleanup() {
-    // Clear Chart.js instances
+    // Clear Chart.js instances safely
     if (window.lineChart) {
       try {
-        window.lineChart.destroy();
+        if (window.lineChart.canvas && document.body.contains(window.lineChart.canvas)) {
+          window.lineChart.destroy();
+        }
         window.lineChart = null;
         console.log('[SimpleMemoryManager] Cleared Chart.js instance');
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[SimpleMemoryManager] Chart cleanup failed:', e);
+      }
     }
     
-    // Limit large data caches
-    if (app?.data?.cache) {
-      // Only clear truly large temporary caches, not core data
-      Object.keys(app.data.cache).forEach(key => {
-        // Only clean up if cache is extremely large (50k+ items) and not core Seoul data
-        if (app.data.cache[key]?.length > 50000 && !key.includes('seoul')) {
-          console.log(`[SimpleMemoryManager] Clearing very large non-core cache: ${key}`);
-          delete app.data.cache[key];
-        }
-      });
-    }
+    // CRITICAL: Do not trim cached data - it breaks visualization
+    // Removed data trimming logic that was causing the small circular pattern
   }
 
   startPeriodicCleanup() {
     setInterval(() => {
       console.log('[SimpleMemoryManager] Running periodic cleanup...');
       this.cleanup();
-    }, 10 * 60 * 1000); // Every 10 minutes
+    }, 10 * 60 * 1000);
   }
 }
 
