@@ -1995,7 +1995,9 @@ window.memoryManager = memoryManager;
 
 /* ========== EVENT LISTENERS ========== */
 document.addEventListener('DOMContentLoaded', () => {
-  initializeApplication();
+  initializeApplication().catch(error => {
+    console.error('Failed to initialize application:', error);
+  });
 });
 
 if (document.readyState !== 'loading') {
