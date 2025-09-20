@@ -116,15 +116,16 @@ class BPManager {
 
   setValue(bp) {
     const rawValue = Number(bp) || 0;
-    const normalizedValue = this.normalizeBPValue(rawValue);
-    //const normalizedValue = 0.75;
+    //const normalizedValue = this.normalizeBPValue(rawValue);
+
+    const normalizedValue = 0.75;
 
 
     // FIXED: Store both values
     this.currentValue = rawValue;        // Keep raw value
     this.normalizedValue = normalizedValue; // Store normalized for display
     
-    const EPS = 0.03;
+    const EPS = 0.01;
     
     // FIXED: Use normalized value for app state and highlighting
     app.state.bpValue = normalizedValue;
@@ -132,10 +133,14 @@ class BPManager {
     app.state.highlightMax = Math.min(1, normalizedValue + EPS);
     window.HIGHLIGHT_MIN = app.state.highlightMin;
     window.HIGHLIGHT_MAX = app.state.highlightMax;
+    
+    // FIXED: Store normalized value globally for other components
     window.ACTUAL_BP_VALUE = normalizedValue;
     
     // CRITICAL FIX: Always get fresh element reference and force update
     this.updateDOM();
+    
+    // Trigger repaints
     this.refreshVisualization();
   }
 
@@ -388,8 +393,7 @@ class DashboardManager {
     });
   }
 
-
-updateDistributionChart(userBpValue, distribution) {
+  updateDistributionChart(userBpValue, distribution) {
     const lineCanvas = this.elements.lineChart;
     if (!lineCanvas || !document.body.contains(lineCanvas)) return;
 
@@ -398,6 +402,7 @@ updateDistributionChart(userBpValue, distribution) {
 
     let labels = [];
     let histogram = [];
+
     
     if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
         
@@ -424,82 +429,95 @@ updateDistributionChart(userBpValue, distribution) {
         );
         
         console.log(`[Distribution] Focused range: ${minRange.toFixed(3)}-${maxRange.toFixed(3)}, Total dots in range: ${histogram.reduce((a,b) => a+b, 0)}`);
+
+
+    if (distribution && Array.isArray(distribution)) {
+      labels = distribution.map(d => Number(d.bin).toFixed(1));
+      histogram = distribution.map(d => Number(d.count) || 0);
+    } else {
+      if (!app.data.allParticipantsData || app.data.allParticipantsData.length === 0) return;
+      const bins = 11;
+      const binSize = 1 / (bins - 1);
+      histogram = new Array(bins).fill(0);
+      app.data.allParticipantsData.forEach(value => {
+        const v = Number(value) || 0;
+        const binIndex = Math.min(Math.round(v / binSize), bins - 1);
+        histogram[binIndex]++;
+      });
+      labels = Array.from({ length: bins }, (_, i) => (i * binSize).toFixed(1));
     }
 
     const maxCount = Math.max(...histogram, 1);
     const normalizedData = histogram.map(count => (count / maxCount) * 100);
 
     if (window.lineChart && typeof window.lineChart.destroy === 'function') {
-        try { window.lineChart.destroy(); } catch (e) {}
-        window.lineChart = null;
+      try { window.lineChart.destroy(); } catch (e) {}
+      window.lineChart = null;
     }
 
     if (!Chart.Tooltip.positioners) Chart.Tooltip.positioners = {};
     if (!Chart.Tooltip.positioners.below) {
-        Chart.Tooltip.positioners.below = function (elements, eventPosition) {
-            if (!elements.length) return false;
-            const element = elements[0];
-            return { x: element.element.x, y: element.element.y + 35 };
-        };
+      Chart.Tooltip.positioners.below = function (elements, eventPosition) {
+        if (!elements.length) return false;
+        const element = elements[0];
+        return { x: element.element.x, y: element.element.y + 35 };
+      };
     }
 
     try {
-        window.lineChart = new Chart(lineCtx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'All Participants',
-                    data: normalizedData,
-                    borderColor: '#666666',
-                    backgroundColor: 'rgba(102, 102, 102, 0.1)',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 0,
-                    borderWidth: 1
-                }]
+      window.lineChart = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'All Participants',
+            data: normalizedData,
+            borderColor: '#666666',
+            backgroundColor: 'rgba(102, 102, 102, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 0,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { bottom: 15, right: 40 } },
+          interaction: { intersect: false, mode: 'none' },
+          onHover: null,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: {
+              display: true,
+              position: 'bottom',
+              grid: { display: false, drawBorder: true },
+              ticks: {
+                display: true,
+                color: '#888',
+                font: { size: 11, weight: 'normal' },
+                padding: 5,
+                callback: function(value, index, ticks) {
+                  if (index === 0) return '0';
+                  if (index === ticks.length - 1) return '1';
+                  if (index === Math.floor(ticks.length / 2)) return '0.5';
+                  return '';
+                }
+              },
+              border: { display: true, color: '#444' }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: { padding: { bottom: 15, right: 40 } },
-                interaction: { intersect: false, mode: 'none' },
-                onHover: null,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: false }
-                },
-                scales: {
-                    x: {
-                        display: true,
-                        position: 'bottom',
-                        grid: { display: false, drawBorder: true },
-                        ticks: {
-                            display: true,
-                            color: '#888',
-                            font: { size: 11, weight: 'normal' },
-                            padding: 5,
-                            callback: function(value, index, ticks) {
-                                // Show actual range values instead of fixed 0, 0.5, 1
-                                if (index === 0) return labels[0];
-                                if (index === ticks.length - 1) return labels[labels.length - 1];
-                                if (index === Math.floor(ticks.length / 2)) return labels[Math.floor(labels.length / 2)];
-                                return '';
-                            }
-                        },
-                        border: { display: true, color: '#444' }
-                    },
-                    y: { display: false, min: 0, grid: { display: false } }
-                },
-                animation: { duration: 1000 }
-            }
-        });
+            y: { display: false, min: 0, grid: { display: false } }
+          },
+          animation: { duration: 1000 }
+        }
+      });
     } catch (error) {
-        console.error('Error creating distribution chart:', error);
+      console.error('Error creating distribution chart:', error);
     }
-}
-
- 
+  }
 }
 
 /* ========== INITIALIZE MANAGERS ========== */
