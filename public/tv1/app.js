@@ -139,7 +139,7 @@ class BPManager {
     if (bpElement) {
       // FIXED: Use normalized value for display
       bpElement.textContent = this.normalizedValue.toFixed(2);
-      console.log(`[BPManager.updateDOM] Updated BP display: ${this.normalizedValue.toFixed(2)} (from raw: ${this.currentValue.toFixed(3)})`);
+      //console.log(`[BPManager.updateDOM] Updated BP display: ${this.normalizedValue.toFixed(2)} (from raw: ${this.currentValue.toFixed(3)})`);
     } else {
       console.warn('[BPManager.updateDOM] #bpValueNumber element not found');
       
@@ -293,7 +293,7 @@ class DashboardManager {
     // Get top 3 non-sky items for icons and text
     const top3 = filterOutSkyAndEnsureThree(data.intensity_top, data.intensities);
     
-    console.log(`[DashboardManager] Top 3 after filtering sky:`, top3);
+    //console.log(`[DashboardManager] Top 3 after filtering sky:`, top3);
     
     this.updateTopElements(top3);
     
@@ -646,7 +646,7 @@ function ensureHighlightHasSamples(minCount = 400) {
   app.state.highlightMin = lo;
   app.state.highlightMax = hi;
   
-  console.log(`[ensureHighlightHasSamples] Using normalized BP: ${currentBpValue.toFixed(3)}, Range: ${lo.toFixed(3)}-${hi.toFixed(3)}, Count: ${count}`);
+  //console.log(`[ensureHighlightHasSamples] Using normalized BP: ${currentBpValue.toFixed(3)}, Range: ${lo.toFixed(3)}-${hi.toFixed(3)}, Count: ${count}`);
 }
 
 /* ========== TOOLTIP CLEANUP ========== */

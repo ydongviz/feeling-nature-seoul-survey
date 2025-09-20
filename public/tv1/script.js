@@ -44,7 +44,7 @@ function applyCurrent(cur){
     const bp = Number(cur?.bp ?? 0);
     const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
     
-    console.log(`[applyCurrent] Setting BP: ${bp}, Intensities:`, cur?.intensities);
+    //console.log(`[applyCurrent] Setting BP: ${bp}, Intensities:`, cur?.intensities);
     
     if (Number.isFinite(bp)) {
       // Store the raw BP value globally for reference
@@ -53,7 +53,7 @@ function applyCurrent(cur){
       // ONLY call the BP manager - let it handle normalization and DOM updates
       if (typeof window.setUserBp === "function") {
         window.setUserBp(bp);
-        console.log(`[applyCurrent] Called setUserBp(${bp}) - BPManager will handle normalization`);
+        //console.log(`[applyCurrent] Called setUserBp(${bp}) - BPManager will handle normalization`);
       }
     }
     
@@ -127,7 +127,7 @@ async function poll(){
         try {
           // STEP 1: Fetch the current data FIRST
           const c = await fetchJSON(RESULT_URL);
-          console.log(`[poll] Fetched result data:`, c.json);
+          //console.log(`[poll] Fetched result data:`, c.json);
           
           // STEP 2: Apply the data to ensure BP value is set correctly
           if (!c.notModified && c.json) {
