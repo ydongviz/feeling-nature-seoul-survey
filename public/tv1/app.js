@@ -1,5 +1,5 @@
 /* ========== ENHANCED MEDIA FUNCTIONS WITH CACHING ========== */
-function showGif() {
+async function showGif() {
   const gif = document.getElementById('landingGif');
   const video = document.getElementById('landingVideo');
   const map = document.getElementById('map');
@@ -23,7 +23,7 @@ function showGif() {
   if (canvas) canvas.style.display = 'none';
 }
 
-function showVideo() {
+async function showVideo() {
   const gif = document.getElementById('landingGif');
   const video = document.getElementById('landingVideo');
   const map = document.getElementById('map');
