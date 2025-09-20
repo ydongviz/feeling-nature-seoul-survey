@@ -504,7 +504,7 @@ async function startLandingAnimationSequence() {
     while (app.landing.active && app.mode === Modes.LANDING) {
       
       // Phase 1: GIF sequence (16 seconds)
-      showGif();
+      await showGif();
       showHeaderLogos(false);
       updateLandingTexts('Feeling Nature Seoul', '', false);
       await wait(5000);
@@ -521,7 +521,7 @@ async function startLandingAnimationSequence() {
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
       // Phase 2: Video sequence (17 seconds)
-      showVideo();
+      await showVideo();
       showHeaderLogos(true);
 
       updateLandingTexts(
