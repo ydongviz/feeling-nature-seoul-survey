@@ -2001,7 +2001,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 if (document.readyState !== 'loading') {
-  setTimeout(initializeApplication, 100);
+  setTimeout(() => {
+    initializeApplication().catch(error => {
+      console.error('Failed to initialize application:', error);
+    });
+  }, 100);
 }
 
 // Cleanup on page unload
