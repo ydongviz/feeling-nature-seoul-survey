@@ -286,6 +286,7 @@ class DashboardManager {
     
     // Get top 3 non-sky items for icons and text
     const top3 = filterOutSkyAndEnsureThree(data.intensity_top, data.intensities);
+    
     //console.log(`[DashboardManager] Top 3 after filtering sky:`, top3);
     
     this.updateTopElements(top3);
@@ -383,7 +384,7 @@ class DashboardManager {
 
     let labels = [];
     let histogram = [];
-
+    
     if (distribution && Array.isArray(distribution)) {
       labels = distribution.map(d => Number(d.bin).toFixed(1));
       histogram = distribution.map(d => Number(d.count) || 0);
