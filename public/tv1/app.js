@@ -480,11 +480,12 @@ updateDistributionChart(userBpValue, distribution) {
                             font: { size: 11, weight: 'normal' },
                             padding: 5,
                             callback: function(value, index, ticks) {
-                              if (index === 0) return '0.0';
-                              if (index === ticks.length - 1) return '1.0';
-                              if (index === Math.floor(ticks.length / 2)) return '0.5';
-                              return '';
-                          }                             
+                                // Show actual range values instead of fixed 0, 0.5, 1
+                                if (index === 0) return labels[0];
+                                if (index === ticks.length - 1) return labels[labels.length - 1];
+                                if (index === Math.floor(ticks.length / 2)) return labels[Math.floor(labels.length / 2)];
+                                return '';
+                            }
                         },
                         border: { display: true, color: '#444' }
                     },
