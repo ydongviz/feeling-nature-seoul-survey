@@ -1,4 +1,3 @@
-
 .city-select-title-text-h1 {
     font-size: 1em;
     font-weight: 600;
@@ -9,13 +8,110 @@
 
 .survey-city-select-grid-container {
     display: grid;
-    grid-template-columns: repeat(4, 200px);
-    grid-gap: 5px;
+    grid-template-columns: repeat(2, 1fr); /* UPDATED: Use flexible columns instead of fixed 200px */
+    grid-gap: 20px; /* INCREASED: From 5px for better spacing */
+    max-width: 600px; /* ADDED: Limit width for better layout */
+    margin: 0 auto; /* ADDED: Center the grid */
 }
 
+/* ADDED: Override global div-option-item styles for this page with iPad optimizations */
+.survey-city-select-grid-container .div-option-item {
+    margin-right: 0; /* Reset margin for grid layout */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px 25px; /* INCREASED: Much larger padding for better touch targets */
+    border-radius: 8px; /* INCREASED: From 6px for better visual appeal */
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-height: 64px; /* ADDED: Ensure good touch target height */
+    width: 100%; /* ADDED: Fill grid cell */
+    box-sizing: border-box;
+    /* IPAD TOUCH OPTIMIZATIONS */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    position: relative;
+    z-index: 1;
+    touch-action: manipulation;
+    /* ADDED: Subtle border for better visual definition */
+    border: 2px solid transparent;
+}
+
+/* ADDED: Hover and touch feedback */
+@media (hover: hover) and (pointer: fine) {
+    .survey-city-select-grid-container .div-option-item:hover {
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
+    }
+
+    .survey-city-select-grid-container .div-option-item:hover label {
+        color: var(--primary-color);
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .survey-city-select-grid-container .div-option-item:active {
+        background-color: #f8f9fa;
+        border-color: var(--primary-color);
+        transform: scale(0.98);
+    }
+
+    .survey-city-select-grid-container .div-option-item:active label {
+        color: var(--primary-color);
+    }
+}
+
+/* UPDATED: Much larger radio buttons for iPad */
+.survey-city-select-grid-container .div-option-item input[type='radio'] {
+    -webkit-appearance: none;
+    width: 28px; /* INCREASED: From 16px to 28px */
+    height: 28px; /* INCREASED: From 16px to 28px */
+    border-radius: 50%;
+    outline: none;
+    border: 4px solid var(--primary-color); /* INCREASED: From 2px to 4px */
+    margin-right: 18px; /* INCREASED: From 10px to 18px */
+    cursor: pointer;
+    flex-shrink: 0; /* ADDED: Prevent radio button from shrinking */
+    /* IPAD TOUCH OPTIMIZATIONS */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    position: relative;
+    z-index: 2;
+    /* Better visual feedback */
+    transition: all 0.2s ease;
+}
+
+.survey-city-select-grid-container .div-option-item input[type='radio']:checked {
+    border: 10px solid var(--primary-color); /* INCREASED: From 8px to 10px */
+    /* Add a subtle scale effect when selected */
+    transform: scale(1.1);
+}
+
+/* ADDED: Touch feedback for radio buttons */
+.survey-city-select-grid-container .div-option-item input[type='radio']:active {
+    transform: scale(0.95);
+    background-color: rgba(105, 152, 21, 0.1);
+}
+
+.survey-city-select-grid-container .div-option-item label {
+    font-size: 20px; /* INCREASED: From 17px to 20px for better readability */
+    display: inline-block;
+    vertical-align: top;
+    margin-top: 2px; /* ADJUSTED: To align with larger radio button */
+    margin-left: 0;
+    transition: color 0.3s ease;
+    cursor: pointer;
+    flex: 1; /* ADDED: Allow label to take remaining space */
+    /* Better touch experience */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    line-height: 1.3; /* ADDED: Better line height for readability */
+}
 
 .button-survey-select-submit {
-    margin-top: 100px;
+    margin-top: 60px; /* INCREASED: From 100px for better proportions */
 }
 
 /* Mobile specific adjustments */
@@ -23,10 +119,66 @@
     .city-select-title-text-h1 {
         font-size: 1em;
     }
+    
+    .survey-city-select-grid-container {
+        grid-template-columns: 1fr; /* UPDATED: Single column on mobile */
+        grid-gap: 15px;
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    .survey-city-select-grid-container .div-option-item {
+        padding: 22px 20px; /* INCREASED: Even larger on mobile */
+        min-height: 68px; /* INCREASED: Larger touch targets on mobile */
+        margin-bottom: 10px;
+    }
+    
+    /* EVEN LARGER radio buttons on mobile */
+    .survey-city-select-grid-container .div-option-item input[type='radio'] {
+        width: 32px; /* INCREASED: Even larger on mobile */
+        height: 32px;
+        border: 5px solid var(--primary-color);
+        margin-right: 20px;
+    }
+    
+    .survey-city-select-grid-container .div-option-item input[type='radio']:checked {
+        border: 12px solid var(--primary-color);
+    }
+    
+    .survey-city-select-grid-container .div-option-item label {
+        font-size: 19px; /* ADJUSTED: Slightly smaller on mobile for better fit */
+        margin-top: 4px;
+    }
+    
+    .button-survey-select-submit {
+        margin-top: 40px;
+    }
 }
 
 @media (max-width: 480px) {
     .city-select-title-text-h1 {
         font-size: 1em;
+    }
+    
+    .survey-city-select-grid-container .div-option-item {
+        padding: 24px 18px; /* INCREASED: Maximum touch area */
+        min-height: 72px; /* INCREASED: Maximum touch height */
+    }
+    
+    .survey-city-select-grid-container .div-option-item label {
+        font-size: 18px;
+        margin-top: 5px;
+    }
+    
+    /* MAXIMUM size radio buttons for small screens */
+    .survey-city-select-grid-container .div-option-item input[type='radio'] {
+        width: 34px;
+        height: 34px;
+        border: 5px solid var(--primary-color);
+        margin-right: 22px;
+    }
+    
+    .survey-city-select-grid-container .div-option-item input[type='radio']:checked {
+        border: 13px solid var(--primary-color);
     }
 }

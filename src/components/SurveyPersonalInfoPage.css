@@ -31,11 +31,20 @@
     align-content: flex-end;
     flex-direction: row;
     align-items: flex-start;
-    padding: 8px 12px;
+    padding: 15px 20px; /* INCREASED: Larger padding for better touch targets */
     border-radius: 6px;
     transition: all 0.3s ease;
     cursor: pointer;
-    min-width: 120px; /* Ensure consistent width */
+    min-width: 140px; /* INCREASED: Larger minimum width */
+    min-height: 56px; /* ADDED: Ensure good touch target height */
+    /* IPAD TOUCH OPTIMIZATIONS */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    position: relative;
+    z-index: 1;
+    touch-action: manipulation;
 }
 
 .personal-info-grid-item:hover {
@@ -46,29 +55,65 @@
     color: var(--primary-color);
 }
 
+/* UPDATED: Much larger radio buttons for iPad */
 .personal-info-grid-item input[type='radio'] {
     -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 24px; /* INCREASED: From 16px to 24px */
+    height: 24px; /* INCREASED: From 16px to 24px */
     border-radius: 50%;
     outline: none;
-    border: 2px solid var(--primary-color);
-    margin-right: 10px;
+    border: 3px solid var(--primary-color); /* INCREASED: From 2px to 3px */
+    margin-right: 15px; /* INCREASED: From 10px to 15px */
     cursor: pointer;
+    /* IPAD TOUCH OPTIMIZATIONS */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    position: relative;
+    z-index: 2;
+    /* Better visual feedback */
+    transition: all 0.2s ease;
 }
 
 .personal-info-grid-item input[type='radio']:checked {
-    border: 8px solid var(--primary-color);
+    border: 9px solid var(--primary-color); /* INCREASED: From 8px to 9px */
+    /* Add a subtle scale effect when selected */
+    transform: scale(1.1);
+}
+
+/* ADDED: Touch feedback for radio buttons */
+.personal-info-grid-item input[type='radio']:active {
+    transform: scale(0.95);
+    background-color: rgba(105, 152, 21, 0.1);
 }
 
 .personal-info-grid-item label {
-    font-size: 17px;
+    font-size: 18px; /* INCREASED: From 17px to 18px */
     display: inline-block;
     vertical-align: top;
-    margin-top: 3px;
+    margin-top: 2px; /* ADJUSTED: To align with larger radio button */
     margin-left: 0;
     transition: color 0.3s ease;
     cursor: pointer;
+    /* Better touch experience */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+/* ADDED: Enhanced touch feedback for the entire option */
+@media (hover: none) and (pointer: coarse) {
+    .personal-info-grid-item:active {
+        background-color: #f8f9fa;
+        transform: scale(0.98);
+    }
+
+    .personal-info-grid-item:active label {
+        color: var(--primary-color);
+    }
+    
+    .personal-info-grid-item:active input[type='radio'] {
+        border-color: var(--primary-color);
+        transform: scale(1.05);
+    }
 }
 
 /* Title styling */
@@ -89,13 +134,15 @@
 @media (max-width: 768px) {
     .personal-info-grid-container {
         flex-direction: column;
-        gap: 10px;
+        gap: 15px; /* INCREASED: From 10px for better spacing */
     }
     
     .personal-info-grid-item {
         width: 100%;
         margin-right: 0;
-        margin-bottom: 10px;
+        margin-bottom: 15px; /* INCREASED: From 10px */
+        padding: 18px 20px; /* INCREASED: Even larger on mobile */
+        min-height: 60px; /* INCREASED: Larger touch targets on mobile */
     }
     
     .container-section {
@@ -106,6 +153,23 @@
         font-size: 1em;
         margin-bottom: 15px;
     }
+    
+    /* EVEN LARGER radio buttons on mobile */
+    .personal-info-grid-item input[type='radio'] {
+        width: 28px; /* INCREASED: Even larger on mobile */
+        height: 28px;
+        border: 4px solid var(--primary-color);
+        margin-right: 18px;
+    }
+    
+    .personal-info-grid-item input[type='radio']:checked {
+        border: 10px solid var(--primary-color);
+    }
+    
+    .personal-info-grid-item label {
+        font-size: 19px; /* INCREASED: Larger text on mobile */
+        margin-top: 1px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -113,7 +177,24 @@
         font-size: 1em;
     }
     
+    .personal-info-grid-item {
+        padding: 20px 18px; /* INCREASED: Maximum touch area */
+        min-height: 64px; /* INCREASED: Maximum touch height */
+    }
+    
     .personal-info-grid-item label {
-        font-size: 16px;
+        font-size: 18px;
+    }
+    
+    /* MAXIMUM size radio buttons for small screens */
+    .personal-info-grid-item input[type='radio'] {
+        width: 30px;
+        height: 30px;
+        border: 4px solid var(--primary-color);
+        margin-right: 20px;
+    }
+    
+    .personal-info-grid-item input[type='radio']:checked {
+        border: 11px solid var(--primary-color);
     }
 }
