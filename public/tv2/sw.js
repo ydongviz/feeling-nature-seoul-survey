@@ -1,5 +1,5 @@
 // sw.js — TV-2 kiosk SW
-const CACHE = 'tv2-cache-v16';
+const CACHE = 'tv2-cache-v17';
 
 const ASSETS = [
   '/tv2/',
@@ -64,4 +64,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-
