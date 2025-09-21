@@ -564,6 +564,13 @@ function startLanding(){
   isTransitioning = true;               
   setTimeout(() => { isTransitioning = false; }, 1000);  
 
+  // ADD THIS SAFETY CHECK AT THE TOP:
+  if (!controls || !camera) {
+    console.warn('[tv2] Scene not ready, skipping startLanding');
+    isTransitioning = false;
+    return;
+  }
+
   // SOFT reset (no reload) from either Video or Biome Dots
   if (currentMode === 'video') {
     returnToLandingFromVideo();
@@ -577,12 +584,16 @@ function startLanding(){
     if (treeObject) treeObject.visible = true;
     if (base) base.visible = true;
 
-    // camera back to tree
-    controls.target.set(0, 4, 0);
-    camera.position.set(0, 5, 10);
-    controls.autoRotate = true;
-    controls.minDistance = 5;
-    controls.maxDistance = 12.5;
+    if (controls) {  // <- Good, you have this
+      controls.target.set(0, 4, 0);
+      controls.autoRotate = true;
+      controls.minDistance = 5;
+      controls.maxDistance = 12.5;
+    }
+    
+    if (camera) {  // <- Good, you have this
+      camera.position.set(0, 5, 10);
+    }
 
     reseedPetalDelaysAndSpeeds();
     restoreLandingPositionsAndColors();
@@ -686,6 +697,11 @@ function showVideo(){
   // Mark mode & stop background music overlap
   currentMode = 'video';
   isVideoMode = true;
+
+  if (backgroundMusic && !backgroundMusic.paused) {
+    backgroundMusic.pause();
+  }
+
   fadeOutMusic(1200);
 
   // Reveal container FIRST (so layout exists)
@@ -781,12 +797,16 @@ function returnToLandingFromVideo() {
   if (treeObject) treeObject.visible = true;
   if (base) base.visible = true;
 
-  // camera back to tree
-  controls.target.set(0, 4, 0);
-  camera.position.set(0, 5, 10);
-  controls.autoRotate = true;
-  controls.minDistance = 5;
-  controls.maxDistance = 12.5;
+  if (controls) {  // <- Add this check
+    controls.target.set(0, 4, 0);
+    controls.autoRotate = true;
+    controls.minDistance = 5;
+    controls.maxDistance = 12.5;
+  }
+  
+  if (camera) {  // <- Add this check
+    camera.position.set(0, 5, 10);
+  }
 
   reseedPetalDelaysAndSpeeds();
   restoreLandingPositionsAndColors();
