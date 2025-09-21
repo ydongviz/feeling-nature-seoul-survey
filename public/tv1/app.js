@@ -51,7 +51,7 @@ class SimpleMediaCache {
           const blob = await response.blob();
           const objectUrl = URL.createObjectURL(blob);
           this.cache.set(url, objectUrl);
-          console.log(`[SimpleMediaCache] Cached ${url}`);
+          //console.log(`[SimpleMediaCache] Cached ${url}`);
         }
       } catch (e) {
         console.warn('[SimpleMediaCache] Failed to cache:', url);
@@ -78,14 +78,12 @@ class SimpleMemoryManager {
           window.lineChart.destroy();
         }
         window.lineChart = null;
-        console.log('[SimpleMemoryManager] Cleared Chart.js instance');
+        //console.log('[SimpleMemoryManager] Cleared Chart.js instance');
       } catch (e) {
         console.warn('[SimpleMemoryManager] Chart cleanup failed:', e);
       }
     }
     
-    // CRITICAL: Do not trim cached data - it breaks visualization
-    // Removed data trimming logic that was causing the small circular pattern
   }
 
   startPeriodicCleanup() {
@@ -1647,9 +1645,10 @@ async function executeResultSequence() {
 
     const bpData = app.data.cache['seoul_BP'];
 
-    // FIXED: Ensure BP value is properly normalized before highlighting
-    // Wait a bit to ensure BPManager has processed the value
     await wait(200);
+
+    app.state.isCircularView = false;  
+    app.state.isHighlightMode = false
 
     // Step 1: Map view with pulse
     app.state.isHighlightMode = true;

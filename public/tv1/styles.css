@@ -346,8 +346,8 @@ footer {
 }
 
 .bp-indicator {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   background: #92C043;
   border-radius: 50%;
 }
