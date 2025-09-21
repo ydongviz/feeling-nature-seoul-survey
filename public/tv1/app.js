@@ -1718,11 +1718,15 @@ function animateDistributionCurve(userBpValue) {
     const percentage = ((count / app.data.allParticipantsData.length) * 100).toFixed(1);
 
     function runFullAnimation() {
+
+      if (!chart || !chart.canvas || !document.body.contains(chart.canvas)) {
+        console.warn('[animateDistributionCurve] Chart canvas no longer in DOM, stopping animation');
+        return; // Exit early if chart is invalid
+      }
+
       while (chart.data.datasets.length > 1) {
         chart.data.datasets.pop();
       }
-
-      if (!chart || !chart.canvas || !chart.canvas.ownerDocument) return;
 
       chart.update('none');
 
