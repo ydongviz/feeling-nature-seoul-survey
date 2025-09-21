@@ -21,54 +21,6 @@ canvas {
   transform: translate3d(0, 0, 0);
 }
 
-/* Always-visible controls at top-left (a) */
-#buttonContainer {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 1100;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-  /* Performance optimization */
-  will-change: transform;
-}
-
-.control-button {
-  background: rgba(255,255,255,0.92);
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  color: #222;
-  backdrop-filter: blur(8px);
-  transition: transform 0.2s ease, background 0.2s ease;
-  line-height: 1;
-  /* Performance optimization */
-  will-change: transform, background;
-  /* Prevent touch highlights on mobile */
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-
-.control-button:hover { 
-  transform: translateY(-1px); 
-  background: #fff; 
-}
-
-.control-button:active { 
-  transform: translateY(0); 
-}
-
-/* Disable button interactions during transitions */
-.control-button:disabled {
-  opacity: 0.6;
-  pointer-events: none;
-  cursor: not-allowed;
-}
 
 /* Helper texts */
 #instructions {

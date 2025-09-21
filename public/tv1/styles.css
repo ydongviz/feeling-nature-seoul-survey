@@ -642,3 +642,26 @@ footer {
 .mapboxgl-ctrl-attrib {
   display: none !important;
 }
+
+
+/* ADD these overrides for TV display */
+@media screen and (min-width: 1920px) {
+  /* Scale fonts 1.8x for TV viewing */
+  .bp-value { font-size: 80px; }
+  .landing-line1 { font-size: 80px; }
+  .landing-line1.feeling-nature { font-size: 130px; }
+  .landing-line2 { font-size: 28px; }
+  .footer-section h4 { font-size: 22px; }
+  .footer-section p { font-size: 18px; }
+  .plant-category { font-size: 28px; }
+  .bar-label { font-size: 18px; }
+  .middle-section-title { font-size: 22px; }
+  .chart-title { font-size: 22px; }
+  
+  /* Increase icon sizes */
+  .top-element img { width: 140px; }
+  
+  /* Adjust spacing for larger scale */
+  footer { padding: 40px 80px 20px 80px; }
+  .main-content { padding: 40px 80px 0px 80px; }
+}
