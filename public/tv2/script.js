@@ -29,6 +29,7 @@ const volumeTransitionSpeed = 0.02; // smooth transitions
 let didPrimeAudio = false;
 let audioUnlocked = false; 
 let pendingVideoStart = false;
+let isTransitioning = false; 
 
 // ===== THREE globals =====
 let scene, camera, renderer, controls;
@@ -559,6 +560,10 @@ function calculateP90AndUpdateVolume() {
 
 // ===== Transitions =====
 function startLanding(){
+  if (isTransitioning) return;          
+  isTransitioning = true;               
+  setTimeout(() => { isTransitioning = false; }, 1000);  
+
   // SOFT reset (no reload) from either Video or Biome Dots
   if (currentMode === 'video') {
     returnToLandingFromVideo();
@@ -591,7 +596,10 @@ function startLanding(){
 }
 
 function toBiomeDots(){
-  if (isTransformed) return;
+  //if (isTransformed) return;
+  if (isTransformed || isTransitioning) return;
+  isTransitioning = true;
+  setTimeout(() => { isTransitioning = false; }, 3000);
 
   // Fade out music while transitioning to dots
   fadeOutMusic(1500);
@@ -656,6 +664,7 @@ function teardownThree() {
   try { window.removeEventListener('resize', onWindowResize); } catch(e){}
   try { controls?.dispose?.(); } catch(e){}
   try { renderer?.setAnimationLoop(null); } catch(e){}
+
   try {
     scene?.traverse(obj => {
       if (obj.isMesh || obj.isPoints) {
@@ -670,7 +679,9 @@ function teardownThree() {
 }
 
 function showVideo(){
-  if (!bgVideo || !videoContainer) return;
+  if (!bgVideo || !videoContainer || isTransitioning) return;
+  isTransitioning = true;
+  setTimeout(() => { isTransitioning = false; }, 2000);
 
   // Mark mode & stop background music overlap
   currentMode = 'video';
