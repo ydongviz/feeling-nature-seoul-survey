@@ -165,6 +165,14 @@ body:not(.result-mode) .header-logos {
   transition: opacity 0.5s ease-in-out;
 }
 
+.fade-transition {
+  transition: opacity 0.8s ease-in-out;
+}
+
+.fade-out {
+  opacity: 0 !important;
+}
+
 
 /* ========== COLUMN LAYOUTS ========== */
 .left-column {
@@ -642,3 +650,4 @@ footer {
 .mapboxgl-ctrl-attrib {
   display: none !important;
 }
+
