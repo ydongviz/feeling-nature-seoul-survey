@@ -115,7 +115,7 @@ const useIsMobile = () => {
     return isMobile;
 };
 
-// Image Choice Button Component with responsive labels
+// UPDATED: Image Choice Button Component with enhanced iPad touch handling
 const ButtonImgPicker = ({ isSelected, position, lang, onClick, ...props }) => {
     const isMobile = useIsMobile();
     
@@ -139,10 +139,55 @@ const ButtonImgPicker = ({ isSelected, position, lang, onClick, ...props }) => {
         }
     };
 
+    // ADDED: Enhanced touch handling for iPad
+    const handleTouchStart = (e) => {
+        // Prevent default to avoid issues with touch events
+        e.preventDefault();
+        // Add visual feedback
+        e.currentTarget.style.transform = 'scale(0.98)';
+        e.currentTarget.style.backgroundColor = '#F9FEEC';
+        e.currentTarget.style.borderColor = '#699815';
+        e.currentTarget.style.color = '#699815';
+    };
+
+    const handleTouchEnd = (e) => {
+        // Reset visual state
+        setTimeout(() => {
+            e.currentTarget.style.transform = '';
+            e.currentTarget.style.backgroundColor = '';
+            e.currentTarget.style.borderColor = '';
+            e.currentTarget.style.color = '';
+        }, 150);
+        
+        // Call the actual onClick handler
+        if (onClick) {
+            onClick(e);
+        }
+    };
+
+    const handleClick = (e) => {
+        // For non-touch devices, use normal click
+        if (!('ontouchstart' in window)) {
+            onClick(e);
+        }
+    };
+
     return (
         <button 
             className={className} 
-            onClick={onClick}
+            onClick={handleClick}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            style={{
+                // Ensure good touch target size
+                minHeight: '48px',
+                minWidth: '120px',
+                // Better touch responsiveness
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                position: 'relative',
+                zIndex: 1
+            }}
             {...props}
         >
             {getButtonText()}
@@ -192,7 +237,14 @@ export function SurveyImgChoicePage() {
     const didRightImageLoaded = () => setRightImageLoaded(true);
     const shouldImageDisplayed = () => isLeftImageLoaded && isRightImageLoaded;
 
+    // UPDATED: Enhanced selection handler with debouncing to prevent double-taps
+    const [isProcessing, setIsProcessing] = useState(false);
+    
     const handleSelection = (side) => {
+        // Prevent double-taps
+        if (isProcessing) return;
+        setIsProcessing(true);
+        
         const now = new Date();
         let formDict = {};
         // IMPORTANT: Still record 'left' or 'right' regardless of button label
@@ -205,15 +257,19 @@ export function SurveyImgChoicePage() {
         formDict[formFieldCity] = city;
         actions.simpleUpdate(formDict);
 
-        setStartTime(new Date());
-        if (counter + 1 < MAX_COUNTER) {
-            setCounter(counter + 1);
-        } else {
-            navigate(`/surveyinfo/${surveyid}`);
-        }
-        setLeftImageLoaded(false);
-        setRightImageLoaded(false);
-        window.scrollTo(0, 0);
+        // Add small delay to prevent rapid tapping
+        setTimeout(() => {
+            setStartTime(new Date());
+            if (counter + 1 < MAX_COUNTER) {
+                setCounter(counter + 1);
+            } else {
+                navigate(`/surveyinfo/${surveyid}`);
+            }
+            setLeftImageLoaded(false);
+            setRightImageLoaded(false);
+            setIsProcessing(false);
+            window.scrollTo(0, 0);
+        }, 300);
     };
 
     // Calculate current step: Q1=1, Q2-Q7=2-7
@@ -243,6 +299,7 @@ export function SurveyImgChoicePage() {
                         position="left"
                         lang={lang}
                         onClick={() => handleSelection('left')} // Still records 'left'
+                        disabled={isProcessing}
                     />
                 </div>
                 <div className="grid-item-image-picker">
@@ -257,6 +314,7 @@ export function SurveyImgChoicePage() {
                         position="right"
                         lang={lang}
                         onClick={() => handleSelection('right')} // Still records 'right'
+                        disabled={isProcessing}
                     />
                 </div>
             </div>
