@@ -150,7 +150,7 @@ function primeAudioOnce() {
   didPrimeAudio = true;
   audioUnlocked = true; 
 
-  if (isVideoMode) return; // don't start landing music while in video
+  if (isVideoMode || currentMode === 'video') return; 
   backgroundMusic.volume = currentVolume;
   backgroundMusic.play().catch(()=>{});
 }
