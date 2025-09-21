@@ -131,7 +131,7 @@ function fadeOutMusic(ms = 1500) {
   }, 50);
 }
 
-// Dynamic Volume Control — driven by height metric
+// Dynamic Volume Control â€” driven by height metric
 function updateMusicVolume(p90Height, maxHeight) {
   let heightRatio = Math.max(0, Math.min(1, p90Height / maxHeight));
   if (heightRatio > 0.98) heightRatio = 1.0;        // snap near-peak to full
@@ -177,7 +177,7 @@ function initScene() {
   }, false);
  
   renderer.domElement.addEventListener('webglcontextrestored', () => {
-  console.info('[tv2] WebGL context restored — rebuilding scene');
+  console.info('[tv2] WebGL context restored â€” rebuilding scene');
   // Rebuild everything cleanly
   try { window.removeEventListener('resize', onWindowResize); } catch {}
   try { renderer.setAnimationLoop(null); renderer.dispose?.(); } catch {}
@@ -564,13 +564,6 @@ function startLanding(){
   isTransitioning = true;               
   setTimeout(() => { isTransitioning = false; }, 1000);  
 
-  // ADD THIS SAFETY CHECK AT THE TOP:
-  if (!controls || !camera) {
-    console.warn('[tv2] Scene not ready, skipping startLanding');
-    isTransitioning = false;
-    return;
-  }
-
   // SOFT reset (no reload) from either Video or Biome Dots
   if (currentMode === 'video') {
     returnToLandingFromVideo();
@@ -584,16 +577,12 @@ function startLanding(){
     if (treeObject) treeObject.visible = true;
     if (base) base.visible = true;
 
-    if (controls) {  // <- Good, you have this
-      controls.target.set(0, 4, 0);
-      controls.autoRotate = true;
-      controls.minDistance = 5;
-      controls.maxDistance = 12.5;
-    }
-    
-    if (camera) {  // <- Good, you have this
-      camera.position.set(0, 5, 10);
-    }
+    // camera back to tree
+    controls.target.set(0, 4, 0);
+    camera.position.set(0, 5, 10);
+    controls.autoRotate = true;
+    controls.minDistance = 5;
+    controls.maxDistance = 12.5;
 
     reseedPetalDelaysAndSpeeds();
     restoreLandingPositionsAndColors();
@@ -697,11 +686,6 @@ function showVideo(){
   // Mark mode & stop background music overlap
   currentMode = 'video';
   isVideoMode = true;
-
-  if (backgroundMusic && !backgroundMusic.paused) {
-    backgroundMusic.pause();
-  }
-
   fadeOutMusic(1200);
 
   // Reveal container FIRST (so layout exists)
@@ -724,7 +708,7 @@ function showVideo(){
     bgVideo.load();
   } catch(e){}
 
-  // Force layout before play (prevents “black first frame” on some WebKit)
+  // Force layout before play (prevents â€œblack first frameâ€ on some WebKit)
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
 
@@ -797,16 +781,12 @@ function returnToLandingFromVideo() {
   if (treeObject) treeObject.visible = true;
   if (base) base.visible = true;
 
-  if (controls) {  // <- Add this check
-    controls.target.set(0, 4, 0);
-    controls.autoRotate = true;
-    controls.minDistance = 5;
-    controls.maxDistance = 12.5;
-  }
-  
-  if (camera) {  // <- Add this check
-    camera.position.set(0, 5, 10);
-  }
+  // camera back to tree
+  controls.target.set(0, 4, 0);
+  camera.position.set(0, 5, 10);
+  controls.autoRotate = true;
+  controls.minDistance = 5;
+  controls.maxDistance = 12.5;
 
   reseedPetalDelaysAndSpeeds();
   restoreLandingPositionsAndColors();
@@ -862,7 +842,7 @@ async function tick(){
 
   const stage = (s.stage || s.state || 'idle');
 
-  // If state is expired or explicitly landing/idle → ensure landing
+  // If state is expired or explicitly landing/idle â†’ ensure landing
   if (isExpired(s) || stage === 'landing' || stage === 'idle') {
     startLanding();
     return;
@@ -884,7 +864,7 @@ async function tick(){
     return;
   }
 
-  // Any other stage → stay/return to landing
+  // Any other stage â†’ stay/return to landing
   if (currentMode !== 'landing') startLanding();
 }
 
