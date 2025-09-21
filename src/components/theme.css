@@ -141,7 +141,7 @@
     color: #000000;
 }
 
-/* FIXED: Updated button styles with iPad touch optimization */
+/* FIXED: Updated button styles with iPad hover fix */
 .button-generic {
     font-size: 17px;
     border: 1px solid #262626;
@@ -154,19 +154,10 @@
     margin: 30px auto;
     display: block;
     text-decoration: none;
-    /* IPAD TOUCH FIXES */
+    /* ADDED: Remove tap highlight on mobile devices */
     -webkit-tap-highlight-color: transparent;
+    /* ADDED: Ensure proper touch behavior */
     touch-action: manipulation;
-    /* Increase touch target size for better responsiveness */
-    min-height: 44px;
-    min-width: 44px;
-    /* Prevent double-tap zoom */
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    /* Improve touch responsiveness */
-    position: relative;
-    z-index: 1;
 }
 
 /* FIXED: Only apply hover styles on devices that can actually hover */
@@ -255,28 +246,19 @@ label {
     transition: color 0.3s ease;
 }
 
-/* FIXED: Global radio option hover styles with iPad touch optimization */
+/* FIXED: Global radio option hover styles with iPad fix */
 .div-option-item {
     margin-right: 20px;
     display: inline-block;
     align-content: flex-end;
     flex-direction: row;
     align-items: flex-start;
-    padding: 12px 16px; /* Increased padding for larger touch target */
+    padding: 8px 12px;
     border-radius: 6px;
     transition: all 0.3s ease;
     cursor: pointer;
-    /* IPAD TOUCH FIXES */
+    /* ADDED: Remove tap highlight */
     -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    /* Ensure adequate touch target size */
-    min-height: 44px;
-    min-width: 44px;
-    /* Better touch responsiveness */
-    position: relative;
-    z-index: 1;
 }
 
 /* FIXED: Only apply hover styles on devices that can actually hover */
