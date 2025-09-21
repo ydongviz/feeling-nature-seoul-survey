@@ -562,7 +562,13 @@ function calculateP90AndUpdateVolume() {
 function startLanding(){
   if (isTransitioning) return;          
   isTransitioning = true;               
-  setTimeout(() => { isTransitioning = false; }, 1000);  
+  setTimeout(() => { isTransitioning = false; }, 1000); 
+  
+  if (!controls || !camera) {
+    console.warn('[tv2] Scene not ready, skipping startLanding');
+    isTransitioning = false;
+    return;
+  }
 
   // SOFT reset (no reload) from either Video or Biome Dots
   if (currentMode === 'video') {
