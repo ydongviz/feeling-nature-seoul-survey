@@ -1,210 +1,163 @@
-/* TV-1 kiosk adapter + state poller (production, hardened) */
+/* TV-1 kiosk adapter + state poller (production) - FIXED VERSION */
 const STATE_URL  = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 const RESULT_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
 
-const ovEl  = document.getElementById("kioskOverlay");
+const ovEl = document.getElementById("kioskOverlay");
 const ovMsg = document.getElementById("kioskMsg");
 const ovCnt = document.getElementById("kioskCount");
-
-let etag = null;
+let timer = null, etag = null, stage = null;
 let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
-let pollTimer = null;
-let baseIntervalMs = 2000;
-let backoffMs = 0;           // grows on failures, resets on success
-let maxBackoffMs = 15000;    // cap
 
-function hideOverlay(){
-  if (ovEl) ovEl.style.display = "none";
-  if (ovCnt) ovCnt.style.display = "none";
-}
+function hideOverlay(){ if(ovEl) ovEl.style.display="none"; if(ovCnt) ovCnt.style.display="none"; if(timer){clearInterval(timer); timer=null;} }
 
 function showNote(msg){
-  if (!ovEl) return;
-  ovEl.style.display = "flex";
-  if (ovMsg) ovMsg.textContent = msg || "Please complete your survey questions!";
-  if (ovCnt) ovCnt.style.display = "none";
+    if (!ovEl) return;
+    ovEl.style.display = "flex";
+    if (ovMsg) ovMsg.textContent = msg || "Please complete your survey questions!";
+    if (ovCnt) ovCnt.style.display = "none";
 }
 
 function showCountdown(msg, secs, notBeforeIso){
-  if (!ovEl) return;
-  ovEl.style.display = "flex";
-  if (ovMsg) ovMsg.textContent = msg || "Loading your result…";
-  if (ovCnt) ovCnt.style.display = "block";
+    if (!ovEl) return;
+    ovEl.style.display = "flex";
+    if (ovMsg) ovMsg.textContent = msg || "Loading your result…";
+    if (ovCnt) ovCnt.style.display = "block";
 
-  const target = notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000);
-  function tick(){
-    const r = Math.max(0, target - Date.now());
-    ovCnt.textContent = String(Math.ceil(r/1000));
-    if (r <= 0 && pollTimer){ clearInterval(pollTimer); pollTimer = null; }
-  }
-  tick();
-  const id = setInterval(tick, 200);
-  // keep this countdown local; don't reuse global timer ids
-  setTimeout(() => clearInterval(id), (secs||3)*1000 + 1200);
+   const target = notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000);
+   function tick(){ const r=Math.max(0,target-Date.now()); ovCnt.textContent=String(Math.ceil(r/1000)); if(r<=0&&timer){clearInterval(timer); timer=null;} }
+   if(timer) clearInterval(timer); tick(); timer=setInterval(tick,200);
 }
 
-function expired(s){
-  const v = s && s.expires_at;
-  if (!v) return false;
-  const t = Date.parse(v);
-  return Number.isFinite(t) && Date.now() > t;
+function expired(s){ 
+    const v = s && s.expires_at;
+    if (!v) return false;                
+    const t = Date.parse(v);
+    return Number.isFinite(t) && Date.now() > t;
 }
 
-// --- fetch helpers with timeout and ETag support ---
-async function fetchWithTimeout(resource, options = {}) {
-  const { timeout = 5000 } = options; // 5s hard timeout
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const res = await fetch(resource, { ...options, signal: controller.signal });
-    return res;
-  } finally {
-    clearTimeout(id);
-  }
-}
+async function fetchJSON(url, et){ const r=await fetch(url,{cache:"no-cache", headers: et?{"If-None-Match":et}:{}}); if(r.status===304) return {notModified:true, et}; return {json:await r.json(), et:r.headers.get("ETag")}; }
 
-async function fetchJSON(url, et){
-  const headers = et ? { "If-None-Match": et } : {};
-  const res = await fetchWithTimeout(url, { cache: "no-cache", headers, timeout: 7000 });
-  if (res.status === 304) return { notModified: true, et };
-  const nextEt = res.headers.get("ETag");
-  const json   = await res.json();
-  return { json, et: nextEt };
-}
-
-// --- main apply / stage handling ---
 function applyCurrent(cur){
-  try {
-    const bp  = Number(cur?.bp ?? 0);
+  try{
+    const bp = Number(cur?.bp ?? 0);
     const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
-    if (Number.isFinite(bp) && typeof window.setUserBp === "function") {
+    
+    //console.log(`[applyCurrent] Setting BP: ${bp}, Intensities:`, cur?.intensities);
+    
+    if (Number.isFinite(bp)) {
+      // Store the raw BP value globally for reference
       window.RAW_BP_VALUE = bp;
-      window.setUserBp(bp);     // normalization + DOM updates handled in app.js
+      
+      // ONLY call the BP manager - let it handle normalization and DOM updates
+      if (typeof window.setUserBp === "function") {
+        window.setUserBp(bp);
+        //console.log(`[applyCurrent] Called setUserBp(${bp}) - BPManager will handle normalization`);
+      }
     }
+    
+    // FIXED: Pass full data object to dashboard manager for proper filtering
     if (typeof window.updateDashboardDisplay === "function") {
       window.updateDashboardDisplay({
-        bp,
+        bp: bp,
         intensities: cur?.intensities || {},
         intensity_top: top,
         distribution: cur?.distribution || null
       });
+      //console.log(`[applyCurrent] Called updateDashboardDisplay with full data including intensities`);
     }
-  } catch (e) {
-    console.error("[applyCurrent] Error:", e);
+    
+  } catch(e){ 
+    console.error('[applyCurrent] Error:', e);
   }
 }
 
-// --- polling loop with backoff ---
-async function pollOnce(){
-  try {
-    // fast-fail if currently applying a result
-    if (rendering) return;
-
-    const s = await fetchJSON(STATE_URL, etag);
-    if (s.notModified) { backoffMs = 0; return; }
-    if (s.et) etag = s.et;
-    const curEt = s.et || null;
-
-    const st = s.json || {};
-    // compute a canonical "stage"
-    let stage = st.stage || st.state || "idle";
-    if (stage === "landing")   stage = "idle";
-    if (stage === "countdown") stage = "in_progress";
-
-    // overlay synthesis (if Lambda didn’t provide one)
-    let ov = st.overlay;
-    if (!ov || typeof ov !== "object") {
-      if (st.state === "countdown") {
-        ov = { type:"countdown", message: st.message || "Loading your result…", not_before: st.countdown_end };
-      } else if (st.state === "in_progress") {
-        ov = { type:"note", message: st.message || "Please complete your survey questions!" };
-      } else {
-        ov = {};
-      }
-    }
-
-    // baseline for result replay protection
-    if (baselineEt === null) {
-      baselineEt = curEt;
-    }
-
-    // handle expired -> land
-    if (expired(st)) { hideOverlay(); window.setMode?.("landing"); backoffMs = 0; return; }
-
-    // idle/in_progress overlays
-    if (stage === "idle") {
-      hideOverlay();
-      window.setMode?.("landing");
-      backoffMs = 0;
-      return;
-    }
-
-    if (stage === "in_progress") {
-      if (ov.type === "countdown") showCountdown(ov.message, ov.countdown_secs, ov.not_before);
-      else showNote(ov.message);
-      window.setMode?.("landing");
-      backoffMs = 0;
-      return;
-    }
-
-    // show_result path: fetch current FIRST, then flip mode
-    if (stage === "show_result") {
-      hideOverlay();
-
-      const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
-      if (!changed || rendering) { backoffMs = 0; return; }
-
-      rendering = true;
-      try {
-        const c = await fetchJSON(RESULT_URL);
-        if (!c.notModified && c.json) {
-          applyCurrent(c.json);
+async function poll(){
+    try{
+      const s = await fetchJSON(STATE_URL, etag);
+      if (s.notModified) return;
+      if (s.et) etag = s.et;
+      const curEt = s.et || null;
+  
+      const st = s.json || {};
+      if (expired(st)) { hideOverlay(); window.setMode?.("landing"); return; }
+  
+      // Accept either {stage} or {state}
+      let stage = st.stage || st.state || "idle";
+      if (stage === "landing")   stage = "idle";
+      if (stage === "countdown") stage = "in_progress";
+  
+      // Synthesize overlay if the Lambda wrote root fields
+      let ov = st.overlay;
+      if (!ov || typeof ov !== "object") {
+        if (st.state === "countdown") {
+          ov = { type:"countdown", message: st.message || "Loading your result…", not_before: st.countdown_end };
+        } else if (st.state === "in_progress") {
+          ov = { type:"note", message: st.message || "Please complete your survey questions!" };
+        } else {
+          ov = {};
         }
-        // allow DOM to settle
-        await new Promise(r => setTimeout(r, 200));
-        await window.setMode?.("result");
-        lastRenderedEt = curEt;
-      } finally {
-        rendering = false;
       }
-      backoffMs = 0;
-      return;
+  
+      // Baseline only to avoid replaying old *results*; do not drop overlays
+      if (baselineEt === null) {
+        baselineEt = curEt;
+        if (stage !== "show_result") {
+          // fall through and render overlay immediately
+        }
+      }
+  
+      if (stage === "idle"){
+        hideOverlay(); window.setMode?.("landing"); return;
+      }
+      if (stage === "in_progress"){
+        if (ov.type === "countdown") showCountdown(ov.message, ov.countdown_secs, ov.not_before);
+        else showNote(ov.message);
+        window.setMode?.("landing"); return;
+      }
+      
+      // FIXED: Reorder the show_result logic
+      if (stage === "show_result"){
+        hideOverlay();
+        const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
+        if (!changed || rendering) return;
+        rendering = true;
+        
+        try {
+          // STEP 1: Fetch the current data FIRST
+          const c = await fetchJSON(RESULT_URL);
+          //console.log(`[poll] Fetched result data:`, c.json);
+          
+          // STEP 2: Apply the data to ensure BP value is set correctly
+          if (!c.notModified && c.json) {
+            applyCurrent(c.json);
+          }
+          
+          // STEP 3: Small delay to ensure DOM updates are complete
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // STEP 4: THEN switch to result mode
+          await window.setMode?.("result");
+          
+          lastRenderedEt = curEt;
+        } catch (error) {
+          console.error('[poll] Error in show_result:', error);
+        } finally {
+          rendering = false;
+        }
+        return;
+      }
+      
+      hideOverlay(); window.setMode?.("landing");
+    }catch(e){ 
+      console.error('[poll] Error:', e);
     }
-
-    // any unknown state -> land
-    window.setMode?.("landing");
-    backoffMs = 0;
-
-  } catch (e) {
-    // Network hiccup: do not flip modes; show a gentle note and back off a bit
-    console.error("[poll] Error:", e);
-    showNote(navigator.onLine ? "Network issue — showing landing loop" : "Offline — showing landing loop");
-    backoffMs = Math.min(maxBackoffMs, (backoffMs || 2000) * 1.5);
-  }
 }
-
-function scheduleNextPoll(){
-  clearTimeout(pollTimer);
-  const delay = baseIntervalMs + (backoffMs || 0);
-  pollTimer = setTimeout(async () => {
-    await pollOnce();
-    scheduleNextPoll();
-  }, delay);
-}
-
-// online/offline hints (optional nicety)
-window.addEventListener("online",  () => { hideOverlay(); backoffMs = 0; });
-window.addEventListener("offline", () => { showNote("Offline — showing landing loop"); });
 
 window.addEventListener("load", () => {
-  // Expose helpers for manual rendering if needed
   window.renderLanding   = async () => { hideOverlay(); window.setMode?.("landing"); };
   window.renderDashboard = async (c)  => { hideOverlay(); window.setMode?.("result"); applyCurrent(c||{}); };
-
-  // initial state
   window.renderLanding?.();
-  scheduleNextPoll();
+  setInterval(poll, 2000);
 });
-
