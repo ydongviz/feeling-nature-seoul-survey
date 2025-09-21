@@ -1327,10 +1327,6 @@ async function setMode(newMode) {
   } else if (newMode === Modes.RESULT) {
     showDashboardLayout();
     hideHeaderLogos();
-    hideAllMedia(); 
-    fadeInVisualization();
-
-
     buildAllContent();
 
     await ensureMapReady();
@@ -1482,57 +1478,25 @@ function hideAllMedia() {
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
   
-  // Add fade transition class to media elements
   if (gif) {
-    gif.classList.add('fade-transition');
-    gif.classList.add('fade-out');
+    gif.style.opacity = '0';
+    setTimeout(() => {
+      gif.style.display = 'none';
+      gif.style.opacity = '1';
+    }, 500);
   }
   
   if (video) {
-    video.classList.add('fade-transition');
-    video.classList.add('fade-out');
-  }
-  
-  // Show map/canvas immediately (they'll fade in via result sequence)
-  if (map) map.style.display = 'block';
-  if (canvas) canvas.style.display = 'block';
-  
-  // Clean up media elements after fade completes
-  setTimeout(() => {
-    if (gif) {
-      gif.style.display = 'none';
-      gif.classList.remove('fade-transition', 'fade-out');
-      gif.style.opacity = '1'; // Reset for next time
-    }
-    
-    if (video) {
+    video.style.opacity = '0';
+    setTimeout(() => {
       video.style.display = 'none';
       video.pause();
-      video.classList.remove('fade-transition', 'fade-out');
-      video.style.opacity = '1'; // Reset for next time
-    }
-  }, 800); // Match CSS transition duration
-}
-
-function fadeInVisualization() {
-  const map = document.getElementById('map');
-  const canvas = document.getElementById('visualization-canvas');
-  
-  if (map) {
-    map.style.opacity = '0';
-    map.style.transition = 'opacity 0.6s ease-in-out';
-    setTimeout(() => {
-      map.style.opacity = '1';
-    }, 100);
+      video.style.opacity = '1';
+    }, 500);
   }
   
-  if (canvas) {
-    canvas.style.opacity = '0';
-    canvas.style.transition = 'opacity 0.6s ease-in-out';
-    setTimeout(() => {
-      canvas.style.opacity = '1';
-    }, 100);
-  }
+  if (map) map.style.display = 'block';
+  if (canvas) canvas.style.display = 'block';
 }
 
 function preloadVideo() {
