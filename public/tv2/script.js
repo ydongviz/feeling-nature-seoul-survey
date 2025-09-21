@@ -28,7 +28,9 @@ const baseVolume = 1.0;
 const volumeTransitionSpeed = 0.02; // smooth transitions
 let didPrimeAudio = false;
 let audioUnlocked = false; 
+
 let pendingVideoStart = false;
+let isTransitioning = false;  
 
 // ===== THREE globals =====
 let scene, camera, renderer, controls;
@@ -591,7 +593,10 @@ function startLanding(){
 }
 
 function toBiomeDots(){
-  if (isTransformed) return;
+  //if (isTransformed) return;
+  if (isTransformed || isTransitioning) return;  // CHANGE THIS LINE
+  isTransitioning = true;                        // ADD THIS
+  setTimeout(() => { isTransitioning = false; }, 3000);  // ADD THIS
 
   // Fade out music while transitioning to dots
   fadeOutMusic(1500);
