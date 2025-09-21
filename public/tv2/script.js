@@ -148,7 +148,6 @@ function updateMusicVolume(p90Height, maxHeight) {
 function primeAudioOnce() {
   if (didPrimeAudio || !backgroundMusic) return;
   didPrimeAudio = true;
-
   audioUnlocked = true; 
 
   if (isVideoMode) return; // don't start landing music while in video
@@ -686,6 +685,10 @@ function showVideo(){
   // Mark mode & stop background music overlap
   currentMode = 'video';
   isVideoMode = true;
+
+  if (backgroundMusic && !backgroundMusic.paused) {
+    backgroundMusic.pause();
+  }
   fadeOutMusic(1200);
 
   // Reveal container FIRST (so layout exists)
@@ -881,11 +884,14 @@ async function tick(){
   
   // One-shot audio resume handler for mobile browsers, but not during video
   const resumeAudioOnce = ()=>{
-    if (!isVideoMode && backgroundMusic.paused){
+    if (isVideoMode || currentMode === 'video') return;
+    
+    if (currentMode === 'landing' && backgroundMusic.paused){
       try { backgroundMusic.play().catch(()=>{}); } catch {}
     }
     document.removeEventListener('pointerdown', resumeAudioOnce, { capture:true });
   };
+
   document.addEventListener('pointerdown', resumeAudioOnce, { capture:true, once:true });
 
   // Start polling for state changes
