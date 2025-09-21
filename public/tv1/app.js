@@ -1939,3 +1939,39 @@ window.addEventListener('beforeunload', () => {
   simpleMediaCache.cleanup();
   simpleMemoryManager.cleanup();
 });
+
+
+(() => {
+  let warmed = false;
+
+  function warmMedia() {
+    if (warmed) return;
+    warmed = true;
+
+    // Warm the landing GIF into memory
+    const warmGif = new Image();
+    warmGif.decoding = 'async';
+    warmGif.src = 'img/fn-landing2.gif';
+
+    // Nudge the landing video to buffer (preload=auto helps)
+    const v = document.getElementById('landingVideo');
+    if (v && v.readyState < 4) {
+      // If the source is set in HTML, load() re-triggers buffering
+      v.load();
+    }
+  }
+
+  // Run as soon as DOM is ready (your scripts are at the end of <body>, so both work)
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    // defer to end of current task so layout is settled
+    setTimeout(warmMedia, 0);
+  } else {
+    window.addEventListener('DOMContentLoaded', warmMedia, { once: true });
+  }
+
+  // If the page was restored from bfcache, pageshow fires again (nice for kiosk refreshes)
+  window.addEventListener('pageshow', () => {
+    // don’t re-run heavy work; warmed flag prevents duplicates
+    warmMedia();
+  });
+})();
