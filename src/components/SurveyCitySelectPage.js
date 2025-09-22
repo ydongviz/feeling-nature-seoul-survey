@@ -75,6 +75,7 @@ const RadioForm = ({lang}) => {
         }
     };
 
+
     // ENHANCED: Create options with iPad-specific touch handling
     const createRadioOption = (value, labelKey) => {
         const uniqueId = `seoulResidency-${value}`;
