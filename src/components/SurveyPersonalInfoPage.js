@@ -29,14 +29,12 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
         const labelLocaleText = lang ? locale_text(lang, `survey-personal-info-question-gender-option-${value}`) : value;
         const uniqueId = `${registerName}-${value}`;
         
-        // ENHANCED: Click handler for entire container
-        const handleContainerClick = () => {
+        // FIXED: Click handler that properly triggers react-hook-form
+        const handleContainerClick = (e) => {
+            e.preventDefault();
             const radioButton = document.getElementById(uniqueId);
-            if (radioButton) {
-                radioButton.checked = true;
-                // Trigger change event for react-hook-form
-                const event = new Event('change', { bubbles: true });
-                radioButton.dispatchEvent(event);
+            if (radioButton && !radioButton.checked) {
+                radioButton.click(); // Use click() instead of setting checked directly
             }
         };
         
@@ -44,7 +42,7 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
             <div 
                 className="personal-info-grid-item" 
                 key={`${registerName}-${index}`}
-                onClick={handleContainerClick} // ADDED: Make entire container clickable
+                onClick={handleContainerClick}
                 style={{ cursor: 'pointer' }}
             >
                 <input 
@@ -53,11 +51,10 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
                     id={uniqueId}
                     value={value}
                     {...registerFunc(registerName, {required: true})}
-                    style={{ pointerEvents: 'auto' }} // ADDED: Re-enable for form functionality
                 />
                 <label 
                     htmlFor={uniqueId}
-                    onClick={(e) => e.stopPropagation()} // ADDED: Prevent double firing
+                    // REMOVED: onClick preventDefault to allow normal label behavior
                 >
                     {labelLocaleText}
                 </label>
