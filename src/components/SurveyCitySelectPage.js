@@ -8,6 +8,28 @@ import './theme.css';
 import './SurveyCitySelectPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";
 
+
+// Reusable Logo Component for all pages
+const PageLogo = () => {
+    return (
+        <div className="global-page-logo">
+            <a 
+                href="https://senseable.mit.edu/feeling-nature/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="global-page-logo-link"
+            >
+                <img 
+                    src="/fn-logo2.gif" 
+                    alt="Feeling Nature" 
+                    className="global-page-logo-image"
+                />
+            </a>
+        </div>
+    );
+};
+
+
 // Progress Bar Component
 const ProgressBar = ({ currentStep, totalSteps }) => {
     return (
@@ -114,8 +136,29 @@ const RadioForm = ({lang}) => {
     return (
         <form onSubmit={handleSubmit(onSubmit)}>
             <div className="survey-city-select-grid-container">
-                {createRadioOption('yes', 'seoul-residency-yes')}
-                {createRadioOption('no', 'seoul-residency-no')}
+                <div className="div-option-item">
+                    <input
+                        type="radio"
+                        id="yes"
+                        value="yes"
+                        {...register('seoulResidency', { required: true })}
+                    />
+                    <label htmlFor="yes">
+                        {locale_text(lang, 'seoul-residency-yes')}
+                    </label>
+                </div>
+                
+                <div className="div-option-item">
+                    <input
+                        type="radio"
+                        id="no"
+                        value="no"
+                        {...register('seoulResidency', { required: true })}
+                    />
+                    <label htmlFor="no">
+                        {locale_text(lang, 'seoul-residency-no')}
+                    </label>
+                </div>
             </div>
 
             <SubmitButton disabled={!isDirty || !isValid}>
