@@ -8,28 +8,6 @@ import './theme.css';
 import './SurveyCitySelectPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";
 
-
-// Reusable Logo Component for all pages
-const PageLogo = () => {
-    return (
-        <div className="global-page-logo">
-            <a 
-                href="https://senseable.mit.edu/feeling-nature/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="global-page-logo-link"
-            >
-                <img 
-                    src="/fn-logo2.gif" 
-                    alt="Feeling Nature" 
-                    className="global-page-logo-image"
-                />
-            </a>
-        </div>
-    );
-};
-
-
 // Progress Bar Component
 const ProgressBar = ({ currentStep, totalSteps }) => {
     return (
@@ -75,32 +53,50 @@ const RadioForm = ({lang}) => {
         }
     };
 
+    // ENHANCED: Create options with larger touch areas
+    const createRadioOption = (value, labelKey) => {
+        const uniqueId = `seoulResidency-${value}`;
+        
+        // ENHANCED: Click handler for entire container
+        const handleContainerClick = () => {
+            const radioButton = document.getElementById(uniqueId);
+            if (radioButton) {
+                radioButton.checked = true;
+                // Trigger change event for react-hook-form
+                const event = new Event('change', { bubbles: true });
+                radioButton.dispatchEvent(event);
+            }
+        };
+
+        return (
+            <div 
+                className="div-option-item"
+                key={value}
+                onClick={handleContainerClick} // ADDED: Make entire container clickable
+                style={{ cursor: 'pointer' }}
+            >
+                <input
+                    type="radio"
+                    id={uniqueId}
+                    value={value}
+                    {...register('seoulResidency', { required: true })}
+                    style={{ pointerEvents: 'auto' }} // ADDED: Re-enable for form functionality
+                />
+                <label 
+                    htmlFor={uniqueId}
+                    onClick={(e) => e.stopPropagation()} // ADDED: Prevent double firing
+                >
+                    {locale_text(lang, labelKey)}
+                </label>
+            </div>
+        );
+    };
+
     return (
         <form onSubmit={handleSubmit(onSubmit)}>
             <div className="survey-city-select-grid-container">
-                <div className="div-option-item">
-                    <input
-                        type="radio"
-                        id="yes"
-                        value="yes"
-                        {...register('seoulResidency', { required: true })}
-                    />
-                    <label htmlFor="yes">
-                        {locale_text(lang, 'seoul-residency-yes')}
-                    </label>
-                </div>
-                
-                <div className="div-option-item">
-                    <input
-                        type="radio"
-                        id="no"
-                        value="no"
-                        {...register('seoulResidency', { required: true })}
-                    />
-                    <label htmlFor="no">
-                        {locale_text(lang, 'seoul-residency-no')}
-                    </label>
-                </div>
+                {createRadioOption('yes', 'seoul-residency-yes')}
+                {createRadioOption('no', 'seoul-residency-no')}
             </div>
 
             <SubmitButton disabled={!isDirty || !isValid}>

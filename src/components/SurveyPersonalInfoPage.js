@@ -1,4 +1,3 @@
-//import {React} from "react";
 import React from "react";
 import {useStateMachine} from "little-state-machine";
 import {Link, useNavigate, useParams} from "react-router-dom";
@@ -9,7 +8,6 @@ import './theme.css';
 import './SurveyPersonalInfoPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";
 import { tvState, getSessionId } from '../stateApi';
-
 
 // Reusable Progress Bar Component (same as other pages)
 const ProgressBar = ({ currentStep, totalSteps }) => {
@@ -25,22 +23,42 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
     );
 };
 
-// Radio Form Options with hover effects
+// ENHANCED: Radio Form Options with better touch sensitivity
 const RadioFormOptions = (options, registerName, registerFunc, lang) => {
     const optionList = options.map((value, index) => {
         const labelLocaleText = lang ? locale_text(lang, `survey-personal-info-question-gender-option-${value}`) : value;
         const uniqueId = `${registerName}-${value}`;
         
+        // ENHANCED: Click handler for entire container
+        const handleContainerClick = () => {
+            const radioButton = document.getElementById(uniqueId);
+            if (radioButton) {
+                radioButton.checked = true;
+                // Trigger change event for react-hook-form
+                const event = new Event('change', { bubbles: true });
+                radioButton.dispatchEvent(event);
+            }
+        };
+        
         return (
-            <div className="personal-info-grid-item" key={`${registerName}-${index}`}>
+            <div 
+                className="personal-info-grid-item" 
+                key={`${registerName}-${index}`}
+                onClick={handleContainerClick} // ADDED: Make entire container clickable
+                style={{ cursor: 'pointer' }}
+            >
                 <input 
                     className="radio-item"
                     type="radio"
                     id={uniqueId}
                     value={value}
                     {...registerFunc(registerName, {required: true})}
+                    style={{ pointerEvents: 'auto' }} // ADDED: Re-enable for form functionality
                 />
-                <label htmlFor={uniqueId}>
+                <label 
+                    htmlFor={uniqueId}
+                    onClick={(e) => e.stopPropagation()} // ADDED: Prevent double firing
+                >
                     {labelLocaleText}
                 </label>
             </div>
@@ -68,7 +86,6 @@ function sendSurveyData(id, _data, success) {
         data_['/language'] = _data.language;
     }
 
-
     for (const [key, value] of Object.entries(_data)) {
         if (key.startsWith(id)) {
             const _key = key.substring(id.length);
@@ -78,11 +95,6 @@ function sendSurveyData(id, _data, success) {
     const data = {};
     data[id] = data_;
     
-    //console.log("=== SURVEY SUBMISSION START ===");
-    //console.log("Survey ID:", id);
-    //console.log("Sending survey data:", JSON.stringify(data, null, 2));
-    //console.log("Request timestamp:", new Date().toISOString());
-    
     // Send to backend with enhanced logging
     axios.post('/api/upload', data, {
         timeout: 30000, // 30 second timeout
@@ -91,12 +103,6 @@ function sendSurveyData(id, _data, success) {
         }
     })
     .then(response => {
-        //console.log("=== UPLOAD SUCCESS ===");
-        //console.log("Response status:", response.status);
-        //console.log("Response data:", response.data);
-        //console.log("Response headers:", response.headers);
-        //console.log("Upload completed at:", new Date().toISOString());
-        
         // Always call success callback - let the user experience be smooth
         success();
     })
@@ -119,7 +125,6 @@ function sendSurveyData(id, _data, success) {
         console.log("=== END ERROR LOG ===");
         
         // Still call success callback to not break user flow
-        // You can monitor the console logs to track actual failures
         success();
     });
 }
@@ -137,7 +142,6 @@ export function SurveyPersonalInfoPage() {
     const {actions, state} = useStateMachine({
         simpleUpdate: (state, payload) => ({...state, ...payload}), 
         resetStateMachine: (state, payload) => {
-            //console.log("ResetPreviousState", state);
             return {};
         },
     });
@@ -157,24 +161,20 @@ export function SurveyPersonalInfoPage() {
         }
 
         actions.simpleUpdate(data);
-        //const sendingData = {...state, ...data};
         const sendingData = {
             language: state['language'] || DEFAULT_LANG,
             ...state, 
             ...data
         };
 
-        // Send the request to the backend endpoint using axios with POST /survey
-        //const success = actions.resetStateMachine;
-
         // Create a custom success function that preserves language
         const success = () => {
-        // Reset survey data but keep language
-           const currentLang = state['language'];
-           actions.resetStateMachine();
+            // Reset survey data but keep language
+            const currentLang = state['language'];
+            actions.resetStateMachine();
             if (currentLang) {
-              actions.simpleUpdate({ language: currentLang });
-           }
+                actions.simpleUpdate({ language: currentLang });
+            }
         };
         
         sendSurveyData(surveyid, sendingData, success);

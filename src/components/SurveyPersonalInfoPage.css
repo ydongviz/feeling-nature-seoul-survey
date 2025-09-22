@@ -13,7 +13,7 @@
 
 /* Section spacing */
 .container-section {
-    margin: 30px 0; /* Reduced from 40px for better centering */
+    margin: 30px 0;
 }
 
 /* Personal info grid - use responsive layout */
@@ -25,18 +25,16 @@
 }
 
 .personal-info-grid-item {
-    /* Use global .div-option-item styles but with specific class for this page */
     margin-right: 20px;
-    display: inline-block;
-    align-content: flex-end;
+    display: flex; /* CHANGED: Use flex for better alignment */
+    align-items: center; /* CHANGED: Center align items */
     flex-direction: row;
-    align-items: flex-start;
-    padding: 15px 20px; /* INCREASED: Larger padding for better touch targets */
+    padding: 15px 20px;
     border-radius: 6px;
     transition: all 0.3s ease;
     cursor: pointer;
-    min-width: 140px; /* INCREASED: Larger minimum width */
-    min-height: 56px; /* ADDED: Ensure good touch target height */
+    min-width: 140px;
+    min-height: 56px;
     /* IPAD TOUCH OPTIMIZATIONS */
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
@@ -55,51 +53,59 @@
     color: var(--primary-color);
 }
 
-/* UPDATED: Much larger radio buttons for iPad */
+/* FIXED: Balanced radio button sizes */
 .personal-info-grid-item input[type='radio'] {
     -webkit-appearance: none;
-    width: 24px; /* INCREASED: From 16px to 24px */
-    height: 24px; /* INCREASED: From 16px to 24px */
+    width: 20px; /* REDUCED: From 24px to 20px for better balance */
+    height: 20px; /* REDUCED: From 24px to 20px */
     border-radius: 50%;
     outline: none;
-    border: 3px solid var(--primary-color); /* INCREASED: From 2px to 3px */
-    margin-right: 15px; /* INCREASED: From 10px to 15px */
+    border: 3px solid var(--primary-color);
+    margin-right: 12px; /* REDUCED: From 15px to 12px */
     cursor: pointer;
+    flex-shrink: 0; /* ADDED: Prevent shrinking */
     /* IPAD TOUCH OPTIMIZATIONS */
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     position: relative;
     z-index: 2;
-    /* Better visual feedback */
     transition: all 0.2s ease;
 }
 
 .personal-info-grid-item input[type='radio']:checked {
-    border: 9px solid var(--primary-color); /* INCREASED: From 8px to 9px */
-    /* Add a subtle scale effect when selected */
-    transform: scale(1.1);
+    border: 7px solid var(--primary-color); /* REDUCED: From 9px to 7px */
+    transform: scale(1.05); /* REDUCED: From 1.1 to 1.05 */
 }
 
-/* ADDED: Touch feedback for radio buttons */
+/* ENHANCED: Make entire container clickable, not just the radio dot */
+.personal-info-grid-item {
+    /* The entire container is now the click target */
+}
+
 .personal-info-grid-item input[type='radio']:active {
     transform: scale(0.95);
     background-color: rgba(105, 152, 21, 0.1);
 }
 
+/* ENHANCED: Make label clickable and part of larger touch area */
 .personal-info-grid-item label {
-    font-size: 18px; /* INCREASED: From 17px to 18px */
-    display: inline-block;
-    vertical-align: top;
-    margin-top: 2px; /* ADJUSTED: To align with larger radio button */
-    margin-left: 0;
+    font-size: 17px; /* REDUCED: From 18px to 17px */
+    display: flex;
+    align-items: center;
+    margin: 0; /* RESET: Remove all margins */
     transition: color 0.3s ease;
     cursor: pointer;
+    flex: 1;
     /* Better touch experience */
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    line-height: 1.3;
+    /* IMPORTANT: Make label fill the remaining space for larger click area */
+    height: 100%;
+    padding: 8px 0; /* ADDED: Padding for larger click target */
 }
 
-/* ADDED: Enhanced touch feedback for the entire option */
+/* ENHANCED: Touch feedback for the entire option container */
 @media (hover: none) and (pointer: coarse) {
     .personal-info-grid-item:active {
         background-color: #f8f9fa;
@@ -112,7 +118,7 @@
     
     .personal-info-grid-item:active input[type='radio'] {
         border-color: var(--primary-color);
-        transform: scale(1.05);
+        transform: scale(1.02);
     }
 }
 
@@ -134,15 +140,15 @@
 @media (max-width: 768px) {
     .personal-info-grid-container {
         flex-direction: column;
-        gap: 15px; /* INCREASED: From 10px for better spacing */
+        gap: 15px;
     }
     
     .personal-info-grid-item {
         width: 100%;
         margin-right: 0;
-        margin-bottom: 15px; /* INCREASED: From 10px */
-        padding: 18px 20px; /* INCREASED: Even larger on mobile */
-        min-height: 60px; /* INCREASED: Larger touch targets on mobile */
+        margin-bottom: 15px;
+        padding: 18px 20px;
+        min-height: 60px;
     }
     
     .container-section {
@@ -154,21 +160,20 @@
         margin-bottom: 15px;
     }
     
-    /* EVEN LARGER radio buttons on mobile */
+    /* Slightly larger on mobile but not excessive */
     .personal-info-grid-item input[type='radio'] {
-        width: 28px; /* INCREASED: Even larger on mobile */
-        height: 28px;
-        border: 4px solid var(--primary-color);
-        margin-right: 18px;
+        width: 22px; /* REDUCED: From 28px to 22px */
+        height: 22px;
+        border: 3px solid var(--primary-color);
+        margin-right: 14px;
     }
     
     .personal-info-grid-item input[type='radio']:checked {
-        border: 10px solid var(--primary-color);
+        border: 8px solid var(--primary-color); /* REDUCED: From 10px to 8px */
     }
     
     .personal-info-grid-item label {
-        font-size: 19px; /* INCREASED: Larger text on mobile */
-        margin-top: 1px;
+        font-size: 18px;
     }
 }
 
@@ -178,23 +183,22 @@
     }
     
     .personal-info-grid-item {
-        padding: 20px 18px; /* INCREASED: Maximum touch area */
-        min-height: 64px; /* INCREASED: Maximum touch height */
+        padding: 20px 18px;
+        min-height: 64px;
     }
     
     .personal-info-grid-item label {
-        font-size: 18px;
+        font-size: 17px;
     }
     
-    /* MAXIMUM size radio buttons for small screens */
     .personal-info-grid-item input[type='radio'] {
-        width: 30px;
-        height: 30px;
-        border: 4px solid var(--primary-color);
-        margin-right: 20px;
+        width: 24px; /* REDUCED: From 30px to 24px */
+        height: 24px;
+        border: 3px solid var(--primary-color);
+        margin-right: 16px;
     }
     
     .personal-info-grid-item input[type='radio']:checked {
-        border: 11px solid var(--primary-color);
+        border: 9px solid var(--primary-color); /* REDUCED: From 11px to 9px */
     }
 }
