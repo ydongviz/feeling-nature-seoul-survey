@@ -25,16 +25,16 @@
 }
 
 .personal-info-grid-item {
-    margin-right: 20px;
-    display: flex; /* CHANGED: Use flex for better alignment */
-    align-items: center; /* CHANGED: Center align items */
+    margin-right: 15px; /* REDUCED: From 20px */
+    display: flex;
+    align-items: center;
     flex-direction: row;
-    padding: 15px 20px;
+    padding: 12px 16px; /* REDUCED: From 15px 20px */
     border-radius: 6px;
     transition: all 0.3s ease;
     cursor: pointer;
-    min-width: 140px;
-    min-height: 56px;
+    min-width: 120px; /* REDUCED: From 140px */
+    min-height: 48px; /* REDUCED: From 56px */
     /* IPAD TOUCH OPTIMIZATIONS */
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
