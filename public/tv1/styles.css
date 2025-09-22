@@ -126,7 +126,7 @@ body:not(.result-mode) .header-logos {
 /* REPLACE the existing .header-logos style with this: */
 .header-logos {
   position: fixed;
-  top: 20px;
+  top: 45px;
   left: 0;
   right: 0;
   z-index: 20;
@@ -142,12 +142,12 @@ body:not(.result-mode) .header-logos {
 
 /* Fixed positioning for each logo */
 .header-logo:first-child {
-  left: 40px; /* Left logo always stays at left corner */
+  left: 80px; /* Left logo always stays at left corner */
   height: 70px;
 }
 
 .header-logo:last-child {
-  right: 40px; /* Right logo always stays at right corner */
+  right: 80px; /* Right logo always stays at right corner */
   height: 20px;
 }
 
