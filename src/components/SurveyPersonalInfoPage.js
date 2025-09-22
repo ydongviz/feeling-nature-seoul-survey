@@ -23,18 +23,42 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
     );
 };
 
-// ENHANCED: Radio Form Options with better touch sensitivity
+// ENHANCED: Radio Form Options with iPad-specific touch handling
 const RadioFormOptions = (options, registerName, registerFunc, lang) => {
     const optionList = options.map((value, index) => {
         const labelLocaleText = lang ? locale_text(lang, `survey-personal-info-question-gender-option-${value}`) : value;
         const uniqueId = `${registerName}-${value}`;
         
-        // FIXED: Click handler that properly triggers react-hook-form
-        const handleContainerClick = (e) => {
+        // FIXED: iPad-specific touch handler
+        const handleTouchEnd = (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            
             const radioButton = document.getElementById(uniqueId);
             if (radioButton && !radioButton.checked) {
-                radioButton.click(); // Use click() instead of setting checked directly
+                // Force the radio button to be checked
+                radioButton.checked = true;
+                
+                // Create and dispatch proper events for react-hook-form
+                const changeEvent = new Event('change', { bubbles: true });
+                const inputEvent = new Event('input', { bubbles: true });
+                
+                radioButton.dispatchEvent(changeEvent);
+                radioButton.dispatchEvent(inputEvent);
+                
+                // Also trigger a focus event to ensure form validation
+                radioButton.focus();
+                radioButton.blur();
+            }
+        };
+
+        const handleClick = (e) => {
+            // For non-touch devices, let normal click work
+            if (!('ontouchstart' in window)) {
+                const radioButton = document.getElementById(uniqueId);
+                if (radioButton && !radioButton.checked) {
+                    radioButton.click();
+                }
             }
         };
         
@@ -42,7 +66,8 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
             <div 
                 className="personal-info-grid-item" 
                 key={`${registerName}-${index}`}
-                onClick={handleContainerClick}
+                onClick={handleClick}
+                onTouchEnd={handleTouchEnd} // Add touch-specific handler
                 style={{ cursor: 'pointer' }}
             >
                 <input 
@@ -52,10 +77,7 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
                     value={value}
                     {...registerFunc(registerName, {required: true})}
                 />
-                <label 
-                    htmlFor={uniqueId}
-                    // REMOVED: onClick preventDefault to allow normal label behavior
-                >
+                <label htmlFor={uniqueId}>
                     {labelLocaleText}
                 </label>
             </div>

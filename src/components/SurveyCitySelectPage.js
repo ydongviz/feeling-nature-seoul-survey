@@ -53,16 +53,40 @@ const RadioForm = ({lang}) => {
         }
     };
 
-    // ENHANCED: Create options with larger touch areas
+    // ENHANCED: Create options with iPad-specific touch handling
     const createRadioOption = (value, labelKey) => {
         const uniqueId = `seoulResidency-${value}`;
         
-        // FIXED: Click handler that properly triggers react-hook-form
-        const handleContainerClick = (e) => {
+        // FIXED: iPad-specific touch handler
+        const handleTouchEnd = (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            
             const radioButton = document.getElementById(uniqueId);
             if (radioButton && !radioButton.checked) {
-                radioButton.click(); // Use click() instead of setting checked directly
+                // Force the radio button to be checked
+                radioButton.checked = true;
+                
+                // Create and dispatch proper events for react-hook-form
+                const changeEvent = new Event('change', { bubbles: true });
+                const inputEvent = new Event('input', { bubbles: true });
+                
+                radioButton.dispatchEvent(changeEvent);
+                radioButton.dispatchEvent(inputEvent);
+                
+                // Also trigger a focus event to ensure form validation
+                radioButton.focus();
+                radioButton.blur();
+            }
+        };
+
+        const handleClick = (e) => {
+            // For non-touch devices, let normal click work
+            if (!('ontouchstart' in window)) {
+                const radioButton = document.getElementById(uniqueId);
+                if (radioButton && !radioButton.checked) {
+                    radioButton.click();
+                }
             }
         };
 
@@ -70,7 +94,8 @@ const RadioForm = ({lang}) => {
             <div 
                 className="div-option-item"
                 key={value}
-                onClick={handleContainerClick}
+                onClick={handleClick}
+                onTouchEnd={handleTouchEnd} // Add touch-specific handler
                 style={{ cursor: 'pointer' }}
             >
                 <input
@@ -79,10 +104,7 @@ const RadioForm = ({lang}) => {
                     value={value}
                     {...register('seoulResidency', { required: true })}
                 />
-                <label 
-                    htmlFor={uniqueId}
-                    // REMOVED: onClick preventDefault to allow normal label behavior
-                >
+                <label htmlFor={uniqueId}>
                     {locale_text(lang, labelKey)}
                 </label>
             </div>
