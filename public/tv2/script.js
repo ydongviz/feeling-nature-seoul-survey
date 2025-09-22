@@ -59,7 +59,7 @@ const uniforms = {
 
 // Field configuration
 const r = 4.8;
-const MAX_POINTS = 30000;
+const MAX_POINTS = 20000;
 let pointsCount = 0;
 let points = [], delay = [], speed = [], color = [];
 
@@ -166,7 +166,8 @@ function initScene() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  //renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(1); // Instead of Math.min(devicePixelRatio, 2)
   const bc = new THREE.Color(0x11130E);
   renderer.setClearColor(bc);
 
@@ -504,9 +505,21 @@ function sequence() {
     uniformsTree.time.value = t * 5; // tree animation timing
 
     // Update music volume during landing
-    if (!isTransformed && isPlaying && currentMode === 'landing') {
+    /*if (!isTransformed && isPlaying && currentMode === 'landing') {
       calculateP90AndUpdateVolume();
-    }
+    }*/
+
+  // Add this variable at top:
+let lastP90Update = 0;
+
+// Replace the music volume check in sequence():
+if (!isTransformed && isPlaying && currentMode === 'landing') {
+  const now = performance.now();
+  if (now - lastP90Update > 200) { // Every 200ms instead of every frame
+    calculateP90AndUpdateVolume();
+    lastP90Update = now;
+  }
+}
 
     controls.update();
     renderer.render(scene, camera);
@@ -520,7 +533,7 @@ function calculateP90AndUpdateVolume() {
   const UL = uniforms.upperLimit.value;
 
   // Sample-based P90
-  const SAMPLE = 2000;
+  const SAMPLE = 1000; //2000
   const total = delays.length;
   const idxs = new Uint32Array(Math.min(SAMPLE, total));
   for (let i = 0; i < idxs.length; i++) idxs[i] = (Math.random() * total) | 0;
