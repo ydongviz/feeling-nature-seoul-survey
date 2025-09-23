@@ -1652,6 +1652,10 @@ async function executeResultSequence() {
     app.state.isCircularView = false;  
     app.state.isHighlightMode = false
 
+    // CRITICAL FIX: Render clean map view FIRST
+    updateVisualizationCanvas(bpData, seoulData.coordinates.lat, seoulData.coordinates.lon, false);
+    await wait(500); // Give time to render clean state
+
     // Step 1: Map view with pulse
     app.state.isHighlightMode = true;
     ensureHighlightHasSamples();    
