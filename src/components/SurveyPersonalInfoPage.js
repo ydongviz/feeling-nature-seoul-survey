@@ -26,12 +26,12 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
 };
 
 // ENHANCED: Radio Form Options with iPad-specific touch handling
-const RadioFormOptions = (options, registerName, registerFunc, lang) => {
+const RadioFormOptions = (options, registerName, registerFunc, lang, setValue, trigger) => {
     const optionList = options.map((value, index) => {
         const labelLocaleText = lang ? locale_text(lang, `survey-personal-info-question-gender-option-${value}`) : value;
         const uniqueId = `${registerName}-${value}`;
         
-        // FIXED: iPad-specific touch handler
+        // FIXED: iPad-specific touch handler with proper react-hook-form integration
         const handleTouchEnd = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -41,16 +41,51 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
                 // Force the radio button to be checked
                 radioButton.checked = true;
                 
-                // Create and dispatch proper events for react-hook-form
-                const changeEvent = new Event('change', { bubbles: true });
-                const inputEvent = new Event('input', { bubbles: true });
+                // Create synthetic events that react-hook-form will recognize
+                const changeEvent = new Event('change', { 
+                    bubbles: true, 
+                    cancelable: true,
+                    composed: true 
+                });
+                const inputEvent = new Event('input', { 
+                    bubbles: true, 
+                    cancelable: true,
+                    composed: true 
+                });
                 
-                radioButton.dispatchEvent(changeEvent);
+                // Set the target value explicitly for react-hook-form
+                Object.defineProperty(changeEvent, 'target', {
+                    writable: false,
+                    value: radioButton
+                });
+                Object.defineProperty(inputEvent, 'target', {
+                    writable: false,
+                    value: radioButton
+                });
+                
+                // Dispatch events in correct order
                 radioButton.dispatchEvent(inputEvent);
+                radioButton.dispatchEvent(changeEvent);
                 
-                // Also trigger a focus event to ensure form validation
+                // Force form re-validation by triggering focus/blur
                 radioButton.focus();
-                radioButton.blur();
+                
+                // Use setTimeout to ensure all form updates complete
+                setTimeout(() => {
+                    radioButton.blur();
+                    // Manually trigger form validation if needed
+                    const form = radioButton.closest('form');
+                    if (form) {
+                        const submitEvent = new Event('change', { bubbles: true });
+                        form.dispatchEvent(submitEvent);
+                    }
+                    
+                    // ADDED: Fallback for iPad - manually update react-hook-form state
+                    if (setValue && trigger) {
+                        setValue(registerName, value, { shouldValidate: true, shouldDirty: true });
+                        trigger(registerName);
+                    }
+                }, 10);
             }
         };
 
@@ -61,6 +96,10 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
                 if (radioButton && !radioButton.checked) {
                     radioButton.click();
                 }
+            } else {
+                // On touch devices, prevent normal click and use touch handler
+                e.preventDefault();
+                e.stopPropagation();
             }
         };
         
@@ -164,7 +203,7 @@ function sendSurveyData(id, _data, success) {
 
 export function SurveyPersonalInfoPage() {
     const {
-        register, handleSubmit, watch,
+        register, handleSubmit, watch, setValue, trigger,
         formState: {isDirty, isValid}
     } = useForm();
 
@@ -186,6 +225,11 @@ export function SurveyPersonalInfoPage() {
     const optionsGenderGroup = ["Male", "Female", "Other", "Prefer not to answer"];
 
     const sessionId = getSessionId();
+
+    // Watch form values to manually check if both are selected (iPad fallback)
+    const ageGroupValue = watch('ageGroup');
+    const genderGroupValue = watch('genderGroup');
+    const isFormValid = ageGroupValue && genderGroupValue;
 
     const buttonSubmitOnClick = handleSubmit((_data) => {
         // Map each key value pair in _data to a new variable data, with key adding prefix surveyID
@@ -234,7 +278,7 @@ export function SurveyPersonalInfoPage() {
                     {locale_text(lang, "survey-personal-info-question-age")}
                 </h1>
                 <div className="container-after-two-digit">
-                    {RadioFormOptions(optionsAgeGroup, 'ageGroup', register, null)}
+                    {RadioFormOptions(optionsAgeGroup, 'ageGroup', register, null, setValue, trigger)}
                 </div>
             </div>
 
@@ -244,13 +288,13 @@ export function SurveyPersonalInfoPage() {
                     {locale_text(lang, "survey-personal-info-question-gender")}
                 </h1>
                 <div className="container-after-two-digit">
-                    {RadioFormOptions(optionsGenderGroup, 'genderGroup', register, lang)}
+                    {RadioFormOptions(optionsGenderGroup, 'genderGroup', register, lang, setValue, trigger)}
                 </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit Button - Use manual validation for iPad compatibility */}
             <SubmitButton
-                disabled={!isDirty || !isValid}
+                disabled={!isFormValid && (!isDirty || !isValid)}
                 onClick={buttonSubmitOnClick}
             >
                 {locale_text(lang, "survey-personal-info-submit-button")}
