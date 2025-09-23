@@ -26,13 +26,11 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
 };
 
 // ENHANCED: Radio Form Options with iPad-specific touch handling
-// Radio Form Options with hover effects
 const RadioFormOptions = (options, registerName, registerFunc, lang) => {
     const optionList = options.map((value, index) => {
         const labelLocaleText = lang ? locale_text(lang, `survey-personal-info-question-gender-option-${value}`) : value;
         const uniqueId = `${registerName}-${value}`;
         
-
         // FIXED: iPad-specific touch handler
         const handleTouchEnd = (e) => {
             e.preventDefault();
@@ -74,13 +72,6 @@ const RadioFormOptions = (options, registerName, registerFunc, lang) => {
                 onTouchEnd={handleTouchEnd} // Add touch-specific handler
                 style={{ cursor: 'pointer' }}
             >
-                
-        return (
-            <div className="personal-info-grid-item" key={`${registerName}-${index}`}>
-
-
-        return (
-            <div className="personal-info-grid-item" key={`${registerName}-${index}`}>
                 <input 
                     className="radio-item"
                     type="radio"
@@ -115,7 +106,6 @@ function sendSurveyData(id, _data, success) {
     if (_data.language) {
         data_['/language'] = _data.language;
     }
-
 
     for (const [key, value] of Object.entries(_data)) {
         if (key.startsWith(id)) {
