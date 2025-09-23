@@ -125,20 +125,21 @@ async function poll(){
         rendering = true;
         
         try {
-          // STEP 1: Fetch the current data FIRST
           const c = await fetchJSON(RESULT_URL);
-          //console.log(`[poll] Fetched result data:`, c.json);
           
-          // STEP 2: Apply the data to ensure BP value is set correctly
           if (!c.notModified && c.json) {
             applyCurrent(c.json);
           }
           
-          // STEP 3: Small delay to ensure DOM updates are complete
           await new Promise(resolve => setTimeout(resolve, 200));
-          
-          // STEP 4: THEN switch to result mode
           await window.setMode?.("result");
+          
+          // ADD THIS CRITICAL FIX:
+          await new Promise(resolve => setTimeout(resolve, 800)); // Give map time to render
+          if (window.app?.map) {
+            window.app.map.resize();
+            window.app.map.resize(); // Call twice to ensure it takes
+          }
           
           lastRenderedEt = curEt;
         } catch (error) {

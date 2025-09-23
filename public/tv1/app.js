@@ -1330,6 +1330,8 @@ async function setMode(newMode) {
     buildAllContent();
 
     await ensureMapReady();
+    if (app.map) { app.map.resize(); await wait(100); app.map.resize(); }
+
 
     const [, , dashboardData, participantsData] = await Promise.all([
       loadSeoulData('BS'),
