@@ -111,9 +111,9 @@ async function poll(){
     let ov = st.overlay;
     if (!ov || typeof ov !== "object") {
       if (st.state === "countdown") {
-        ov = { type:"countdown", message: st.message || BILINGUAL_TEXTS.loading, not_before: st.countdown_end };
+        ov = { type:"countdown", message: BILINGUAL_TEXTS.loading, not_before: st.countdown_end };
       } else if (st.state === "in_progress") {
-        ov = { type:"note", message: st.message || BILINGUAL_TEXTS.survey };
+        ov = { type:"note", message: BILINGUAL_TEXTS.survey };
       } else {
         ov = {};
       }
