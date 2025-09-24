@@ -1,4 +1,4 @@
-/* TV-1 kiosk adapter + state poller (production) - BILINGUAL VERSION - COMPLETE FIX */
+/* DEBUG VERSION - Language Investigation */
 const STATE_URL  = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 const RESULT_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
 
@@ -10,7 +10,6 @@ let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
 
-// FIXED: Correct Korean text (no corruption)
 const KIOSK_TEXTS = {
   en: {
     survey: "Please complete your survey questions!",
@@ -22,7 +21,7 @@ const KIOSK_TEXTS = {
   }
 };
 
-// CRITICAL: Track current language globally
+// Global language tracking
 let currentKioskLanguage = 'en';
 
 function hideOverlay(){ 
@@ -35,28 +34,38 @@ function showNote(msg, language = null){
   if (!ovEl) return;
   ovEl.style.display = "flex";
   
-  // FIXED: Use proper language fallback chain
+  // DEBUG: Log all language sources
+  console.log('[DEBUG showNote] Language sources:');
+  console.log('  - Passed language:', language);
+  console.log('  - currentKioskLanguage:', currentKioskLanguage);
+  console.log('  - window.app?.ui?.currentLanguage:', window.app?.ui?.currentLanguage);
+  
   const lang = language || currentKioskLanguage || window.app?.ui?.currentLanguage || 'en';
   const defaultMsg = KIOSK_TEXTS[lang]?.survey || KIOSK_TEXTS.en.survey;
   
+  console.log(`[DEBUG showNote] Final language: ${lang}, Message: ${defaultMsg}`);
+  
   if (ovMsg) ovMsg.textContent = msg || defaultMsg;
   if (ovCnt) ovCnt.style.display = "none";
-  
-  console.log(`[showNote] Using language: ${lang}, Message: ${msg || defaultMsg}`);
 }
 
 function showCountdown(msg, secs, notBeforeIso, language = null){
   if (!ovEl) return;
   ovEl.style.display = "flex";
   
-  // FIXED: Use proper language fallback chain  
+  // DEBUG: Log all language sources
+  console.log('[DEBUG showCountdown] Language sources:');
+  console.log('  - Passed language:', language);
+  console.log('  - currentKioskLanguage:', currentKioskLanguage);
+  console.log('  - window.app?.ui?.currentLanguage:', window.app?.ui?.currentLanguage);
+  
   const lang = language || currentKioskLanguage || window.app?.ui?.currentLanguage || 'en';
   const defaultMsg = KIOSK_TEXTS[lang]?.loading || KIOSK_TEXTS.en.loading;
   
+  console.log(`[DEBUG showCountdown] Final language: ${lang}, Message: ${defaultMsg}`);
+  
   if (ovMsg) ovMsg.textContent = msg || defaultMsg;
   if (ovCnt) ovCnt.style.display = "block";
-
-  console.log(`[showCountdown] Using language: ${lang}, Message: ${msg || defaultMsg}`);
 
   const target = notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000);
   function tick(){ 
@@ -85,31 +94,32 @@ async function fetchJSON(url, et){
 function applyCurrent(cur){
   try{
     const bp = Number(cur?.bp ?? 0);
-    const language = cur?.language || 'English'; // Get language from response
+    const language = cur?.language || 'English';
     
-    // FIXED: Update language tracking FIRST
+    console.log(`[DEBUG applyCurrent] Raw language from response: ${language}`);
+    
+    // Update language tracking FIRST
     const newLanguage = language === 'Korean' || language === 'ko' ? 'ko' : 'en';
     if (newLanguage !== currentKioskLanguage) {
       currentKioskLanguage = newLanguage;
-      console.log(`[applyCurrent] Language changed to: ${currentKioskLanguage} (from: ${language})`);
+      console.log(`[DEBUG applyCurrent] Language changed to: ${currentKioskLanguage}`);
     }
     
-    // CRITICAL: Update TV UI language BEFORE updating dashboard
+    // Update TV UI language
     if (typeof window.updateUILanguage === "function") {
       window.updateUILanguage(currentKioskLanguage);
+      console.log(`[DEBUG applyCurrent] Called updateUILanguage with: ${currentKioskLanguage}`);
+    } else {
+      console.warn('[DEBUG applyCurrent] window.updateUILanguage function not available');
     }
     
     if (Number.isFinite(bp)) {
-      // Store the raw BP value globally for reference
       window.RAW_BP_VALUE = bp;
-      
-      // ONLY call the BP manager - let it handle normalization and DOM updates
       if (typeof window.setUserBp === "function") {
         window.setUserBp(bp);
       }
     }
     
-    // FIXED: Pass full data object to dashboard manager for proper filtering
     if (typeof window.updateDashboardDisplay === "function") {
       window.updateDashboardDisplay({
         bp: bp,
@@ -120,7 +130,7 @@ function applyCurrent(cur){
     }
     
   } catch(e){ 
-    console.error('[applyCurrent] Error:', e);
+    console.error('[DEBUG applyCurrent] Error:', e);
   }
 }
 
@@ -132,23 +142,25 @@ async function poll(){
     const curEt = s.et || null;
 
     const st = s.json || {};
+    console.log('[DEBUG poll] State response:', st);
+    
     if (expired(st)) { hideOverlay(); window.setMode?.("landing"); return; }
 
-    // FIXED: Check for language info in state and update tracking FIRST
+    // Check for language info in state
     if (st.language) {
       const newLanguage = st.language === 'Korean' || st.language === 'ko' ? 'ko' : 'en';
       if (newLanguage !== currentKioskLanguage) {
         currentKioskLanguage = newLanguage;
-        console.log(`[poll] Language detected in state: ${currentKioskLanguage} (from: ${st.language})`);
+        console.log(`[DEBUG poll] Language detected in state: ${currentKioskLanguage} (from: ${st.language})`);
       }
     }
 
-    // Accept either {stage} or {state}
     let stage = st.stage || st.state || "idle";
     if (stage === "landing")   stage = "idle";
     if (stage === "countdown") stage = "in_progress";
 
-    // FIXED: Synthesize overlay with current language
+    console.log(`[DEBUG poll] Stage: ${stage}`);
+
     let ov = st.overlay;
     if (!ov || typeof ov !== "object") {
       if (st.state === "countdown") {
@@ -160,19 +172,15 @@ async function poll(){
       }
     }
 
-    // Baseline only to avoid replaying old *results*; do not drop overlays
     if (baselineEt === null) {
       baselineEt = curEt;
-      if (stage !== "show_result") {
-        // fall through and render overlay immediately
-      }
     }
 
     if (stage === "idle"){
       hideOverlay(); window.setMode?.("landing"); return;
     }
     if (stage === "in_progress"){
-      // FIXED: Always pass current language to overlay functions
+      console.log('[DEBUG poll] Showing overlay with language:', currentKioskLanguage);
       if (ov.type === "countdown") {
         showCountdown(ov.message, ov.countdown_secs, ov.not_before, currentKioskLanguage);
       } else {
@@ -181,7 +189,6 @@ async function poll(){
       window.setMode?.("landing"); return;
     }
     
-    // show_result logic
     if (stage === "show_result"){
       hideOverlay();
       const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
@@ -190,22 +197,22 @@ async function poll(){
       
       try {
         const c = await fetchJSON(RESULT_URL);
+        console.log('[DEBUG poll] Current response:', c.json);
         
         if (!c.notModified && c.json) {
           applyCurrent(c.json);
         }
         await window.setMode?.("result");
         
-        // Give map time to render
         await new Promise(resolve => setTimeout(resolve, 800));
         if (window.app?.map) {
           window.app.map.resize();
-          window.app.map.resize(); // Call twice to ensure it takes
+          window.app.map.resize();
         }
         
         lastRenderedEt = curEt;
       } catch (error) {
-        console.error('[poll] Error in show_result:', error);
+        console.error('[DEBUG poll] Error in show_result:', error);
       } finally {
         rendering = false;
       }
@@ -214,7 +221,7 @@ async function poll(){
     
     hideOverlay(); window.setMode?.("landing");
   }catch(e){ 
-    console.error('[poll] Error:', e);
+    console.error('[DEBUG poll] Error:', e);
   }
 }
 
