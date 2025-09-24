@@ -78,6 +78,16 @@ const UI_TEXTS = {
       survey: "Please complete your survey questions!",
       loading: "Loading your result…"
     }
+    categoryLabels: {
+      sky: "Sky", tree: "Tree", grass: "Grass", person: "Person",
+      ground: "Earth/Ground", mountain: "Mountain", plant: "Plant/Flora",
+      water: "Water", sea: "Sea", field: "Field", rock: "Rock/Stone",
+      sand: "Sand", fireplace: "Fireplace", river: "River", flower: "Flower",
+      hill: "Hill", palm: "Palmtree", light: "Light/Sunlight",
+      land: "Land/Soil", fountain: "Fountain", swimming: "Swimming Pool",
+      waterfall: "Waterfall", food: "Natural Food", animal: "Animal/Fauna",
+      lake: "Lake"
+    }
   },
   ko: {
     locationTitle: "서울 (온대림)",
@@ -90,6 +100,16 @@ const UI_TEXTS = {
     kioskMessages: {
       survey: "설문 조사를 완료해 주세요!",
       loading: "결과를 불러오는 중…"
+    }
+    categoryLabels: {
+      sky: "하늘", tree: "나무", grass: "잔디", person: "사람",
+      ground: "땅/지면", mountain: "산", plant: "식물/식물군",
+      water: "물", sea: "바다", field: "들판", rock: "바위/돌",
+      sand: "모래", fireplace: "벽난로", river: "강", flower: "꽃",
+      hill: "언덕", palm: "야자수", light: "빛/햇빛",
+      land: "토지/흙", fountain: "분수", swimming: "수영장",
+      waterfall: "폭포", food: "자연 음식", animal: "동물/동물군",
+      lake: "호수"
     }
   }
 };
@@ -293,16 +313,6 @@ class BPManager {
 class IconManager {
   constructor() {
     this.cache = new Map();
-    this.categoryLabels = {
-      sky: "Sky", tree: "Tree", grass: "Grass", person: "Person",
-      ground: "Earth/Ground", mountain: "Mountain", plant: "Plant/Flora",
-      water: "Water", sea: "Sea", field: "Field", rock: "Rock/Stone",
-      sand: "Sand", fireplace: "Fireplace", river: "River", flower: "Flower",
-      hill: "Hill", palm: "Palmtree", light: "Light/Sunlight",
-      land: "Land/Soil", fountain: "Fountain", swimming: "Swimming Pool",
-      waterfall: "Waterfall", food: "Natural Food", animal: "Animal/Fauna",
-      lake: "Lake"
-    };
   }
 
   normalizeKey(s) {
@@ -313,7 +323,8 @@ class IconManager {
   }
 
   labelFromKey(k) {
-    return this.categoryLabels[k] || k;
+    const texts = UI_TEXTS[app.ui.currentLanguage] || UI_TEXTS.en;
+    return texts.categoryLabels[k] || k;
   }
 
   getPaths(key) {
