@@ -10,7 +10,7 @@ let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
 
-// Add UI texts for kiosk messages
+// FIXED: Correct Korean text encoding
 const KIOSK_TEXTS = {
   en: {
     survey: "Please complete your survey questions!",
@@ -22,27 +22,30 @@ const KIOSK_TEXTS = {
   }
 };
 
+// ADDED: Track current language globally in script.js
+let currentKioskLanguage = 'en';
+
 function hideOverlay(){ if(ovEl) ovEl.style.display="none"; if(ovCnt) ovCnt.style.display="none"; if(timer){clearInterval(timer); timer=null;} }
 
-function showNote(msg){
+function showNote(msg, language = null){
     if (!ovEl) return;
     ovEl.style.display = "flex";
     
-    // Get current language from app state
-    const currentLang = window.app?.ui?.currentLanguage || 'en';
-    const defaultMsg = KIOSK_TEXTS[currentLang]?.survey || "Please complete your survey questions!";
+    // FIXED: Use passed language parameter or fallback to tracked language
+    const lang = language || currentKioskLanguage || window.app?.ui?.currentLanguage || 'en';
+    const defaultMsg = KIOSK_TEXTS[lang]?.survey || KIOSK_TEXTS.en.survey;
     
     if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "none";
 }
 
-function showCountdown(msg, secs, notBeforeIso){
+function showCountdown(msg, secs, notBeforeIso, language = null){
     if (!ovEl) return;
     ovEl.style.display = "flex";
     
-    // Get current language from app state  
-    const currentLang = window.app?.ui?.currentLanguage || 'en';
-    const defaultMsg = KIOSK_TEXTS[currentLang]?.loading || "Loading your result…";
+    // FIXED: Use passed language parameter or fallback to tracked language
+    const lang = language || currentKioskLanguage || window.app?.ui?.currentLanguage || 'en';
+    const defaultMsg = KIOSK_TEXTS[lang]?.loading || KIOSK_TEXTS.en.loading;
     
     if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "block";
@@ -66,10 +69,13 @@ function applyCurrent(cur){
     const bp = Number(cur?.bp ?? 0);
     const language = cur?.language || 'English'; // Get language from response
     
+    // FIXED: Update language tracking FIRST
+    currentKioskLanguage = language === 'Korean' ? 'ko' : 'en';
+    
     // CRITICAL: Update TV UI language BEFORE updating dashboard
     if (typeof window.updateUILanguage === "function") {
-      window.updateUILanguage(language === 'Korean' ? 'ko' : 'en');
-      //console.log(`[applyCurrent] Updated UI language to: ${language === 'Korean' ? 'ko' : 'en'}`);
+      window.updateUILanguage(currentKioskLanguage);
+      //console.log(`[applyCurrent] Updated UI language to: ${currentKioskLanguage}`);
     }
     
     if (Number.isFinite(bp)) {
@@ -106,6 +112,11 @@ async function poll(){
   
       const st = s.json || {};
       if (expired(st)) { hideOverlay(); window.setMode?.("landing"); return; }
+
+      // ADDED: Check if language info is available in state and update tracking
+      if (st.language) {
+        currentKioskLanguage = st.language === 'Korean' ? 'ko' : 'en';
+      }
   
       // Accept either {stage} or {state}
       let stage = st.stage || st.state || "idle";
@@ -116,9 +127,9 @@ async function poll(){
       let ov = st.overlay;
       if (!ov || typeof ov !== "object") {
         if (st.state === "countdown") {
-          ov = { type:"countdown", message: st.message || "Loading your result…", not_before: st.countdown_end };
+          ov = { type:"countdown", message: st.message || KIOSK_TEXTS[currentKioskLanguage]?.loading, not_before: st.countdown_end };
         } else if (st.state === "in_progress") {
-          ov = { type:"note", message: st.message || "Please complete your survey questions!" };
+          ov = { type:"note", message: st.message || KIOSK_TEXTS[currentKioskLanguage]?.survey };
         } else {
           ov = {};
         }
@@ -136,8 +147,9 @@ async function poll(){
         hideOverlay(); window.setMode?.("landing"); return;
       }
       if (stage === "in_progress"){
-        if (ov.type === "countdown") showCountdown(ov.message, ov.countdown_secs, ov.not_before);
-        else showNote(ov.message);
+        // FIXED: Pass language to overlay functions
+        if (ov.type === "countdown") showCountdown(ov.message, ov.countdown_secs, ov.not_before, currentKioskLanguage);
+        else showNote(ov.message, currentKioskLanguage);
         window.setMode?.("landing"); return;
       }
       
