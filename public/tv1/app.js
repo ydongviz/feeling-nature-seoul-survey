@@ -105,10 +105,10 @@ const UI_TEXTS = {
       sky: "하늘", tree: "나무", grass: "잔디", person: "사람",
       ground: "땅/지면", mountain: "산", plant: "식물/식물군",
       water: "물", sea: "바다", field: "들판", rock: "바위/돌",
-      sand: "모래", fireplace: "벽난로", river: "강", flower: "꽃",
+      sand: "모래", fireplace: "난로", river: "강", flower: "꽃",
       hill: "언덕", palm: "야자수", light: "빛/햇빛",
       land: "토지/흙", fountain: "분수", swimming: "수영장",
-      waterfall: "폭포", food: "자연 음식", animal: "동물/동물군",
+      waterfall: "폭포", food: "음식", animal: "동물/동물군",
       lake: "호수"
     }
   }
@@ -544,9 +544,17 @@ class DashboardManager {
     const maxCount = Math.max(...histogram, 1);
     const normalizedData = histogram.map(count => (count / maxCount) * 100);
 
-    if (window.lineChart && typeof window.lineChart.destroy === 'function') {
-      try { window.lineChart.destroy(); } catch (e) {}
-      window.lineChart = null;
+    if (window.lineChart) {
+      try {
+        // Check if canvas still exists in DOM before destroying
+        if (window.lineChart.canvas && document.body.contains(window.lineChart.canvas)) {
+          window.lineChart.destroy();
+        }
+      } catch (e) {
+        console.warn('[updateDistributionChart] Chart cleanup failed:', e);
+      } finally {
+        window.lineChart = null;
+      }
     }
 
     if (!Chart.Tooltip.positioners) Chart.Tooltip.positioners = {};
@@ -1470,6 +1478,18 @@ function buildFooterContent() {
   if (!app.elements.footer) return;
 
   const texts = UI_TEXTS[app.ui.currentLanguage];
+
+  // Clean up existing chart before rebuilding DOM
+  if (window.lineChart) {
+    try {
+      if (window.lineChart.canvas && document.body.contains(window.lineChart.canvas)) {
+        window.lineChart.destroy();
+      }
+    } catch (e) {
+      console.warn('[buildFooterContent] Chart cleanup failed:', e);
+    }
+    window.lineChart = null;
+  }
 
   app.elements.footer.innerHTML = `
     <div class="footer-section">
