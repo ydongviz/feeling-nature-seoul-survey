@@ -17,7 +17,7 @@ const KIOSK_TEXTS = {
     loading: "Loading your result…"
   },
   ko: {
-    survey: "설문 조사 질문을 완료해 주세요!",
+    survey: "설문 조사를 완료해 주세요!",
     loading: "결과를 불러오는 중…"
   }
 };
