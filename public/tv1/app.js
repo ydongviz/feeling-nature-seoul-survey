@@ -459,7 +459,7 @@ class DashboardManager {
     this.elements.topElements.innerHTML = '';
 
     keys.forEach((key) => {
-      if (!iconManager.categoryLabels[key]) return;
+      if (!UI_TEXTS.en.categoryLabels[key]) return;
 
       const card = document.createElement('div');
       card.className = 'top-element';
