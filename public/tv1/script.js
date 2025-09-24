@@ -1,4 +1,4 @@
-/* TV-1 kiosk adapter + state poller (production) - BILINGUAL VERSION - FIXED */
+/* TV-1 kiosk adapter + state poller (production) - BILINGUAL VERSION */
 const STATE_URL  = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 const RESULT_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
 
@@ -10,6 +10,7 @@ let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
 
+// Add UI texts for kiosk messages
 const KIOSK_TEXTS = {
   en: {
     survey: "Please complete your survey questions!",
@@ -21,32 +22,27 @@ const KIOSK_TEXTS = {
   }
 };
 
-// ADDED: Track current language globally in script.js
-let currentKioskLanguage = 'en';
-
 function hideOverlay(){ if(ovEl) ovEl.style.display="none"; if(ovCnt) ovCnt.style.display="none"; if(timer){clearInterval(timer); timer=null;} }
 
-// FIXED: Always use current language from global state
-function showNote(msg, language = null){
+function showNote(msg){
     if (!ovEl) return;
     ovEl.style.display = "flex";
     
-    // FIXED: Use global currentKioskLanguage as fallback
-    const lang = language || currentKioskLanguage || 'en';
-    const defaultMsg = KIOSK_TEXTS[lang]?.survey || KIOSK_TEXTS.en.survey;
+    // Get current language from app state
+    const currentLang = window.app?.ui?.currentLanguage || 'en';
+    const defaultMsg = KIOSK_TEXTS[currentLang]?.survey || "Please complete your survey questions!";
     
     if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "none";
 }
 
-// FIXED: Always use current language from global state
-function showCountdown(msg, secs, notBeforeIso, language = null){
+function showCountdown(msg, secs, notBeforeIso){
     if (!ovEl) return;
     ovEl.style.display = "flex";
     
-    // FIXED: Use global currentKioskLanguage as fallback
-    const lang = language || currentKioskLanguage || 'en';
-    const defaultMsg = KIOSK_TEXTS[lang]?.loading || KIOSK_TEXTS.en.loading;
+    // Get current language from app state  
+    const currentLang = window.app?.ui?.currentLanguage || 'en';
+    const defaultMsg = KIOSK_TEXTS[currentLang]?.loading || "Loading your result…";
     
     if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "block";
@@ -70,16 +66,10 @@ function applyCurrent(cur){
     const bp = Number(cur?.bp ?? 0);
     const language = cur?.language || 'English'; // Get language from response
     
-    // FIXED: Update language tracking FIRST and more reliably
-    const newLanguage = language === 'Korean' || language === 'ko' ? 'ko' : 'en';
-    if (newLanguage !== currentKioskLanguage) {
-      currentKioskLanguage = newLanguage;
-      console.log(`[applyCurrent] Language changed to: ${currentKioskLanguage} (from: ${language})`);
-    }
-    
     // CRITICAL: Update TV UI language BEFORE updating dashboard
     if (typeof window.updateUILanguage === "function") {
-      window.updateUILanguage(currentKioskLanguage);
+      window.updateUILanguage(language === 'Korean' ? 'ko' : 'en');
+      //console.log(`[applyCurrent] Updated UI language to: ${language === 'Korean' ? 'ko' : 'en'}`);
     }
     
     if (Number.isFinite(bp)) {
@@ -116,28 +106,19 @@ async function poll(){
   
       const st = s.json || {};
       if (expired(st)) { hideOverlay(); window.setMode?.("landing"); return; }
-
-      // FIXED: Check for language info in state and update tracking FIRST
-      if (st.language) {
-        const newLanguage = st.language === 'Korean' || st.language === 'ko' ? 'ko' : 'en';
-        if (newLanguage !== currentKioskLanguage) {
-          currentKioskLanguage = newLanguage;
-          console.log(`[poll] Language detected in state: ${currentKioskLanguage} (from: ${st.language})`);
-        }
-      }
   
       // Accept either {stage} or {state}
       let stage = st.stage || st.state || "idle";
       if (stage === "landing")   stage = "idle";
       if (stage === "countdown") stage = "in_progress";
   
-      // FIXED: Synthesize overlay with current language
+      // Synthesize overlay if the Lambda wrote root fields
       let ov = st.overlay;
       if (!ov || typeof ov !== "object") {
         if (st.state === "countdown") {
-          ov = { type:"countdown", message: st.message || KIOSK_TEXTS[currentKioskLanguage]?.loading, not_before: st.countdown_end };
+          ov = { type:"countdown", message: st.message || "Loading your result…", not_before: st.countdown_end };
         } else if (st.state === "in_progress") {
-          ov = { type:"note", message: st.message || KIOSK_TEXTS[currentKioskLanguage]?.survey };
+          ov = { type:"note", message: st.message || "Please complete your survey questions!" };
         } else {
           ov = {};
         }
@@ -155,12 +136,8 @@ async function poll(){
         hideOverlay(); window.setMode?.("landing"); return;
       }
       if (stage === "in_progress"){
-        // FIXED: Always pass current language to overlay functions
-        if (ov.type === "countdown") {
-          showCountdown(ov.message, ov.countdown_secs, ov.not_before, currentKioskLanguage);
-        } else {
-          showNote(ov.message, currentKioskLanguage);
-        }
+        if (ov.type === "countdown") showCountdown(ov.message, ov.countdown_secs, ov.not_before);
+        else showNote(ov.message);
         window.setMode?.("landing"); return;
       }
       
