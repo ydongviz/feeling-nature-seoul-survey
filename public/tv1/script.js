@@ -127,11 +127,12 @@ async function poll(){
         try {
           const c = await fetchJSON(RESULT_URL);
           
-          if (!c.notModified && c.json) {
+          /*if (!c.notModified && c.json) {
             applyCurrent(c.json);
-          }
+          }*/
+          await window.setMode?.("result");
           
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 300));
           await window.setMode?.("result");
           
           // ADD THIS CRITICAL FIX:
