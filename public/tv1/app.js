@@ -32,6 +32,40 @@ const seoulData = {
 
 const sizeScale = d3.scaleLinear().domain([0, 0.2, 0.6, 0.8, 1]).range([0, 1, 2, 3, 6]);
 
+const LANDING_TEXTS = {
+  en: {
+    title: 'Feeling Nature Seoul',
+    intro: 'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
+    explore: 'Explore how Seoul residents perceive nature.',
+    bsBp: 'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
+    bsMap: 'BS Map: the distribution of nature-based elements in Seoul urban environment.',
+    bpMap: 'BP Map: the strength of perceived Biophilia in the city',
+    survey: 'Complete the survey to learn how you perceive and value nature in Seoul!',
+    groups: {
+      veryLow: 'Biophilic Perceptions (BP) group value located in Seoul: 0.00—0.25',
+      low: 'Biophilic Perceptions (BP) group value located in Seoul: 0.25—0.50', 
+      medium: 'Biophilic Perceptions (BP) group value located in Seoul: 0.50—0.75',
+      high: 'Biophilic Perceptions (BP) group value located in Seoul: 0.75—1.00'
+    }
+  },
+  ko: {
+    title: '자연을 느끼는 서울',
+    intro: '바이오필리아는 자연과의 접촉이 인간에게 가져다주는 이익을 의미합니다. 하지만 생물군계마다 자연을 같은 방식으로 평가할까요?',
+    explore: '서울 시민들이 자연을 어떻게 인식하는지 탐구해보세요.',
+    bsBp: '서울시에서는 바이오필릭 인식(BP)이 바이오필릭 환경(BS)을 초과합니다.',
+    bsMap: 'BS 지도: 서울 도시 환경에서 자연 기반 요소의 분포.',
+    bpMap: 'BP 지도: 도시에서 인식되는 바이오필리아의 강도',
+    survey: '설문조사를 완료하여 서울에서 자연을 어떻게 인식하고 평가하는지 알아보세요!',
+    groups: {
+      veryLow: '서울에 위치한 바이오필릭 인식(BP) 그룹 값: 0.00—0.25',
+      low: '서울에 위치한 바이오필릭 인식(BP) 그룹 값: 0.25—0.50',
+      medium: '서울에 위치한 바이오필릭 인식(BP) 그룹 값: 0.50—0.75', 
+      high: '서울에 위치한 바이오필릭 인식(BP) 그룹 값: 0.75—1.00'
+    }
+  }
+};
+
+
 // Simple Media Cache for offline reliability
 class SimpleMediaCache {
   constructor() {
@@ -1527,26 +1561,24 @@ async function startLandingAnimationSequence() {
   if (app.landing.active) return;
 
   app.landing.active = true;
+  let currentLang = 'en'; // Start with English
 
   try {
     await preloadVideo();
     ensureLandingText();
 
     while (app.landing.active && app.mode === Modes.LANDING) {
+      const texts = LANDING_TEXTS[currentLang];
       
       // Phase 1: GIF sequence (16 seconds)
       showGif();
       showHeaderLogos(false);
-      updateLandingTexts('Feeling Nature Seoul', '', false);
+      updateLandingTexts(texts.title, '', false);
       await wait(5000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      updateLandingTexts(
-        'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
-        'Explore how Seoul residents perceive nature.',
-        true
-      );
+      updateLandingTexts(texts.intro, texts.explore, true);
       await wait(11000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
@@ -1555,29 +1587,24 @@ async function startLandingAnimationSequence() {
       showVideo();
       showHeaderLogos(true);
 
-      updateLandingTexts(
-        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-        'BS Map: the distribution of nature-based elements in Seoul urban environment.',
-        true
-      );
+      updateLandingTexts(texts.bsBp, texts.bsMap, true);
       await wait(3000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      updateLandingTexts(
-        'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
-        'BP Map: the strength of perceived Biophilia in the city',
-        true
-      );
+      updateLandingTexts(texts.bsBp, texts.bpMap, true);
       await wait(4000);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
 
-      await animateTextForVideoGroupSequenceFixed();
+      await animateTextForVideoGroupSequence(texts);
 
       if (!app.landing.active || app.mode !== Modes.LANDING) break;
       
       await wait(1000);
+
+      // Toggle language for next iteration
+      currentLang = currentLang === 'en' ? 'ko' : 'en';
     }
 
   } catch (error) {
@@ -1586,22 +1613,23 @@ async function startLandingAnimationSequence() {
   }
 }
 
-async function animateTextForVideoGroupSequenceFixed() {
+
+async function animateTextForVideoGroupSequence(texts) {
   const groups = [
-    { min: 0.00, max: 0.25, name: 'Very Low (0-0.25)', duration: 3000 }, // 7-9s (3 seconds)
-    { min: 0.25, max: 0.50, name: 'Low (0.25-0.5)', duration: 2000 },   // 10-11s (2 seconds)
-    { min: 0.50, max: 0.75, name: 'Medium (0.5-0.75)', duration: 3000 }, // 12-14s (3 seconds)
-    { min: 0.75, max: 1.00, name: 'High (0.75-1.0)', duration: 1500 }    // 15-17s (3 seconds)
+    { textKey: 'veryLow', duration: 3000 },
+    { textKey: 'low', duration: 2000 },   
+    { textKey: 'medium', duration: 3000 },
+    { textKey: 'high', duration: 1500 }
   ];
 
-  // Show first group immediately (starts at 7s mark)
-  updateLandingTextForGroup(groups[0]);
+  // Show first group immediately
+  updateLandingTexts(texts.survey, texts.groups[groups[0].textKey], true);
   await wait(groups[0].duration);
   
-  // Cycle through remaining groups with specific durations
+  // Cycle through remaining groups
   for (let i = 1; i < groups.length; i++) {
     if (!app.landing.active || app.mode !== Modes.LANDING) break;
-    updateLandingTextForGroup(groups[i]);
+    updateLandingTexts(texts.survey, texts.groups[groups[i].textKey], true);
     await wait(groups[i].duration);
   }
 }
