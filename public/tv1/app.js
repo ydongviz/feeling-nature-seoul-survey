@@ -50,7 +50,7 @@ const LANDING_TEXTS = {
   },
   ko: {
     title: 'Feeling Nature Seoul',
-    intro: '바이오필리아(Biophilia)는 인간이 본능적으로 자연과 연결되기를 바라는 경향과 그로부터 비롯되는 이익들을 의미합니다. 하지만 생물군계마다 자연을 같은 방식으로 평가할까요?',
+    intro: '바이오필리아(Biophilia)는 인간이 본능적으로 자연과 연결되고자 하는 경향과 그로부터 얻는 이익들을 의미합니다. 하지만 서로 다른 식생에서도 자연을 같은 방식으로 평가할까요?',
     explore: '서울 시민들은 자연을 어떻게 인식하는지 알아봅시다.',
     bsBp: '서울시에서는 자연 인식(BP)이 자연 환경(BS)을 초과합니다.',
     bsMap: 'Biophilic Setting (BS, 자연 환경) 지도: 서울의 자연 환경 요소의 양 분포.',
@@ -1525,10 +1525,23 @@ function updateUILanguage(language) {
   
   // Only update if in result mode
   if (app.mode === Modes.RESULT) {
-    buildLeftColumnContent();
-    buildFooterContent();
+    const texts = UI_TEXTS[language];
     
-    // Force dashboard manager to re-cache elements after DOM rebuild
+    // Update left column content
+    buildLeftColumnContent();
+    
+    // FIXED: Update footer text content without rebuilding DOM
+    const bpTitle = document.querySelector('footer .footer-section:first-child h4');
+    const bpDescription = document.querySelector('footer .footer-section:first-child p');
+    const categoriesTitle = document.querySelector('footer .footer-section:nth-child(2) .middle-section-title');
+    const distributionTitle = document.querySelector('footer .footer-section:last-child .chart-title');
+    
+    if (bpTitle) bpTitle.textContent = texts.bpTitle;
+    if (bpDescription) bpDescription.textContent = texts.bpDescription;
+    if (categoriesTitle) categoriesTitle.textContent = texts.categoriesTitle;
+    if (distributionTitle) distributionTitle.textContent = texts.distributionTitle;
+    
+    // Force dashboard manager to re-cache elements
     dashboardManager.cacheElements();
   }
 }
@@ -1808,7 +1821,6 @@ async function executeResultSequence() {
 
 /* ========== DISTRIBUTION ANIMATION ========== */
 function animateDistributionCurve(userBpValue) {
-  // FIXED: Use the passed normalized value directly
   const actualBpValue = userBpValue;
 
   if (!window.lineChart || 
@@ -1818,123 +1830,120 @@ function animateDistributionCurve(userBpValue) {
     return Promise.resolve();
   }
 
-  return new Promise(() => {
-    const chart = window.lineChart;
-    const bins = 11;
-    const binSize = 1 / (bins - 1);
-    const userBinIndex = Math.min(Math.round(userBpValue / binSize), bins - 1);
+  const chart = window.lineChart;
+  const bins = 11;
+  const binSize = 1 / (bins - 1);
+  const userBinIndex = Math.min(Math.round(userBpValue / binSize), bins - 1);
 
-    const histogram = [];
-    app.data.allParticipantsData.forEach(value => {
-      const idx = Math.min(Math.round(value / binSize), bins - 1);
-      histogram[idx] = (histogram[idx] || 0) + 1;
-    });
+  const histogram = [];
+  app.data.allParticipantsData.forEach(value => {
+    const idx = Math.min(Math.round(value / binSize), bins - 1);
+    histogram[idx] = (histogram[idx] || 0) + 1;
+  });
 
-    const count = histogram[userBinIndex] || 0;
-    const percentage = ((count / app.data.allParticipantsData.length) * 100).toFixed(1);
+  const count = histogram[userBinIndex] || 0;
+  const percentage = ((count / app.data.allParticipantsData.length) * 100).toFixed(1);
 
-    function runFullAnimation() {
+  // SIMPLIFIED: Run animation once, show result, NO RESTART
+  function runSingleAnimation() {
+    if (!chart || !chart.canvas || !document.body.contains(chart.canvas)) {
+      console.warn('[animateDistributionCurve] Chart canvas no longer in DOM, stopping animation');
+      return;
+    }
 
-      if (!chart || !chart.canvas || !document.body.contains(chart.canvas)) {
-        console.warn('[animateDistributionCurve] Chart canvas no longer in DOM, stopping animation');
+    while (chart.data.datasets.length > 1) {
+      chart.data.datasets.pop();
+    }
+    chart.update('none');
+
+    const animatedDotDataset = {
+      label: 'Animated Dot',
+      data: new Array(bins).fill(null),
+      borderColor: '#888888',
+      backgroundColor: 'transparent',
+      pointRadius: 5,
+      pointBorderWidth: 1,
+      pointBorderColor: '#888888',
+      showLine: false,
+      pointHoverRadius: 6
+    };
+
+    chart.data.datasets.push(animatedDotDataset);
+
+    let currentIndex = 0;
+    const animationDuration = 3000;
+    const stepDuration = animationDuration / Math.max(1, userBinIndex);
+
+    function animateStep() {
+      // ADDED: Validate chart exists before each step
+      if (!chart || !chart.canvas || !document.body.contains(chart.canvas) || app.mode !== Modes.RESULT) {
+        console.warn('[animateStep] Chart invalid or mode changed, stopping animation');
+        return;
+      }
+      
+      if (currentIndex <= userBinIndex) {
+        animatedDotDataset.data.fill(null);
+        const yValue = chart.data.datasets[0].data[currentIndex];
+        animatedDotDataset.data[currentIndex] = yValue;
+        chart.update('none');
+        currentIndex++;
+
+        if (currentIndex <= userBinIndex) {
+          const timerId = setTimeout(animateStep, stepDuration);
+          app.cleanup.timers.add(timerId);
+        } else {
+          // SIMPLIFIED: Just show the final result, no restart timer
+          showFinalResult();
+        }
+      }
+    }
+
+    function showFinalResult() {
+      if (app.mode !== Modes.RESULT || !chart || !chart.canvas || !document.body.contains(chart.canvas)) {
         return;
       }
 
-      while (chart.data.datasets.length > 1) {
-        chart.data.datasets.pop();
-      }
+      const animatedDataset = chart.data.datasets[1];
+      if (animatedDataset) {
+        animatedDataset.backgroundColor = '#92C043';
+        animatedDataset.borderColor = '#ffffff';
+        animatedDataset.pointBackgroundColor = '#92C043';
+        animatedDataset.pointBorderColor = '#ffffff';
+        animatedDataset.pointRadius = 6;
+        animatedDataset.pointHoverRadius = 6;
+        animatedDataset.label = 'You Final';
 
-      chart.update('none');
+        chart.update('none');
 
-      const animatedDotDataset = {
-        label: 'Animated Dot',
-        data: new Array(bins).fill(null),
-        borderColor: '#888888',
-        backgroundColor: 'transparent',
-        pointRadius: 5,
-        pointBorderWidth: 1,
-        pointBorderColor: '#888888',
-        showLine: false,
-        pointHoverRadius: 6
-      };
+        const meta = chart.getDatasetMeta(1);
+        if (meta.data[userBinIndex]) {
+          const pointElement = meta.data[userBinIndex];
+          pointElement.options = {
+            backgroundColor: '#92C043',
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            radius: 6,
+            hoverRadius: 6,
+            hoverBackgroundColor: '#92C043',
+            hoverBorderColor: '#ffffff'
+          };
 
-      chart.data.datasets.push(animatedDotDataset);
-
-      let currentIndex = 0;
-      const animationDuration = 3000;
-      const stepDuration = animationDuration / Math.max(1, userBinIndex);
-
-      function animateStep() {   
-        if (currentIndex <= userBinIndex && app.mode === Modes.RESULT) {
-          animatedDotDataset.data.fill(null);
-          const yValue = chart.data.datasets[0].data[currentIndex];
-          animatedDotDataset.data[currentIndex] = yValue;
-          chart.update('none');
-          currentIndex++;
-
-          if (currentIndex <= userBinIndex) {
-            const timerId = setTimeout(animateStep, stepDuration);
-            app.cleanup.timers.add(timerId);
-          } else {
-            const timerId = setTimeout(showTooltipAtEnd, 500);
-            app.cleanup.timers.add(timerId);
-          }
+          chart.render();
+          createCustomTooltip(pointElement, userBpValue, percentage, count);
+          
+          // REMOVED: No restart timer - animation stays in final state
         }
       }
-
-      function showTooltipAtEnd() {
-        if (app.mode !== Modes.RESULT) return;
-
-        const animatedDataset = chart.data.datasets[1];
-
-        if (animatedDataset) {
-          animatedDataset.backgroundColor = '#92C043';
-          animatedDataset.borderColor = '#ffffff';
-          animatedDataset.pointBackgroundColor = '#92C043';
-          animatedDataset.pointBorderColor = '#ffffff';
-          animatedDataset.pointRadius = 6;
-          animatedDataset.pointHoverRadius = 6;
-          animatedDataset.pointHoverBackgroundColor = '#92C043';
-          animatedDataset.pointHoverBorderColor = '#ffffff';
-          animatedDataset.label = 'You Final';
-
-          chart.update('none');
-
-          const meta = chart.getDatasetMeta(1);
-          if (meta.data[userBinIndex]) {
-            const pointElement = meta.data[userBinIndex];
-
-            pointElement.options = {
-              backgroundColor: '#92C043',
-              borderColor: '#ffffff',
-              borderWidth: 2,
-              radius: 6,
-              hoverRadius: 6,
-              hoverBackgroundColor: '#92C043',
-              hoverBorderColor: '#ffffff'
-            };
-
-            chart.render();
-            createCustomTooltip(pointElement, userBpValue, percentage, count);
-
-            const hideTimer = setTimeout(() => {
-              removeCustomTooltip();
-              chart.data.datasets.pop();
-              chart.update('none');
-              const restartTimer = setTimeout(runFullAnimation, 2000);
-              app.cleanup.timers.add(restartTimer);
-            }, 10000);
-            app.cleanup.timers.add(hideTimer);
-          }
-        }
-     }
+    }
 
     function createCustomTooltip(point, bpValue, percentage, count) {
-      removeCustomTooltip();
-  
+      // Remove existing tooltip
+      const existingTooltip = document.getElementById('custom-chart-tooltip');
+      if (existingTooltip) existingTooltip.remove();
+
       const canvas = chart.canvas;
       const rect = canvas.getBoundingClientRect();
-  
+
       // Calculate actual highlighted dots count
       const data = app.data.cache[`seoul_${app.state.currentDataType}`] || [];
       const lo = window.HIGHLIGHT_MIN;
@@ -1942,7 +1951,7 @@ function animateDistributionCurve(userBpValue) {
       const highlightedCount = data.filter(d => d.biophilia_norm >= lo && d.biophilia_norm <= hi).length;
       const totalDots = data.length;
       const actualPercentage = ((highlightedCount / totalDots) * 100).toFixed(1);
-  
+
       const tooltip = document.createElement('div');
       tooltip.id = 'custom-chart-tooltip';
       tooltip.style.cssText = `
@@ -1957,39 +1966,32 @@ function animateDistributionCurve(userBpValue) {
           z-index: 1000;
           white-space: nowrap;
       `;
-  
-      // Use actual highlighted dot count instead of distribution bin count
+
       tooltip.innerHTML = `
           <div style="font-weight: bold; margin-bottom: 4px;">Your BiP Value: ${bpValue.toFixed(2)}</div>
           <div>Among all dots: ${actualPercentage}% (${highlightedCount} dots)</div>
       `;
-  
+
       document.body.appendChild(tooltip);
-  
+
       const tipW = tooltip.offsetWidth;
       const tipH = tooltip.offsetHeight;
       let left = rect.left + point.x - tipW / 2;
-      let top  = rect.top  + point.y + 25;
-  
+      let top = rect.top + point.y + 25;
+
       left = Math.max(8, Math.min(left, window.innerWidth - tipW - 8));
-      top  = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
-  
+      top = Math.max(8, Math.min(top, window.innerHeight - tipH - 8));
+
       tooltip.style.left = `${left}px`;
-      tooltip.style.top  = `${top}px`;
-   }
-
-    
-
-   function removeCustomTooltip() {
-        const existing = document.getElementById('custom-chart-tooltip');
-        if (existing) existing.remove();
-      }
-
-      animateStep();
+      tooltip.style.top = `${top}px`;
     }
 
-    runFullAnimation();
-  });
+    // Start the animation
+    animateStep();
+  }
+
+  // Run once and stay in final state
+  runSingleAnimation();
 }
 
 /* ========== INITIALIZATION ========== */
