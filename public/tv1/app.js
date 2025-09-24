@@ -1732,9 +1732,13 @@ function animateDistributionCurve(userBpValue) {
   // FIXED: Use the passed normalized value directly
   const actualBpValue = userBpValue;
 
-  if (!window.lineChart) {
-    return Promise.resolve();
-  }
+   // CRITICAL FIX: Validate chart exists and canvas is in DOM
+   if (!window.lineChart || 
+    !window.lineChart.canvas || 
+    !document.body.contains(window.lineChart.canvas)) {
+     console.warn('[animateDistributionCurve] Chart invalid, skipping animation');
+     return Promise.resolve();
+   }
 
   return new Promise(() => {
     const chart = window.lineChart;
@@ -1755,7 +1759,7 @@ function animateDistributionCurve(userBpValue) {
 
       if (!chart || !chart.canvas || !document.body.contains(chart.canvas)) {
         console.warn('[animateDistributionCurve] Chart canvas no longer in DOM, stopping animation');
-        return; // Exit early if chart is invalid
+        return;
       }
 
       while (chart.data.datasets.length > 1) {
