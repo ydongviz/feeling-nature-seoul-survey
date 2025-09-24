@@ -102,7 +102,7 @@ export const LOCALE_TEXT = {
         'Korean': '8 | 연령대를 선택해 주세요.',
     }, 'survey-personal-info-question-gender': {
         'eng': '9 | Please select the option that describes you best.',
-        'Korean': '9 | 본인에게 가장 적합한 항목을 선택해 주세요.',
+        'Korean': '9 | 성별을 선택해 주세요.',
     },
 
     'survey-personal-info-question-gender-option-Male': {
