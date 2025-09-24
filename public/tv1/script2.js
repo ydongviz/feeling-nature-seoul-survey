@@ -12,10 +12,8 @@ let rendering = false;
 
 // Simplified: Show both languages together
 const BILINGUAL_TEXTS = {
-  survey: `Please complete your survey questions!
-설문 조사를 완료해 주세요!`,
-  loading: `Loading your result…
-결과를 불러오는 중…`
+  survey: `Please complete your survey questions!<br>설문 조사를 완료해 주세요!`,
+  loading: `Loading your result…<br>결과를 불러오는 중…`
 };
 
 function hideOverlay(){ 
@@ -28,7 +26,7 @@ function showNote(msg){
   if (!ovEl) return;
   ovEl.style.display = "flex";
   
-  if (ovMsg) ovMsg.textContent = msg || BILINGUAL_TEXTS.survey;
+  if (ovMsg) ovMsg.innerHTML = msg || BILINGUAL_TEXTS.survey;
   if (ovCnt) ovCnt.style.display = "none";
 }
 
@@ -36,7 +34,7 @@ function showCountdown(msg, secs, notBeforeIso){
   if (!ovEl) return;
   ovEl.style.display = "flex";
   
-  if (ovMsg) ovMsg.textContent = msg || BILINGUAL_TEXTS.loading;
+  if (ovMsg) ovMsg.innerHTML = msg || BILINGUAL_TEXTS.loading;
   if (ovCnt) ovCnt.style.display = "block";
 
   const target = notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000);
