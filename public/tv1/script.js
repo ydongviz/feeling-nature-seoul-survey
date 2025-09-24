@@ -129,11 +129,12 @@ async function poll(){
           
           /*if (!c.notModified && c.json) {
             applyCurrent(c.json);
-          }*/
+          }
+          await window.setMode?.("result");*/
+
           await window.setMode?.("result");
-          
           await new Promise(resolve => setTimeout(resolve, 300));
-          await window.setMode?.("result");
+          
           
           // ADD THIS CRITICAL FIX:
           await new Promise(resolve => setTimeout(resolve, 800)); // Give map time to render
