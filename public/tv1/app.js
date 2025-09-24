@@ -1639,7 +1639,6 @@ async function executeResultSequence() {
   if (app.state.animationInProgress) return;
 
   try {
-    
     if (app.state.currentDataType !== 'BP') {
       app.state.currentDataType = 'BP';
       await loadSeoulData('BP');
