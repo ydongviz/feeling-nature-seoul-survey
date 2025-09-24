@@ -121,8 +121,8 @@ export const LOCALE_TEXT = {
 
     // Thank you
     'thank-you-title': {
-        'eng': 'Your Biophilic Individual Perceptions (BiP) result will be loaded on the TV in a few seconds. Thank you for your participation!',
-        'Korean': '생물친화적 개인 인식(BiP) 결과가 잠시 후 TV에 표시됩니다. 참여해 주셔서 감사합니다!',              
+        'eng': 'Your result will be loaded on the TV in a few seconds. Thank you for your participation!',
+        'Korean': '결과가 잠시 후 TV에 표시됩니다. 참여해 주셔서 감사합니다!',              
     }, 'thank-you-description': {
         'eng': 'Return to the homepage to take the survey again if you would like to contribute more to this research.',
         'Korean': '이 연구에 더 기여하고 싶으시면, 처음으로 돌아가서 설문을 다시 진행해 주세요.',
