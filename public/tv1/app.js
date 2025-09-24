@@ -42,25 +42,25 @@ const LANDING_TEXTS = {
     bpMap: 'BP Map: the strength of perceived Biophilia in the city',
     survey: 'Complete the survey to learn how you perceive and value nature in Seoul!',
     groups: {
-      veryLow: 'Biophilic Perceptions (BP) group value located in Seoul: 0.00—0.25',
-      low: 'Biophilic Perceptions (BP) group value located in Seoul: 0.25—0.50', 
-      medium: 'Biophilic Perceptions (BP) group value located in Seoul: 0.50—0.75',
-      high: 'Biophilic Perceptions (BP) group value located in Seoul: 0.75—1.00'
+      veryLow: 'Biophilic Perceptions (BP) group value located in Seoul: 0.00–0.25',
+      low: 'Biophilic Perceptions (BP) group value located in Seoul: 0.25–0.50', 
+      medium: 'Biophilic Perceptions (BP) group value located in Seoul: 0.50–0.75',
+      high: 'Biophilic Perceptions (BP) group value located in Seoul: 0.75–1.00'
     }
   },
   ko: {
     title: 'Feeling Nature Seoul',
-    intro: ‘바이오필리아(Biophilia)는 인간이 본능적으로 자연과 연결되기를 바라는 경향과 그로부터 비롯되는 이익들을 의미합니다. 하지만 생물군계마다 자연을 같은 방식으로 평가할까요?',
-    explore: '서울 시민들은 자연을 어떻게 인식하는지 알아봅시다.’,
+    intro: '바이오필리아(Biophilia)는 인간이 본능적으로 자연과 연결되기를 바라는 경향과 그로부터 비롯되는 이익들을 의미합니다. 하지만 생물군계마다 자연을 같은 방식으로 평가할까요?',
+    explore: '서울 시민들은 자연을 어떻게 인식하는지 알아봅시다.',
     bsBp: '서울시에서는 자연 인식(BP)이 자연 환경(BS)을 초과합니다.',
-    bsMap: ‘Biophilic Setting (BS, 자연 환경) 지도: 서울의 자연 환경 요소의 양 분포.,
-    bpMap: ‘Biophilic Perception (BP, 자연 인식) 지도: 서울의 자연 환경 인식의 크기 분포.’,
+    bsMap: 'Biophilic Setting (BS, 자연 환경) 지도: 서울의 자연 환경 요소의 양 분포.',
+    bpMap: 'Biophilic Perception (BP, 자연 인식) 지도: 서울의 자연 환경 인식의 크기 분포.',
     survey: '설문조사를 완료하여 당신이 서울의 자연 환경을 어떻게 인식하고 평가하는지 알아보세요!',
     groups: {
-      veryLow: '서울의 자연 인식(BP) 값 범위: 0.00—0.25',
-      low: '서울의 자연 인식(BP) 값 범위: 0.25—0.50',
-      medium: '서울의 자연 인식(BP) 값 범위: 0.50—0.75', 
-      high: '서울의 자연 인식(BP) 값 범위: 0.75—1.00'
+      veryLow: '서울의 자연 인식(BP) 값 범위: 0.00–0.25',
+      low: '서울의 자연 인식(BP) 값 범위: 0.25–0.50',
+      medium: '서울의 자연 인식(BP) 값 범위: 0.50–0.75', 
+      high: '서울의 자연 인식(BP) 값 범위: 0.75–1.00'
     }
   }
 };
@@ -72,7 +72,7 @@ const UI_TEXTS = {
     locationDescriptionBP: 'The map shows how you perceive and value urban nature by quantifying and locating your Biophilic Individual Perceptions (BiP) value in the city.',
     bpTitle: "Your Biophilic Individual Perceptions (BiP) value",
     bpDescription: "Highlights similar BiP value in the city areas that could fit your perception",
-    categoriesTitle: "Which natural element brings you the most positive feeling?”,
+    categoriesTitle: "Which natural element brings you the most positive feeling?",
     distributionTitle: "Your BiP value among the city",
     kioskMessages: {
       survey: "Please complete your survey questions!",
@@ -84,9 +84,9 @@ const UI_TEXTS = {
     locationDescriptionBS: '지도는 당신의 자연 인식 점수(BiP)를 기반으로 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다.',
     locationDescriptionBP: '지도는 당신의 자연 인식 점수(BiP)를 기반으로 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다.',
     bpTitle: "당신의 자연 인식 점수(BiP)",
-    bpDescription: “당신의 자연 인식 점수(BiP)와 유사한 자연 인식 값을 가진 도시 위치들을 표시합니다.",
-    categoriesTitle: "어떤 자연 요소가 가장 긍정적인 느낌을 제공하나요?”,
-    distributionTitle: “서울시 내 당신의 BiP 값",
+    bpDescription: "당신의 자연 인식 점수(BiP)와 유사한 자연 인식 값을 가진 도시 위치들을 표시합니다.",
+    categoriesTitle: "어떤 자연 요소가 가장 긍정적인 느낌을 제공하나요?",
+    distributionTitle: "서울시 내 당신의 BiP 값",
     kioskMessages: {
       survey: "설문 조사를 완료해 주세요!",
       loading: "결과를 불러오는 중…"
