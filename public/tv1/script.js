@@ -1,4 +1,4 @@
-/* TV-1 kiosk adapter + state poller (production) - FIXED VERSION */
+/* TV-1 kiosk adapter + state poller (production) - BILINGUAL VERSION */
 const STATE_URL  = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 const RESULT_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/current.json";
 
@@ -10,19 +10,41 @@ let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
 
+// Add UI texts for kiosk messages
+const UI_TEXTS = {
+  en: {
+    survey: "Please complete your survey questions!",
+    loading: "Loading your result…"
+  },
+  ko: {
+    survey: "설문 조사 질문을 완료해 주세요!",
+    loading: "결과를 불러오는 중…"
+  }
+};
+
 function hideOverlay(){ if(ovEl) ovEl.style.display="none"; if(ovCnt) ovCnt.style.display="none"; if(timer){clearInterval(timer); timer=null;} }
 
 function showNote(msg){
     if (!ovEl) return;
     ovEl.style.display = "flex";
-    if (ovMsg) ovMsg.textContent = msg || "Please complete your survey questions!";
+    
+    // Get current language from app state
+    const currentLang = window.app?.ui?.currentLanguage || 'en';
+    const defaultMsg = UI_TEXTS[currentLang]?.survey || "Please complete your survey questions!";
+    
+    if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "none";
 }
 
 function showCountdown(msg, secs, notBeforeIso){
     if (!ovEl) return;
     ovEl.style.display = "flex";
-    if (ovMsg) ovMsg.textContent = msg || "Loading your result…";
+    
+    // Get current language from app state  
+    const currentLang = window.app?.ui?.currentLanguage || 'en';
+    const defaultMsg = UI_TEXTS[currentLang]?.loading || "Loading your result…";
+    
+    if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "block";
 
    const target = notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000);
@@ -42,9 +64,13 @@ async function fetchJSON(url, et){ const r=await fetch(url,{cache:"no-cache", he
 function applyCurrent(cur){
   try{
     const bp = Number(cur?.bp ?? 0);
-    const top = Array.isArray(cur?.intensity_top) ? cur.intensity_top : [];
+    const language = cur?.language || 'English'; // Get language from response
     
-    //console.log(`[applyCurrent] Setting BP: ${bp}, Intensities:`, cur?.intensities);
+    // CRITICAL: Update TV UI language BEFORE updating dashboard
+    if (typeof window.updateUILanguage === "function") {
+      window.updateUILanguage(language === 'Korean' ? 'ko' : 'en');
+      //console.log(`[applyCurrent] Updated UI language to: ${language === 'Korean' ? 'ko' : 'en'}`);
+    }
     
     if (Number.isFinite(bp)) {
       // Store the raw BP value globally for reference
@@ -53,7 +79,6 @@ function applyCurrent(cur){
       // ONLY call the BP manager - let it handle normalization and DOM updates
       if (typeof window.setUserBp === "function") {
         window.setUserBp(bp);
-        //console.log(`[applyCurrent] Called setUserBp(${bp}) - BPManager will handle normalization`);
       }
     }
     
@@ -62,10 +87,9 @@ function applyCurrent(cur){
       window.updateDashboardDisplay({
         bp: bp,
         intensities: cur?.intensities || {},
-        intensity_top: top,
+        intensity_top: cur?.intensity_top || [],
         distribution: cur?.distribution || null
       });
-      //console.log(`[applyCurrent] Called updateDashboardDisplay with full data including intensities`);
     }
     
   } catch(e){ 
@@ -117,7 +141,7 @@ async function poll(){
         window.setMode?.("landing"); return;
       }
       
-      // FIXED: Reorder the show_result logic
+      // show_result logic
       if (stage === "show_result"){
         hideOverlay();
         const changed = curEt && curEt !== lastRenderedEt && curEt !== baselineEt;
@@ -132,12 +156,8 @@ async function poll(){
           }
           await window.setMode?.("result");
           
-          //await window.setMode?.("result");
-          //await new Promise(resolve => setTimeout(resolve, 300));
-          
-          
-          // ADD THIS CRITICAL FIX:
-          await new Promise(resolve => setTimeout(resolve, 800)); // Give map time to render
+          // Give map time to render
+          await new Promise(resolve => setTimeout(resolve, 800));
           if (window.app?.map) {
             window.app.map.resize();
             window.app.map.resize(); // Call twice to ensure it takes

@@ -65,6 +65,35 @@ const LANDING_TEXTS = {
   }
 };
 
+const UI_TEXTS = {
+  en: {
+    locationTitle: "Seoul (Temperate Forest)",
+    locationDescriptionBS: 'The map shows how you perceive and value urban nature by quantifying and locating your Biophilic Individual Perceptions (BiP) value in the city.',
+    locationDescriptionBP: 'The map shows how you perceive and value urban nature by quantifying and locating your Biophilic Individual Perceptions (BiP) value in the city.',
+    bpTitle: "Your Biophilic Individual Perceptions (BiP) value",
+    bpDescription: "Highlights similar BiP value in the city areas that could fit your perception",
+    categoriesTitle: "Which natural element brings you most positive feeling",
+    distributionTitle: "Your BiP value among the city",
+    kioskMessages: {
+      survey: "Please complete your survey questions!",
+      loading: "Loading your result…"
+    }
+  },
+  ko: {
+    locationTitle: "서울 (온대림)",
+    locationDescriptionBS: '지도는 도시에서 당신의 생물친화적 개인 인식(BiP) 가치를 정량화하고 위치를 파악하여 도시 자연을 어떻게 인식하고 평가하는지 보여줍니다.',
+    locationDescriptionBP: '지도는 도시에서 당신의 생물친화적 개인 인식(BiP) 가치를 정량화하고 위치를 파악하여 도시 자연을 어떻게 인식하고 평가하는지 보여줍니다.',
+    bpTitle: "당신의 생물친화적 개인 인식(BiP) 값",
+    bpDescription: "당신의 인식에 맞는 도시 지역에서 유사한 BiP 값을 강조 표시합니다",
+    categoriesTitle: "어떤 자연 요소가 가장 긍정적인 느낌을 주나요",
+    distributionTitle: "도시 내 당신의 BiP 값",
+    kioskMessages: {
+      survey: "설문 조사 질문을 완료해 주세요!",
+      loading: "결과를 불러오는 중…"
+    }
+  }
+};
+
 
 // Simple Media Cache for offline reliability
 class SimpleMediaCache {
@@ -656,6 +685,9 @@ const app = {
     cache: {},
     dashboardData: null,
     allParticipantsData: null
+  },
+  ui: {
+    currentLanguage: 'en' // default English
   },
   map: null,
   mapLoaded: false,
@@ -1402,11 +1434,14 @@ function buildLeftColumnContent() {
   const leftTop = app.elements.leftTop;
   if (!leftTop) return;
 
+  const texts = UI_TEXTS[app.ui.currentLanguage];
+  const description = app.state.currentDataType === 'BP' 
+    ? texts.locationDescriptionBP 
+    : texts.locationDescriptionBS;
+
   leftTop.innerHTML = `
-    <h2 id="locationTitle">Seoul (Temperate Forest)</h2>
-    <p id="locationDescription">
-      ${app.state.currentDataType === 'BP' ? seoulData.BPDescription : seoulData.BSDescription}
-    </p>
+    <h2 id="locationTitle">${texts.locationTitle}</h2>
+    <p id="locationDescription">${description}</p>
   `;
 }
 
@@ -1423,17 +1458,19 @@ function buildRightColumnContent() {
 function buildFooterContent() {
   if (!app.elements.footer) return;
 
+  const texts = UI_TEXTS[app.ui.currentLanguage];
+
   app.elements.footer.innerHTML = `
     <div class="footer-section">
-      <h4>Your Biophilic Individual Perceptions (BiP) value</h4>
+      <h4>${texts.bpTitle}</h4>
       <div class="bp-value" id="bpValueDisplay">
         <span id="bpValueNumber">0.00</span>
         <div class="bp-indicator"></div>
       </div>
-      <p>Highlights similar BiP value in the city areas that could fit your perception</p>
+      <p>${texts.bpDescription}</p>
     </div>
     <div class="footer-section">
-      <div class="middle-section-title">Which natural element brings you most positive feeling</div>
+      <div class="middle-section-title">${texts.categoriesTitle}</div>
       <div class="plant-category" id="topCategoryText">Loading...</div>
       <div class="chart-content">
         <div class="chart-left">
@@ -1448,13 +1485,28 @@ function buildFooterContent() {
       </div>
     </div>
     <div class="footer-section">
-      <div class="chart-title">Your BiP value among the city</div>
+      <div class="chart-title">${texts.distributionTitle}</div>
       <div class="chart-wrapper">
         <canvas id="lineChart"></canvas>
       </div>
     </div>
   `;
 }
+
+function updateUILanguage(language) {
+  app.ui.currentLanguage = language;
+  
+  // Only update if in result mode
+  if (app.mode === Modes.RESULT) {
+    buildLeftColumnContent();
+    buildFooterContent();
+    
+    // Force dashboard manager to re-cache elements after DOM rebuild
+    dashboardManager.cacheElements();
+  }
+}
+
+window.updateUILanguage = updateUILanguage;
 
 /* ========== LANDING ANIMATION ========== */
 function showGif() {
@@ -1732,13 +1784,12 @@ function animateDistributionCurve(userBpValue) {
   // FIXED: Use the passed normalized value directly
   const actualBpValue = userBpValue;
 
-   // CRITICAL FIX: Validate chart exists and canvas is in DOM
-   if (!window.lineChart || 
-    !window.lineChart.canvas || 
-    !document.body.contains(window.lineChart.canvas)) {
-     console.warn('[animateDistributionCurve] Chart invalid, skipping animation');
-     return Promise.resolve();
-   }
+  if (!window.lineChart || 
+      !window.lineChart.canvas || 
+      !document.body.contains(window.lineChart.canvas)) {
+    console.warn('[animateDistributionCurve] Chart invalid, skipping animation');
+    return Promise.resolve();
+  }
 
   return new Promise(() => {
     const chart = window.lineChart;
