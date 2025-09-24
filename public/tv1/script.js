@@ -127,14 +127,16 @@ async function poll(){
         try {
           const c = await fetchJSON(RESULT_URL);
           
-          /*if (!c.notModified && c.json) {
-            applyCurrent(c.json);
-          }*/
           await window.setMode?.("result");
           
-          await new Promise(resolve => setTimeout(resolve, 300));
-          await window.setMode?.("result");
-          
+         //await new Promise(resolve => setTimeout(resolve, 300));
+         // await window.setMode?.("result");
+
+         await new Promise(resolve => setTimeout(resolve, 500));
+         if (!c.notModified && c.json) {
+                applyCurrent(c.json);
+          }
+            
           // ADD THIS CRITICAL FIX:
           await new Promise(resolve => setTimeout(resolve, 800)); // Give map time to render
           if (window.app?.map) {
