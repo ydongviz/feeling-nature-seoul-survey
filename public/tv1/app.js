@@ -164,6 +164,10 @@ class SimpleMemoryManager {
         window.lineChart = null;
       }
     }
+
+    // ADDED: Remove any lingering tooltips
+    const tooltips = document.querySelectorAll('#custom-chart-tooltip');
+    tooltips.forEach(tooltip => tooltip.remove());
   }
 
   startPeriodicCleanup() {
@@ -994,13 +998,17 @@ function clearAllTimersAndAnimations() {
 
   stopPulseLoop();
   
-  // Clean up chart
+  // FIXED: Clean up chart AND remove tooltips
   if (window.lineChart) {
     try {
       window.lineChart.destroy();
     } catch (e) {}
     window.lineChart = null;
   }
+
+  // ADDED: Remove any lingering custom tooltips
+  const existingTooltips = document.querySelectorAll('#custom-chart-tooltip');
+  existingTooltips.forEach(tooltip => tooltip.remove());
 
   const video = document.getElementById('landingVideo');
   if (video) video.pause();
