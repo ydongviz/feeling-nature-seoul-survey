@@ -10,15 +10,15 @@ let baselineEt = null;
 let lastRenderedEt = null;
 let rendering = false;
 
-// FIXED: Correct Korean text encoding
+// FIXED: Correct Korean text encoding using Unicode escapes
 const KIOSK_TEXTS = {
   en: {
     survey: "Please complete your survey questions!",
     loading: "Loading your result…"
   },
   ko: {
-    survey: "설문 조사를 완료해 주세요!",
-    loading: "결과를 불러오는 중…"
+    survey: "\uc124\ubb38 \uc870\uc0ac\ub97c \uc644\ub8cc\ud574 \uc8fc\uc138\uc694!",
+    loading: "\uacb0\uacfc\ub97c \ubd88\ub7ec\uc624\ub294 \uc911…"
   }
 };
 
