@@ -154,25 +154,24 @@ class SimpleMediaCache {
 
 class SimpleMemoryManager {
   cleanup() {
-    // Clear Chart.js instances safely
+    // Simple chart cleanup
     if (window.lineChart) {
       try {
-        if (window.lineChart.canvas && document.body.contains(window.lineChart.canvas)) {
-          window.lineChart.destroy();
-        }
-        window.lineChart = null;
-        //console.log('[SimpleMemoryManager] Cleared Chart.js instance');
+        window.lineChart.destroy();
       } catch (e) {
         console.warn('[SimpleMemoryManager] Chart cleanup failed:', e);
+      } finally {
+        window.lineChart = null;
       }
     }
-    
   }
 
   startPeriodicCleanup() {
     setInterval(() => {
-      console.log('[SimpleMemoryManager] Running periodic cleanup...');
-      this.cleanup();
+      if (window.app?.mode !== 'result' || 
+          !window.app?.state?.animationInProgress) {
+        this.cleanup();
+      }
     }, 10 * 60 * 1000);
   }
 }
@@ -994,7 +993,14 @@ function clearAllTimersAndAnimations() {
   app.cleanup.animations.clear();
 
   stopPulseLoop();
-  removeAllCustomTooltips();
+  
+  // Clean up chart
+  if (window.lineChart) {
+    try {
+      window.lineChart.destroy();
+    } catch (e) {}
+    window.lineChart = null;
+  }
 
   const video = document.getElementById('landingVideo');
   if (video) video.pause();
@@ -1007,7 +1013,6 @@ function clearAllTimersAndAnimations() {
   }
 
   app.state.animationInProgress = false;
-
   simpleMemoryManager.cleanup();
 }
 
@@ -1477,51 +1482,42 @@ function buildRightColumnContent() {
 function buildFooterContent() {
   if (!app.elements.footer) return;
 
-  const texts = UI_TEXTS[app.ui.currentLanguage];
-
-  // Clean up existing chart before rebuilding DOM
-  if (window.lineChart) {
-    try {
-      if (window.lineChart.canvas && document.body.contains(window.lineChart.canvas)) {
-        window.lineChart.destroy();
-      }
-    } catch (e) {
-      console.warn('[buildFooterContent] Chart cleanup failed:', e);
-    }
-    window.lineChart = null;
-  }
-
-  app.elements.footer.innerHTML = `
-    <div class="footer-section">
-      <h4>${texts.bpTitle}</h4>
-      <div class="bp-value" id="bpValueDisplay">
-        <span id="bpValueNumber">0.00</span>
-        <div class="bp-indicator"></div>
-      </div>
-      <p>${texts.bpDescription}</p>
-    </div>
-    <div class="footer-section">
-      <div class="middle-section-title">${texts.categoriesTitle}</div>
-      <div class="plant-category" id="topCategoryText">Loading...</div>
-      <div class="chart-content">
-        <div class="chart-left">
-          <div class="top-elements" id="topElements"></div>
+  // Only build if lineChart canvas doesn't exist
+  if (!document.getElementById('lineChart')) {
+    const texts = UI_TEXTS[app.ui.currentLanguage];
+    
+    app.elements.footer.innerHTML = `
+      <div class="footer-section">
+        <h4>${texts.bpTitle}</h4>
+        <div class="bp-value" id="bpValueDisplay">
+          <span id="bpValueNumber">0.00</span>
+          <div class="bp-indicator"></div>
         </div>
-        <div class="chart-right">
-          <div class="chart-container">
-            <div class="bar-chart" id="barChart"></div>
-            <div class="bar-labels" id="barLabels"></div>
+        <p>${texts.bpDescription}</p>
+      </div>
+      <div class="footer-section">
+        <div class="middle-section-title">${texts.categoriesTitle}</div>
+        <div class="plant-category" id="topCategoryText">Loading...</div>
+        <div class="chart-content">
+          <div class="chart-left">
+            <div class="top-elements" id="topElements"></div>
+          </div>
+          <div class="chart-right">
+            <div class="chart-container">
+              <div class="bar-chart" id="barChart"></div>
+              <div class="bar-labels" id="barLabels"></div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="footer-section">
-      <div class="chart-title">${texts.distributionTitle}</div>
-      <div class="chart-wrapper">
-        <canvas id="lineChart"></canvas>
+      <div class="footer-section">
+        <div class="chart-title">${texts.distributionTitle}</div>
+        <div class="chart-wrapper">
+          <canvas id="lineChart"></canvas>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  }
 }
 
 function updateUILanguage(language) {
@@ -1868,7 +1864,7 @@ function animateDistributionCurve(userBpValue) {
       const animationDuration = 3000;
       const stepDuration = animationDuration / Math.max(1, userBinIndex);
 
-      function animateStep() {
+      function animateStep() {   
         if (currentIndex <= userBinIndex && app.mode === Modes.RESULT) {
           animatedDotDataset.data.fill(null);
           const yValue = chart.data.datasets[0].data[currentIndex];
