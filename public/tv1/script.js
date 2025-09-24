@@ -11,7 +11,7 @@ let lastRenderedEt = null;
 let rendering = false;
 
 // Add UI texts for kiosk messages
-const UI_TEXTS = {
+const KIOSK_TEXTS = {
   en: {
     survey: "Please complete your survey questions!",
     loading: "Loading your result…"
@@ -30,7 +30,7 @@ function showNote(msg){
     
     // Get current language from app state
     const currentLang = window.app?.ui?.currentLanguage || 'en';
-    const defaultMsg = UI_TEXTS[currentLang]?.survey || "Please complete your survey questions!";
+    const defaultMsg = KIOSK_TEXTS[currentLang]?.survey || "Please complete your survey questions!";
     
     if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "none";
@@ -42,7 +42,7 @@ function showCountdown(msg, secs, notBeforeIso){
     
     // Get current language from app state  
     const currentLang = window.app?.ui?.currentLanguage || 'en';
-    const defaultMsg = UI_TEXTS[currentLang]?.loading || "Loading your result…";
+    const defaultMsg = KIOSK_TEXTS[currentLang]?.loading || "Loading your result…";
     
     if (ovMsg) ovMsg.textContent = msg || defaultMsg;
     if (ovCnt) ovCnt.style.display = "block";
