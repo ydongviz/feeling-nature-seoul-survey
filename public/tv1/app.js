@@ -77,7 +77,7 @@ const UI_TEXTS = {
     kioskMessages: {
       survey: "Please complete your survey questions!",
       loading: "Loading your result…"
-    }
+    },
     categoryLabels: {
       sky: "Sky", tree: "Tree", grass: "Grass", person: "Person",
       ground: "Earth/Ground", mountain: "Mountain", plant: "Plant/Flora",
@@ -100,7 +100,7 @@ const UI_TEXTS = {
     kioskMessages: {
       survey: "설문 조사를 완료해 주세요!",
       loading: "결과를 불러오는 중…"
-    }
+    },
     categoryLabels: {
       sky: "하늘", tree: "나무", grass: "잔디", person: "사람",
       ground: "땅/지면", mountain: "산", plant: "식물/식물군",
