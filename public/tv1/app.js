@@ -1533,24 +1533,19 @@ function updateUILanguage(language) {
   
   // Only update if in result mode
   if (app.mode === Modes.RESULT) {
-    const texts = UI_TEXTS[language];
+    // Store current dashboard data before rebuilding
+    const currentData = app.data.dashboardData;
     
-    // Update left column content
     buildLeftColumnContent();
+    buildFooterContent();
     
-    // FIXED: Update footer text content without rebuilding DOM
-    const bpTitle = document.querySelector('footer .footer-section:first-child h4');
-    const bpDescription = document.querySelector('footer .footer-section:first-child p');
-    const categoriesTitle = document.querySelector('footer .footer-section:nth-child(2) .middle-section-title');
-    const distributionTitle = document.querySelector('footer .footer-section:last-child .chart-title');
-    
-    if (bpTitle) bpTitle.textContent = texts.bpTitle;
-    if (bpDescription) bpDescription.textContent = texts.bpDescription;
-    if (categoriesTitle) categoriesTitle.textContent = texts.categoriesTitle;
-    if (distributionTitle) distributionTitle.textContent = texts.distributionTitle;
-    
-    // Force dashboard manager to re-cache elements
+    // Force dashboard manager to re-cache elements after DOM rebuild
     dashboardManager.cacheElements();
+    
+    // Restore dashboard data if it exists
+    if (currentData) {
+      dashboardManager.updateAll(currentData);
+    }
   }
 }
 
