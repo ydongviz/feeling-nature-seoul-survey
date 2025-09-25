@@ -180,7 +180,7 @@ class SimpleMemoryManager {
         const tooltips = document.querySelectorAll('#custom-chart-tooltip');
         tooltips.forEach(tooltip => tooltip.remove());
       }
-    }, 60 * 60 * 1000);
+    }, 37 * 60 * 1000);
   }
 }
 
