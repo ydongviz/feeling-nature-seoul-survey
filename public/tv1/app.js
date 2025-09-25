@@ -172,15 +172,15 @@ class SimpleMemoryManager {
   }
 
   startPeriodicCleanup() {
-    setInterval(() => {
-      if (window.app?.mode !== 'result') {
+    if (this._cleanupTimer) clearInterval(this._cleanupTimer);
+  
+    this._cleanupTimer = setInterval(() => {
+      if (window.app?.mode !== Modes.RESULT && window.app?.mode !== 'result') {
         this.cleanup();
       } else {
-        // Only clean tooltips during result mode, preserve chart
-        const tooltips = document.querySelectorAll('#custom-chart-tooltip');
-        tooltips.forEach(tooltip => tooltip.remove());
+        document.querySelectorAll('#custom-chart-tooltip').forEach(el => el.remove());
       }
-    }, 37 * 60 * 1000);
+    }, 37 * 60 * 1000); // 37 minutes
   }
 }
 
