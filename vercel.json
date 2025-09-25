@@ -1,6 +1,10 @@
 {
   "redirects": [
+    { "source": "/", "destination": "/survey", "permanent": false },
     { "source": "/tv1", "destination": "/tv1/", "permanent": true },
     { "source": "/tv2", "destination": "/tv2/", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/survey", "destination": "/index.html" }
   ]
 }
