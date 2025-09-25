@@ -31,6 +31,7 @@ let audioUnlocked = false;
 
 let pendingVideoStart = false;
 let isTransitioning = false;  
+let lastP90Update = 0;
 
 // ===== THREE globals =====
 let scene, camera, renderer, controls;
@@ -508,9 +509,6 @@ function sequence() {
     /*if (!isTransformed && isPlaying && currentMode === 'landing') {
       calculateP90AndUpdateVolume();
     }*/
-
-  // Add this variable at top:
-let lastP90Update = 0;
 
 // Replace the music volume check in sequence():
 if (!isTransformed && isPlaying && currentMode === 'landing') {

@@ -2067,6 +2067,28 @@ async function initializeApplication() {
       app._resizeListenerAdded = true;
     }
 
+    // Wire once to avoid duplicate handlers across re-inits
+   if (!app._wired) {
+     app._wired = true;
+
+    // Ensure everything stops cleanly on manual refresh
+    window.addEventListener('beforeunload', () => {
+      try { clearAllTimersAndAnimations(); } catch {}
+      try { simpleMediaCache.cleanup(); } catch {}
+      try { simpleMemoryManager.cleanup(); } catch {}
+    });
+
+    // If the tab ever loses focus (dual-display setups), pause pulse;
+    // resume when focused and in RESULT mode
+     document.addEventListener('visibilitychange', () => {
+       if (document.hidden) {
+       try { stopPulseLoop(); } catch {}
+         } else if (app.mode === Modes.RESULT || app.mode === 'result') {
+       try { startPulseLoop(); } catch {}
+       }
+     });  
+    }
+
     app.initialized = true;
     app._initializing = false;
 

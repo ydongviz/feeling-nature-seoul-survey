@@ -8,6 +8,7 @@ const ASSETS = [
   '/tv2/script.js',
   '/tv2/img/fn-final1.mp4',
   '/tv2/music/nature-dreamscape-350256.mp3',
+  '/tv2/music/nature-dreamscape-350256.ogg',
 ];
 
 self.addEventListener('install', (event) => {
