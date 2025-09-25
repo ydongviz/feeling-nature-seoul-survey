@@ -12,17 +12,6 @@ import {ThankYouPage} from "./ThankYouPage";
 import {ProgressPage} from "./ProgressPage";
 import {useStateMachine} from "little-state-machine";
 
-// === Event unlock helpers (PIN / QR) ===
-export function isEventUnlocked() {
-    return sessionStorage.getItem('fn_event_ok') === '1';
-  }
-  export function unlockEventWithPin(pin) {
-    const EVENT_PIN = 'mitscl2025'; // choose your PIN
-    if (pin === EVENT_PIN) { sessionStorage.setItem('fn_event_ok','1'); return true; }
-    return false;
-  }
-unlockViaQROnce();
-
 function IdleResetter() {
       const location = useLocation();
       const navigate  = useNavigate();                  // v6

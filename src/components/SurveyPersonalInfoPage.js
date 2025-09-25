@@ -9,7 +9,6 @@ import './theme.css';
 import './SurveyPersonalInfoPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";
 import { tvState, getSessionId } from '../stateApi';
-import { isEventUnlocked } from "./App";
 
 
 // Reusable Progress Bar Component (same as other pages)
@@ -162,25 +161,44 @@ function sendSurveyData(id, _data, success) {
     //console.log("Request timestamp:", new Date().toISOString());
     
     // Send to backend with enhanced logging
-    /*axios.post('/api/upload', data, {
+    axios.post('/api/upload', data, {
         timeout: 30000, // 30 second timeout
         headers: {
             'Content-Type': 'application/json'
         }
-    })*/
-    const EK = import.meta.env?.VITE_EVENT_KEY;
-const headers = { 'Content-Type': 'application/json' };
-if (isEventUnlocked() && EK) headers['x-event-key'] = EK;
-
-axios.post('/api/upload', data, { timeout: 30000, headers })
-  .then(() => success())
-  .catch(err => {
-    console.error("=== UPLOAD ERROR ===", err?.message || err);
-    // Still continue UX
-    success();
-  });
-    
-    
+    })
+    .then(response => {
+        //console.log("=== UPLOAD SUCCESS ===");
+        //console.log("Response status:", response.status);
+        //console.log("Response data:", response.data);
+        //console.log("Response headers:", response.headers);
+        //console.log("Upload completed at:", new Date().toISOString());
+        
+        // Always call success callback - let the user experience be smooth
+        success();
+    })
+    .catch(error => {
+        console.error("=== UPLOAD ERROR ===");
+        console.error("Error message:", error.message);
+        console.error("Error code:", error.code);
+        
+        if (error.response) {
+            console.error("Error response status:", error.response.status);
+            console.error("Error response data:", error.response.data);
+            console.error("Error response headers:", error.response.headers);
+        } else if (error.request) {
+            console.error("No response received:", error.request);
+        } else {
+            console.error("Request setup error:", error.message);
+        }
+        
+        console.error("Error occurred at:", new Date().toISOString());
+        console.log("=== END ERROR LOG ===");
+        
+        // Still call success callback to not break user flow
+        // You can monitor the console logs to track actual failures
+        success();
+    });
 }
 
 export function SurveyPersonalInfoPage() {

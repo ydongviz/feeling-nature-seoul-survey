@@ -6,7 +6,6 @@ import './theme.css';
 import './HomePage.css';
 import {languages, locale_text} from "./lang";
 import { tvState, getSessionId } from '../stateApi';
-import { isEventUnlocked, unlockEventWithPin } from './App';
 
 export function HomePage({setGlobalLanguage}) {
     const {actions, state} = useStateMachine({
@@ -30,10 +29,6 @@ export function HomePage({setGlobalLanguage}) {
         
     const onStart = async (e) => {
              e.preventDefault(); // stop Link’s default nav
-             if (!isEventUnlocked()) {
-                    const pin = window.prompt('Staff PIN');
-                     if (!unlockEventWithPin(pin)) { alert('Locked'); return; }
-              }
              try { await tvState.inProgress(sessionId); } catch (err) { console.error('[tv] in_progress failed', err); }
             // navigate after we’ve told the TVs
             window.location.assign('/surveycity'); // or use react-router history.push('/surveycity')

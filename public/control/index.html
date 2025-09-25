@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1"
+  />
   <title>FN Control Pad</title>
   <style>
     :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji; }
@@ -19,27 +22,14 @@
     .hint { color: #666; font-size: 12px; }
     pre { background: #0b0b0b; color: #eaeaea; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-    .status { font-size: 12px; padding-left: 8px; }
-    .status.ok { color: #137a08; }
-    .status.locked { color: #a40000; }
   </style>
 </head>
 <body>
   <h1>🌿 Feeling Nature — Control Pad</h1>
 
-  <!-- Staff Unlock -->
+  <!-- Language -->
   <fieldset>
-    <legend>Staff Unlock</legend>
-    <div class="row">
-      <button class="secondary" onclick="unlock()">Unlock (PIN)</button>
-      <span id="lockStatus" class="status locked">Locked — controls disabled</span>
-    </div>
-    <div class="hint">Enter the PIN once per device session. Visitors never see this.</div>
-  </fieldset>
-
-  <!-- Language (not active for this event) -->
-  <fieldset>
-    <legend>Language (not active for this event)</legend>
+    <legend>Language(not active for this event)</legend>
     <div class="row">
       <label><input type="radio" name="lang" value="en" checked> English</label>
       <label><input type="radio" name="lang" value="ko"> 한국어</label>
@@ -51,18 +41,18 @@
     <legend>Quick States</legend>
     <div class="grid">
       <button id="btn-landing" onclick="send({stage:'idle'})">Landing (Idle = Soft Reset)</button>
-      <button id="btn-ip" onclick="send({stage:'in_progress', ttl_seconds:180})">In Progress (Show note)</button>
+      <button onclick="send({stage:'in_progress', ttl_seconds:180})">In Progress (Show note)</button>
       <div>
         <div class="row" style="margin-bottom:6px">
           <input id="cdSecs" type="number" min="1" max="10" value="3" aria-label="Countdown seconds">
           <input id="cdMsg" type="text" placeholder="Message (optional)" aria-label="Countdown message">
         </div>
         <div class="row">
-          <button id="btn-cd" onclick="countdown()">Start Countdown</button>
+          <button onclick="countdown()">Start Countdown</button>
           <span class="hint">e.g., 3 → 2 → 1 overlay on TVs</span>
         </div>
       </div>
-      <button id="btn-show" onclick="send({stage:'show_result'})">Show Result (no payload)</button>
+      <button onclick="send({stage:'show_result'})">Show Result (no payload)</button>
     </div>
   </fieldset>
 
@@ -70,8 +60,8 @@
   <fieldset>
     <legend>Maintenance</legend>
     <div class="row">
-      <button id="btn-peek" class="secondary" onclick="peek()">Peek state.json</button>
-      <button id="btn-reload" onclick="send({stage:'idle', force_reload:true, ttl_seconds:60})">Hard Reload TVs (remote)</button>
+      <button class="secondary" onclick="peek()">Peek state.json</button>
+      <button onclick="send({stage:'idle', force_reload:true, ttl_seconds:60})">Hard Reload TVs (remote)</button>
     </div>
     <div class="hint">Hard Reload sets <code>force_reload:true</code>; TVs will reload once per new ETag.</div>
   </fieldset>
@@ -83,57 +73,36 @@
   </fieldset>
 
   <script>
-    // ===== Config (set the event key here if this page isn't built with Vite) =====
-    window.VITE_EVENT_KEY = window.VITE_EVENT_KEY || 'mitscl2025';
-
-    // ===== DOM =====
     const outEl = document.getElementById('out');
     const cdSecs = document.getElementById('cdSecs');
-    const cdMsg  = document.getElementById('cdMsg');
-    const lockEl = document.getElementById('lockStatus');
+    const cdMsg = document.getElementById('cdMsg');
+    const btnLanding = document.getElementById('btn-landing');
 
-    // ===== Unlock helpers (PIN or QR token handled by the survey app too) =====
-    const FLAG = 'fn_event_ok';
-    function isUnlocked(){ return sessionStorage.getItem(FLAG) === '1'; }
-    function setUnlocked(v){ if (v) sessionStorage.setItem(FLAG,'1'); else sessionStorage.removeItem(FLAG); updateLockUI(); }
-    function unlock(){
-      if (isUnlocked()) return;
-      const pin = prompt('Staff PIN');
-      if (pin === 'mitscl2025') setUnlocked(true);
-      else alert('Wrong PIN');
-    }
-    function updateLockUI(){
-      const locked = !isUnlocked();
-      ['btn-landing','btn-ip','btn-cd','btn-show','btn-peek','btn-reload'].forEach(id=>{
-        const el=document.getElementById(id); if (el) el.disabled = locked;
-      });
-      lockEl.textContent = locked ? 'Locked — controls disabled' : 'Unlocked — controls enabled';
-      lockEl.className = 'status ' + (locked ? 'locked' : 'ok');
-    }
-
-    // ===== Utilities =====
     function getLang(){
       const sel = document.querySelector('input[name="lang"]:checked');
       return sel ? sel.value : 'en';
     }
-    function brieflyDisable(el, ms=800){ if (!el) return; el.disabled = true; setTimeout(()=>{ el.disabled=false; }, ms); }
 
-    // ===== Core POST (adds header only when unlocked) =====
+    // Debounce helper to prevent double taps
+    function brieflyDisable(el, ms=800){
+      if (!el) return;
+      el.disabled = true; setTimeout(()=>{ el.disabled = false; }, ms);
+    }
+
     async function send(body){
-      if (!isUnlocked()) { unlock(); if (!isUnlocked()) return; }
-
-      // Attach language unless provided
+      // Always attach language unless explicitly provided
       if (!('lang' in body)) body.lang = getLang();
 
+      // Give immediate UI feedback
       outEl.textContent = 'Sending…';
       brieflyDisable(event?.target);
 
-      const headers = { 'content-type':'application/json' };
-      const EK = window.VITE_EVENT_KEY;
-      if (EK) headers['x-event-key'] = EK; // backend will 403 if missing/wrong
-
       try {
-        const r = await fetch('/api/state', { method:'POST', headers, body: JSON.stringify(body) });
+        const r = await fetch('/api/state', {
+          method:'POST',
+          headers:{ 'content-type':'application/json' /*, 'x-api-key': 'YOUR_KEY'*/ },
+          body: JSON.stringify(body)
+        });
         const text = await r.text();
         let j; try { j = JSON.parse(text); } catch { j = { raw:text }; }
         outEl.textContent = JSON.stringify({ status:r.status, ok:r.ok, resp:j }, null, 2);
@@ -147,16 +116,18 @@
       const nb = new Date(Date.now() + secs*1000).toISOString();
       send({
         stage:'in_progress',
-        overlay:{ type:'countdown', message:(cdMsg.value||'').trim(), countdown_secs:secs, not_before:nb },
-        ttl_seconds:180,
-        lang:getLang()
+        overlay:{ type:'countdown', message: (cdMsg.value||'').trim(), countdown_secs: secs, not_before: nb },
+        ttl_seconds: 180,
+        lang: getLang()
       });
     }
 
-    // ===== Peek absolute state.json =====
-    const STATE_ABS_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
-    async function peek(){
-      outEl.textContent = 'Fetching state…';
+
+
+  const STATE_ABS_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
+
+  async function peek(){
+    outEl.textContent = 'Fetching state…';
       try {
         const r = await fetch(STATE_ABS_URL, { cache: 'no-store' });
         if (!r.ok) throw new Error('HTTP '+r.status);
@@ -164,12 +135,10 @@
         const et = r.headers.get('ETag');
         outEl.textContent = JSON.stringify({ etag: et, state: j }, null, 2);
       } catch (e) {
-        outEl.textContent = 'State fetch failed: ' + (e?.message || e);
-      }
-    }
-
-    // init
-    updateLockUI();
+    outEl.textContent = 'State fetch failed: ' + (e?.message || e);
+   }
+  }
+  
   </script>
 </body>
 </html>
