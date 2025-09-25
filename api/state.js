@@ -8,6 +8,13 @@ const s3 = new S3Client({ region: REGION });
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
+  // Require the event key header
+  const EXPECT = process.env.EVENT_KEY;
+  const got = req.headers["x-event-key"];
+  if (!EXPECT || got !== EXPECT) {
+     return res.status(403).json({ ok:false, error:"forbidden" });
+  }
+
   try {
     const { stage, session_id, overlay, ttl_seconds } = req.body || {};
     if (!stage) return res.status(400).json({ ok: false, error: "stage required" });

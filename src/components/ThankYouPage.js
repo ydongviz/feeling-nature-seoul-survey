@@ -5,6 +5,7 @@ import './theme.css';
 import './ThankYouPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";
 import { tvState, getSessionId } from '../stateApi';
+import { isEventUnlocked } from "./App"
 
 export function ThankYouPage() {
     const {surveyid} = useParams();
@@ -84,7 +85,10 @@ export function ThankYouPage() {
                     </p>
                     <button className="button-generic button-stick-to-center thankyou-button"
                       onClick={async () => {
-                        try { await tvState.resetLanding(sessionId); } finally {
+                        //try { await tvState.resetLanding(sessionId); } finally {
+                          try {
+                               if (isEventUnlocked()) { await tvState.resetLanding(sessionId); }
+                             } finally {
                          // Navigate back to home after we write the state
                         window.location.assign('/');
                        }

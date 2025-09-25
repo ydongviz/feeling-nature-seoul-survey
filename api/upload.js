@@ -52,6 +52,12 @@ export default async function handler(req, res) {
         return;
     }
 
+    const EXPECT = process.env.EVENT_KEY;
+    const got = req.headers["x-event-key"];
+       if (!EXPECT || got !== EXPECT) {
+     return res.status(403).json({ error:"forbidden" });
+    }
+
     try {
         // Check environment variables first
         if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_REGION || !AWS_BUCKET_NAME) {
