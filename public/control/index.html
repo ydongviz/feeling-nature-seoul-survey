@@ -29,7 +29,7 @@
 
   <!-- Language -->
   <fieldset>
-    <legend>Language</legend>
+    <legend>Language(not active for this event)</legend>
     <div class="row">
       <label><input type="radio" name="lang" value="en" checked> English</label>
       <label><input type="radio" name="lang" value="ko"> 한국어</label>
@@ -124,7 +124,7 @@
 
 
 
-  const STATE_ABS_URL = "https://<your-cloudfront-or-s3-domain>/state/state.json";
+  const STATE_ABS_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
 
   async function peek(){
     outEl.textContent = 'Fetching state…';
