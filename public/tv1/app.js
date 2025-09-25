@@ -173,9 +173,12 @@ class SimpleMemoryManager {
 
   startPeriodicCleanup() {
     setInterval(() => {
-      if (window.app?.mode !== 'result' || 
-          !window.app?.state?.animationInProgress) {
+      if (window.app?.mode !== 'result') {
         this.cleanup();
+      } else {
+        // Only clean tooltips during result mode, preserve chart
+        const tooltips = document.querySelectorAll('#custom-chart-tooltip');
+        tooltips.forEach(tooltip => tooltip.remove());
       }
     }, 10 * 60 * 1000);
   }
@@ -1966,7 +1969,7 @@ function animateDistributionCurve(userBpValue) {
               const restartTimer = setTimeout(runFullAnimation, 2000);
               app.cleanup.timers.add(restartTimer);
             }, 10000);
-            app.cleanup.timers.add(hideTimer); */
+            app.cleanup.timers.add(hideTimer);*/
           }
         }
      }
