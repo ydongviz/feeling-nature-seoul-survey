@@ -1959,14 +1959,14 @@ function animateDistributionCurve(userBpValue) {
             chart.render();
             createCustomTooltip(pointElement, userBpValue, percentage, count);
 
-            const hideTimer = setTimeout(() => {
+            /*const hideTimer = setTimeout(() => {
               removeCustomTooltip();
               chart.data.datasets.pop();
               chart.update('none');
               const restartTimer = setTimeout(runFullAnimation, 2000);
               app.cleanup.timers.add(restartTimer);
             }, 10000);
-            app.cleanup.timers.add(hideTimer);
+            app.cleanup.timers.add(hideTimer); */
           }
         }
      }
