@@ -91,10 +91,10 @@ const UI_TEXTS = {
   },
   ko: {
     locationTitle: "서울 (온대림)",
-    locationDescriptionBS: '지도는 당신의 자연 인식 점수(BiP)를 기반으로 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다.',
-    locationDescriptionBP: '지도는 당신의 자연 인식 점수(BiP)를 기반으로 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다.',
-    bpTitle: "당신의 자연 인식 점수(BiP)",
-    bpDescription: "당신의 자연 인식 점수(BiP)와 유사한 자연 인식 값을 가진 도시 위치들을 표시합니다.",
+    locationDescriptionBS: '지도는 응답자의 자연 인식 점수(BiP)를 기준으로 응답자가 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다',
+    locationDescriptionBP: '지도는 응답자의 자연 인식 점수(BiP)를 기준으로 응답자가 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다',
+    bpTitle: "응답자의 자연 인식 점수(BiP)",
+    bpDescription: "응답자의 자연 인식 점수(BiP)와 유사한 자연 인식 값을 가진 도시 위치들을 표시합니다.",
     categoriesTitle: "어떤 자연 요소가 가장 긍정적인 느낌을 제공하나요?",
     distributionTitle: "서울시 내 당신의 BiP 값",
     kioskMessages: {
