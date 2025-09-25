@@ -157,6 +157,7 @@ class SimpleMemoryManager {
     // Simple chart cleanup
     if (window.lineChart) {
       try {
+        if (window.lineChart.canvas && document.body.contains(window.lineChart.canvas))
         window.lineChart.destroy();
       } catch (e) {
         console.warn('[SimpleMemoryManager] Chart cleanup failed:', e);
@@ -1490,10 +1491,13 @@ function buildRightColumnContent() {
 function buildFooterContent() {
   if (!app.elements.footer) return;
 
-  // Only build if lineChart canvas doesn't exist
-  if (!document.getElementById('lineChart')) {
-    const texts = UI_TEXTS[app.ui.currentLanguage];
-    
+  const texts = UI_TEXTS[app.ui.currentLanguage];
+  
+  // Check if footer is already built
+  const existingChart = document.getElementById('lineChart');
+  
+  if (!existingChart) {
+    // Initial build - create full HTML structure
     app.elements.footer.innerHTML = `
       <div class="footer-section">
         <h4>${texts.bpTitle}</h4>
@@ -1525,25 +1529,46 @@ function buildFooterContent() {
         </div>
       </div>
     `;
+  } else {
+    // Update only the text content, preserve charts
+    updateFooterTexts(texts);
   }
 }
+
+function updateFooterTexts(texts) {
+  // Update BP section title
+  const bpTitle = app.elements.footer.querySelector('h4');
+  if (bpTitle) bpTitle.textContent = texts.bpTitle;
+  
+  // Update BP description
+  const bpDesc = app.elements.footer.querySelector('.footer-section p');
+  if (bpDesc) bpDesc.textContent = texts.bpDescription;
+  
+  // Update categories title
+  const categoriesTitle = app.elements.footer.querySelector('.middle-section-title');
+  if (categoriesTitle) categoriesTitle.textContent = texts.categoriesTitle;
+  
+  // Update distribution chart title
+  const chartTitle = app.elements.footer.querySelector('.chart-title');
+  if (chartTitle) chartTitle.textContent = texts.distributionTitle;
+}
+
 
 function updateUILanguage(language) {
   app.ui.currentLanguage = language;
   
   // Only update if in result mode
   if (app.mode === Modes.RESULT) {
-
     // Store current dashboard data before rebuilding
     const currentData = app.data.dashboardData;
 
     buildLeftColumnContent();
-    buildFooterContent();
+    buildFooterContent(); // Now handles language updates properly
     
     // Force dashboard manager to re-cache elements after DOM rebuild
     dashboardManager.cacheElements();
     
-    // Restore dashboard data if it exists
+    // CRITICAL: Re-apply dashboard data so category names update with new language
     if (currentData) {
       dashboardManager.updateAll(currentData);
     }
