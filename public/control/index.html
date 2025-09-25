@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1"
+  />
   <title>FN Control Pad</title>
   <style>
     :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji; }
@@ -12,35 +15,21 @@
     legend { padding: 0 6px; color: #555; }
     .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     label { display: inline-flex; align-items: center; gap: 6px; }
-    input[type="text"], input[type="number"], input[type="password"] { padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; min-width: 120px; }
+    input[type="text"], input[type="number"] { padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; min-width: 120px; }
     button { padding: 8px 12px; border: 1px solid #222; background: #111; color: #fff; border-radius: 8px; cursor: pointer; }
     button.secondary { background: #fff; color: #111; border-color: #aaa; }
     button:disabled { opacity: .5; cursor: default; }
     .hint { color: #666; font-size: 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
     pre { background: #0b0b0b; color: #eaeaea; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; }
-    .status { font-size: 12px; padding-left: 8px; }
-    .status.ok { color: #137a08; }
-    .status.locked { color: #a40000; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
   </style>
 </head>
 <body>
   <h1>🌿 Feeling Nature — Control Pad</h1>
 
-  <!-- Staff unlock -->
+  <!-- Language -->
   <fieldset>
-    <legend>Staff Unlock</legend>
-    <div class="row">
-      <input id="pin" type="password" placeholder="Event PIN" aria-label="Event PIN" />
-      <button id="btn-unlock" class="secondary" onclick="handleUnlock()">Unlock</button>
-      <span id="lockStatus" class="status locked">Locked — controls disabled</span>
-    </div>
-    <div class="hint">Enter the PIN once each morning. Visitors never see this.</div>
-  </fieldset>
-
-  <!-- Language (not active this event) -->
-  <fieldset>
-    <legend>Language (not active for this event)</legend>
+    <legend>Language(not active for this event)</legend>
     <div class="row">
       <label><input type="radio" name="lang" value="en" checked> English</label>
       <label><input type="radio" name="lang" value="ko"> 한국어</label>
@@ -52,18 +41,18 @@
     <legend>Quick States</legend>
     <div class="grid">
       <button id="btn-landing" onclick="send({stage:'idle'})">Landing (Idle = Soft Reset)</button>
-      <button id="btn-ip" onclick="send({stage:'in_progress', ttl_seconds:180})">In Progress (Show note)</button>
+      <button onclick="send({stage:'in_progress', ttl_seconds:180})">In Progress (Show note)</button>
       <div>
         <div class="row" style="margin-bottom:6px">
           <input id="cdSecs" type="number" min="1" max="10" value="3" aria-label="Countdown seconds">
           <input id="cdMsg" type="text" placeholder="Message (optional)" aria-label="Countdown message">
         </div>
         <div class="row">
-          <button id="btn-cd" onclick="countdown()">Start Countdown</button>
+          <button onclick="countdown()">Start Countdown</button>
           <span class="hint">e.g., 3 → 2 → 1 overlay on TVs</span>
         </div>
       </div>
-      <button id="btn-show" onclick="send({stage:'show_result'})">Show Result (no payload)</button>
+      <button onclick="send({stage:'show_result'})">Show Result (no payload)</button>
     </div>
   </fieldset>
 
@@ -71,8 +60,8 @@
   <fieldset>
     <legend>Maintenance</legend>
     <div class="row">
-      <button id="btn-peek" class="secondary" onclick="peek()">Peek state.json</button>
-      <button id="btn-reload" onclick="send({stage:'idle', force_reload:true, ttl_seconds:60})">Hard Reload TVs (remote)</button>
+      <button class="secondary" onclick="peek()">Peek state.json</button>
+      <button onclick="send({stage:'idle', force_reload:true, ttl_seconds:60})">Hard Reload TVs (remote)</button>
     </div>
     <div class="hint">Hard Reload sets <code>force_reload:true</code>; TVs will reload once per new ETag.</div>
   </fieldset>
@@ -84,52 +73,34 @@
   </fieldset>
 
   <script>
-    // ====== PIN unlock (front-end gate) ======
-    const EVENT_PIN = '8462'; // ← change this PIN for the event
-    const FLAG_KEY = 'fn_event_ok';
-
-    function isUnlocked(){ return sessionStorage.getItem(FLAG_KEY) === '1'; }
-    function setUnlocked(v){
-      if (v) sessionStorage.setItem(FLAG_KEY,'1'); else sessionStorage.removeItem(FLAG_KEY);
-      updateLockUI();
-    }
-    function handleUnlock(){
-      const v = document.getElementById('pin').value.trim();
-      if (v === EVENT_PIN){ setUnlocked(true); document.getElementById('pin').value=''; }
-      else alert('Wrong PIN');
-    }
-    function updateLockUI(){
-      const locked = !isUnlocked();
-      const ids = ['btn-landing','btn-ip','btn-cd','btn-show','btn-peek','btn-reload'];
-      ids.forEach(id => { const el=document.getElementById(id); if (el) el.disabled = locked; });
-      const st = document.getElementById('lockStatus');
-      st.textContent = locked ? 'Locked — controls disabled' : 'Unlocked — controls enabled';
-      st.className = 'status ' + (locked ? 'locked' : 'ok');
-    }
-
-    // ====== Existing controls ======
     const outEl = document.getElementById('out');
     const cdSecs = document.getElementById('cdSecs');
     const cdMsg = document.getElementById('cdMsg');
+    const btnLanding = document.getElementById('btn-landing');
 
     function getLang(){
       const sel = document.querySelector('input[name="lang"]:checked');
       return sel ? sel.value : 'en';
     }
 
-    function brieflyDisable(el, ms=800){ if (!el) return; el.disabled = true; setTimeout(()=>el.disabled=false, ms); }
+    // Debounce helper to prevent double taps
+    function brieflyDisable(el, ms=800){
+      if (!el) return;
+      el.disabled = true; setTimeout(()=>{ el.disabled = false; }, ms);
+    }
 
     async function send(body){
-      if (!isUnlocked()){ alert('Controls are locked. Enter the Event PIN first.'); return; }
-
+      // Always attach language unless explicitly provided
       if (!('lang' in body)) body.lang = getLang();
+
+      // Give immediate UI feedback
       outEl.textContent = 'Sending…';
       brieflyDisable(event?.target);
 
       try {
         const r = await fetch('/api/state', {
           method:'POST',
-          headers:{ 'content-type':'application/json' },
+          headers:{ 'content-type':'application/json' /*, 'x-api-key': 'YOUR_KEY'*/ },
           body: JSON.stringify(body)
         });
         const text = await r.text();
@@ -141,7 +112,6 @@
     }
 
     function countdown(){
-      if (!isUnlocked()){ alert('Controls are locked. Enter the Event PIN first.'); return; }
       const secs = Math.max(1, Math.min(10, parseInt(cdSecs.value || '3', 10)));
       const nb = new Date(Date.now() + secs*1000).toISOString();
       send({
@@ -152,10 +122,12 @@
       });
     }
 
-    // ====== Peek (absolute URL) ======
-    const STATE_ABS_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
-    async function peek(){
-      outEl.textContent = 'Fetching state…';
+
+
+  const STATE_ABS_URL = "https://feeling-nature-seoul-survey-2025.s3.us-east-2.amazonaws.com/public/runtime/state.json";
+
+  async function peek(){
+    outEl.textContent = 'Fetching state…';
       try {
         const r = await fetch(STATE_ABS_URL, { cache: 'no-store' });
         if (!r.ok) throw new Error('HTTP '+r.status);
@@ -163,12 +135,10 @@
         const et = r.headers.get('ETag');
         outEl.textContent = JSON.stringify({ etag: et, state: j }, null, 2);
       } catch (e) {
-        outEl.textContent = 'State fetch failed: ' + (e?.message || e);
-      }
-    }
-
-    // init
-    updateLockUI();
+    outEl.textContent = 'State fetch failed: ' + (e?.message || e);
+   }
+  }
+  
   </script>
 </body>
 </html>
