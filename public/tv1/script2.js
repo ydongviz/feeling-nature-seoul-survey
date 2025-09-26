@@ -104,6 +104,13 @@ async function poll(){
     const st = s.json || {};
     if (expired(st)) { hideOverlay(); window.setMode?.("landing"); return; }
 
+    const consumed = sessionStorage.getItem('reload_consumed_etag');
+    if (st.force_reload && curEt && curEt !== consumed) {
+      sessionStorage.setItem('reload_consumed_etag', curEt);
+      location.reload(); // drops in-memory state; SW/HTTP cache may still be used
+     return;
+    }
+
     let stage = st.stage || st.state || "idle";
     if (stage === "landing")   stage = "idle";
     if (stage === "countdown") stage = "in_progress";

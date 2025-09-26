@@ -845,6 +845,15 @@ async function tick(){
   const s = await fetchState(); 
   if (!s) return;
 
+  // Uses lastETag (set by fetchState) and remembers the ETag we consumed.
+  const consumed = sessionStorage.getItem('reload_consumed_etag');
+    if (s.force_reload && lastETag && lastETag !== consumed) {
+     sessionStorage.setItem('reload_consumed_etag', lastETag);
+     location.reload();                 // normal hard reload (drops in-memory state; SW/HTTP cache may still be used)
+    return;
+  }
+
+
   const stage = (s.stage || s.state || 'idle');
 
   // If state is expired or explicitly landing/idle â†’ ensure landing

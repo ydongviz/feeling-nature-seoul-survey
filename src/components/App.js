@@ -12,6 +12,7 @@ import {ThankYouPage} from "./ThankYouPage";
 import {ProgressPage} from "./ProgressPage";
 import {useStateMachine} from "little-state-machine";
 
+
 function IdleResetter() {
       const location = useLocation();
       const navigate  = useNavigate();                  // v6
