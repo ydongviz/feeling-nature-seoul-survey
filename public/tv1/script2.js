@@ -37,7 +37,7 @@ function showCountdown(msg, secs, notBeforeIso){
   if (ovMsg) ovMsg.innerHTML = msg || BILINGUAL_TEXTS.loading;
   if (ovCnt) ovCnt.style.display = "block";
 
-  const target = notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000);
+  const target = (notBeforeIso ? Date.parse(notBeforeIso) : (Date.now() + (secs||3)*1000)) + 100; // +100ms buffer
   function tick(){ 
     const r=Math.max(0,target-Date.now()); 
     ovCnt.textContent=String(Math.ceil(r/1000)); 
