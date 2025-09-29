@@ -672,6 +672,8 @@ footer {
 }
 
 /* Prevent Korean text from breaking mid-word */
+.landing-line1,
+.landing-line2,
 .locationDescription p,
 .footer-section p,
 .middle-section-title,
