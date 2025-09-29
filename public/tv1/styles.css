@@ -170,7 +170,7 @@ body:not(.result-mode) .header-logos {
 .left-column {
   position: absolute;
   top: 40px;
-  width: 300px;
+  width: 17.8vw;
   z-index: 10;
 }
 
@@ -357,7 +357,7 @@ footer {
   color: #888;
   line-height: 1.4;
   margin: 0;
-  max-width: 250px;
+  max-width: 260px;
 }
 
 .middle-section-title {
