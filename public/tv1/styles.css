@@ -647,8 +647,10 @@ footer {
 /* ADD these overrides for TV display */
 @media screen and (min-width: 1920px) {
   .left-column{width: 18.5vw; }
-
   .left-column-top h2 { font-size: 28px; }
+  .locationDescription {font-size: 18px;}
+  .right-column-top img {max-width: 54%;}
+  
   /* Scale fonts 1.8x for TV viewing */
   .bp-value { font-size: 65px; }
   .landing-line1 { font-size: 4rem; }
@@ -667,4 +669,13 @@ footer {
   /* Adjust spacing for larger scale */
   footer { padding: 40px 80px 20px 80px; }
   .main-content { padding: 40px 80px 0px 80px; }
+}
+
+/* Prevent Korean text from breaking mid-word */
+.locationDescription p,
+.footer-section p,
+.middle-section-title,
+.plant-category {
+  word-break: keep-all;  /* Keeps Korean words together */
+  overflow-wrap: break-word;  /* Allows breaking at spaces */
 }
