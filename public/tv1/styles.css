@@ -646,20 +646,23 @@ footer {
 
 /* ADD these overrides for TV display */
 @media screen and (min-width: 1920px) {
+  .left-column{width: 18.5vw; }
+
+  .left-column-top h2 { font-size: 28px; }
   /* Scale fonts 1.8x for TV viewing */
-  .bp-value { font-size: 80px; }
-  .landing-line1 { font-size: 80px; }
+  .bp-value { font-size: 65px; }
+  .landing-line1 { font-size: 4rem; }
   .landing-line1.feeling-nature { font-size: 130px; }
-  .landing-line2 { font-size: 28px; }
-  .footer-section h4 { font-size: 22px; }
-  .footer-section p { font-size: 18px; }
-  .plant-category { font-size: 28px; }
-  .bar-label { font-size: 18px; }
-  .middle-section-title { font-size: 22px; }
-  .chart-title { font-size: 22px; }
+  .landing-line2 { font-size: 1.15rem; }
+  .footer-section h4 { font-size: 20px; }
+  .footer-section p { font-size: 13px; }
+  .plant-category { font-size: 15px; }
+  .bar-label { font-size: 10.5px; }
+  .middle-section-title { font-size: 20px; }
+  .chart-title { font-size: 20px; } 
   
   /* Increase icon sizes */
-  .top-element img { width: 140px; }
+  .top-element img { width: 110px; }
   
   /* Adjust spacing for larger scale */
   footer { padding: 40px 80px 20px 80px; }
