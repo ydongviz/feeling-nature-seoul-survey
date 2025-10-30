@@ -168,7 +168,7 @@ export function HomePage({setGlobalLanguage}) {
             <header className="header-container">
                 {/* Main Title - Clickable */}
                 <h1 className="main-title" onClick={handleProjectLinkClick}>
-                    Biophilia
+                    Feeling Nature Seoul
                 </h1>
                 
                 {/* Language Navigation */}
