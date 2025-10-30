@@ -34,7 +34,7 @@ const sizeScale = d3.scaleLinear().domain([0, 0.2, 0.6, 0.8, 1]).range([0, 1, 2,
 
 const LANDING_TEXTS = {
   en: {
-    title: 'Feeling Nature Seoul',
+    title: 'Mapping the Emotional Pulse of Urban Nature',
     intro: 'Biophilia refers to the benefits that contact with nature brings to humans. But do we value nature the same way across biomes?',
     explore: 'Explore how Seoul residents perceive nature.',
     bsBp: 'Biophilic Perceptions (BP) exceed Biophilic Settings (BS) in Seoul city.',
@@ -49,7 +49,7 @@ const LANDING_TEXTS = {
     }
   },
   ko: {
-    title: 'Feeling Nature Seoul',
+    title: 'Mapping the Emotional Pulse of Urban Nature',
     intro: '바이오필리아(Biophilia)는 인간이 본능적으로 자연과 연결되고자 하는 경향과 그로부터 얻는 이익들을 의미합니다. 하지만 서로 다른 식생에서도 자연을 같은 방식으로 평가할까요?',
     explore: '서울 시민들은 자연을 어떻게 인식하는지 알아봅시다.',
     bsBp: '서울시에서는 자연 인식(BP)이 자연 환경(BS)을 초과합니다.',
@@ -91,7 +91,7 @@ const UI_TEXTS = {
   },
   ko: {
     locationTitle: "서울 (온대림)",
-    locationDescriptionBS: '지도는 응답자의 자연 인식 점수(BiP)를 기준으로 응답자가 </br> 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다',
+    locationDescriptionBS: '지도는 응답자의 자연 인식 점수(BiP)를 기준으로 응답자가 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다',
     locationDescriptionBP: '지도는 응답자의 자연 인식 점수(BiP)를 기준으로 응답자가 서울의 자연 환경을 어떻게 인식하고 평가하는지 보여줍니다',
     bpTitle: "응답자의 자연 인식 점수(BiP)",
     bpDescription: "응답자의 자연 인식 점수(BiP)와 유사한 자연 인식 값을 가진 도시 위치들을 표시합니다.",
@@ -249,9 +249,24 @@ class BPManager {
   }
 
   // Add normalization method
-  normalizeBPValue(rawBP) {
-      const normalized = 0.1 + (rawBP - 0.25) * (0.8 - 0.1) / (0.35 - 0.25);
-      return Math.max(0, Math.min(1, normalized)); // Clamp between 0 and 1
+  // normalizeBPValue(rawBP) {
+      // const normalized = 0.1 + (rawBP - 0.25) * (0.8 - 0.1) / (0.35 - 0.25);
+      // return Math.max(0, Math.min(1, normalized)); // Clamp between 0 and 1
+
+  // }
+
+  normalizeBPValue(rawBP, config = {}) {
+    const { 
+      inputMin = 0.25,
+      inputMax = 0.35,
+      outputMin = 0,
+      outputMax = 1
+    } = config;
+    
+    const ratio = (rawBP - inputMin) / (inputMax - inputMin);
+    const normalized = outputMin + ratio * (outputMax - outputMin);
+    
+    return Math.max(outputMin, Math.min(outputMax, normalized));
   }
 
   setValue(bp) {
@@ -1112,7 +1127,7 @@ function updateLandingTexts(line1Text, line2Text = '', showLine2 = true) {
     texts.line1.textContent = line1Text;
     texts.line1.style.display = line1Text ? 'block' : 'none';
     
-    if (line1Text === 'Feeling Nature Seoul') {
+    if (line1Text === 'Mapping the Emotional Pulse of Urban Nature') {
       texts.line1.classList.add('feeling-nature');
     } else {
       texts.line1.classList.remove('feeling-nature');
@@ -1120,7 +1135,7 @@ function updateLandingTexts(line1Text, line2Text = '', showLine2 = true) {
   }
   
   if (texts.line2) {
-    texts.line2.textContent = line2Text;
+    texts.line2.textContent = '';
     texts.line2.style.display = (showLine2 && line2Text) ? 'block' : 'none';
   }
 }

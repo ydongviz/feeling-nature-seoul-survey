@@ -36,13 +36,21 @@ export const LOCALE_TEXT = {
     },
 
     // Seoul Residency Question
+    // 'seoul-residency-question': {
+    //     'eng': '1 | Have you lived or spent significant time in Seoul for at least 1 year?',
+    //     'Korean': '1 | 서울에 1년 이상 거주하거나 머문 적이 있습니까?',
+    // },
     'seoul-residency-question': {
-        'eng': '1 | Have you lived or spent significant time in Seoul for at least 1 year?',
-        'Korean': '1 | 서울에 1년 이상 거주하거나 머문 적이 있습니까?',
+        'eng': '1 | Do you want to examine how your emotional perception of nature in Seoul compares to others?',
+        'Korean': '1 | 서울의 자연에 대한 당신의 감정적 인식이 다른 사람들과 어떻게 다른지 살펴보고 싶으신가요?',
     },
+    // 'seoul-residency-description': {
+    //     'eng': 'This survey is for people who currently or previously lived in Seoul, or who have visited frequently and know the city well, having experienced Seoul for at least 1 year.',
+    //     'Korean': '이 설문은 약 1년 이상 서울에 거주했거나 자주 방문하여 서울에 익숙한 분들을 대상으로 합니다.',
+    // },
     'seoul-residency-description': {
-        'eng': 'This survey is for people who currently or previously lived in Seoul, or who have visited frequently and know the city well, having experienced Seoul for at least 1 year.',
-        'Korean': '이 설문은 약 1년 이상 서울에 거주했거나 자주 방문하여 서울에 익숙한 분들을 대상으로 합니다.',
+        'eng': 'We help visualize your emotional perception of nature in relation to that of local residents, allowing you to see where your sense of biophilia stands among them.',
+        'Korean': '우리는 당신의 자연에 대한 감정적 인식을 지역 주민들의 인식과 비교하여 시각화함으로써, 당신의 생명애적 감성이 그들 사이에서 어떤 위치에 있는지 보여드립니다.',
     },
     'seoul-residency-yes': {
         'eng': 'Yes',
