@@ -192,6 +192,19 @@ body:not(.result-mode) .header-logos {
   z-index: 10;
 }
 
+#final-video-display {
+  background-color: #1a1a1a8c;
+  transition: background-color 0.7s ease-in-out 0.5s;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+}
+
+#final-video-display.visible {
+  background-color: #0B0B0B;
+}
+
 /* ========== LEFT COLUMN CONTENT ========== */
 .left-column-top h2 {
   font-weight: 400;

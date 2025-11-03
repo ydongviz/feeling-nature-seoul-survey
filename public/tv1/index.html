@@ -19,6 +19,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
+  <!-- <audio id="backgroundMusic" loop preload="auto">
+    <source src="img/fn-final1.mp4" type="audio/mpeg">
+  </audio> -->
+  <div id="final-video-display">
+    <video id="finalVideo" src="img/fn-final-cut.mp4" muted loop preload="auto" style="display: none; width: 100%; height: 100%;"></video>
+  </div>
   <div id="headerLogos" class="header-logos" style="display: none;">
     <img src="img/fn-logofinal3.gif" alt="Left Logo" class="header-logo" />
     <img src="img/scl_logo_white.png" alt="Right Logo" class="header-logo" />
@@ -50,11 +56,11 @@
             <img id="rightColumnImage" src="./img/seoul_label.svg" alt="Seoul Label" />
           </div>
         </div>
-      </div>
 
+      </div>
       <div id="tooltip"></div>
     </div>
-  </div>
+  </div> 
 
   <footer>
     <div class="footer-section">

@@ -126,7 +126,7 @@ class SimpleMediaCache {
   }
 
   async preloadMedia() {
-    const mediaFiles = ['img/fn-landing2.gif', 'img/fn-landing4.mov'];
+    const mediaFiles = ['img/fn-landing2.gif', 'img/fn-landing4.mov', 'img/fn-final1.mp4'];
     for (const url of mediaFiles) {
       try {
         const response = await fetch(url, { cache: 'force-cache' });
@@ -1601,12 +1601,14 @@ function showGif() {
   const video = document.getElementById('landingVideo');
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
+  const displayFinalVideo = document.getElementById('final-video-display');
   
   if (gif) {
     // Use cached version if available
     gif.src = simpleMediaCache.getCachedUrl('img/fn-landing2.gif');
     gif.style.display = 'block';
     gif.style.opacity = '1';
+    displayFinalVideo.style.visibility = 'hidden';
   }
   if (video) {
     video.style.display = 'none';
@@ -1621,6 +1623,7 @@ function showVideo() {
   const video = document.getElementById('landingVideo');
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
+  const displayFinalVideo = document.getElementById('final-video-display');
   
   if (gif) gif.style.display = 'none';
   
@@ -1630,6 +1633,7 @@ function showVideo() {
     video.style.display = 'block';
     video.style.opacity = '1';
     video.currentTime = 0;
+    displayFinalVideo.style.visibility = 'hidden';
     
     // Enhanced error handling with fallback
     video.onerror = () => {
@@ -1647,11 +1651,123 @@ function showVideo() {
   if (canvas) canvas.style.display = 'none';
 }
 
+function showFinalVideo(){
+  const gif = document.getElementById('landingGif');
+  const landingVideo = document.getElementById('landingVideo');
+  const finalVideo = document.getElementById('finalVideo');
+  const map = document.getElementById('map');
+  const canvas = document.getElementById('visualization-canvas');
+  const displayFinalVideo = document.getElementById('final-video-display');
+  
+  // Hide GIF and landing video
+  if (gif) gif.style.display = 'none';
+  if (landingVideo) {
+    landingVideo.style.display = 'none';
+    landingVideo.pause();
+  }
+
+  if (finalVideo) {
+    // Set video source
+    finalVideo.src = 'img/fn-final-cut.mp4';
+    finalVideo.style.display = 'block';
+    finalVideo.style.opacity = '1';
+    displayFinalVideo.style.visibility = 'visible';
+
+    displayFinalVideo.classList.remove('visible');
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        displayFinalVideo.classList.add('visible');
+      }, 5);
+    });
+    
+    // Reset video for clean playback
+    try {
+      finalVideo.pause();
+      finalVideo.muted = true;                    // Required for autoplay
+      finalVideo.setAttribute('playsinline', ''); // Required for iOS
+      finalVideo.currentTime = 0;
+      finalVideo.load();
+    } catch(e) {
+      console.warn('[Final Video] Error resetting:', e);
+    }
+    
+    // Enhanced error handling
+    finalVideo.onerror = () => {
+      console.warn('[Final Video] Playback failed');
+    };
+    
+    // Double RAF prevents WebKit black frame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        
+        const tryPlayMuted = () => {
+          const playPromise = finalVideo.play();
+          if (playPromise && playPromise.catch) {
+            playPromise.catch((error) => {
+              console.warn('[Final Video] Muted play failed:', error);
+            });
+          }
+        };
+        
+        const tryUnmuteIfUnlocked = () => {
+          if (!window.audioUnlocked) return;
+          
+          try {
+            finalVideo.muted = false;
+            finalVideo.play().catch(() => {});
+          } catch (err) {
+            finalVideo.muted = true;
+          }
+        };
+        
+        // Check readyState
+        if (finalVideo.readyState >= 2) {
+          tryPlayMuted();
+          tryUnmuteIfUnlocked();
+        } else {
+          const onReady = () => {
+            finalVideo.removeEventListener('canplay', onReady);
+            finalVideo.removeEventListener('loadeddata', onReady);
+            tryPlayMuted();
+            tryUnmuteIfUnlocked();
+          };
+          
+          finalVideo.addEventListener('canplay', onReady);
+          finalVideo.addEventListener('loadeddata', onReady);
+        }
+        
+        // Audio unlock listener if needed
+        if (!window.audioUnlocked) {
+          const unlockVideoOnce = () => {
+            document.removeEventListener('pointerdown', unlockVideoOnce);
+            window.audioUnlocked = true;
+            window.didPrimeAudio = true;
+            
+            try {
+              finalVideo.muted = false;
+              finalVideo.play().catch(() => {});
+            } catch (err) {}
+          };
+          
+          document.addEventListener('pointerdown', unlockVideoOnce, { once: true });
+        }
+        
+      });
+    });
+  }
+
+  if (map) map.style.display = 'none';
+  if (canvas) canvas.style.display = 'none';
+}
+
 function hideAllMedia() {
   const gif = document.getElementById('landingGif');
   const video = document.getElementById('landingVideo');
+  const finalVideo = document.getElementById('finalVideo');
   const map = document.getElementById('map');
   const canvas = document.getElementById('visualization-canvas');
+  const displayFinalVideo = document.getElementById('final-video-display');
   
   if (gif) {
     gif.style.opacity = '0';
@@ -1667,6 +1783,23 @@ function hideAllMedia() {
       video.style.display = 'none';
       video.pause();
       video.style.opacity = '1';
+    }, 500);
+  }
+
+  if (finalVideo) {
+    finalVideo.style.opacity = '0';
+    displayFinalVideo.style.visibility = 'hidden';
+    try {
+      finalVideo.pause();
+      finalVideo.currentTime = 0;
+      finalVideo.onended = null;
+      finalVideo.oncanplay = null;
+      finalVideo.onloadeddata = null;
+      finalVideo.onerror = null;
+    } catch(e) {}
+    setTimeout(() => {
+      finalVideo.style.display = 'none';
+      finalVideo.style.opacity = '1';
     }, 500);
   }
   
@@ -1742,6 +1875,32 @@ async function startLandingAnimationSequence() {
       
       await wait(1000);
 
+      // Phase 3: Final video sequence (new by HJ)
+      showFinalVideo();
+      // showHeaderLogos(true);
+      
+      // Get video duration to wait appropriately
+      const finalVideo = document.getElementById('finalVideo');
+      const displayFinalVideo = document.getElementById('final-video-display');
+      // console.log('Video duration:', finalVideo.duration);
+      let videoDuration = 44000;
+      
+      if (finalVideo && finalVideo.duration && !isNaN(finalVideo.duration)) {
+        videoDuration = finalVideo.duration * 1000; // Convert to milliseconds
+      }
+      
+      await wait(videoDuration);
+
+      if (finalVideo) {
+        finalVideo.style.display = 'none';
+        finalVideo.pause();
+        finalVideo.currentTime = 0;
+        displayFinalVideo.style.visibility = 'hidden';
+        displayFinalVideo.classList.remove('visible');
+      }
+
+      if (!app.landing.active || app.mode !== Modes.LANDING) break;
+    
       // Toggle language for next iteration
       currentLang = currentLang === 'en' ? 'ko' : 'en';
     }
