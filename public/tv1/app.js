@@ -1135,7 +1135,7 @@ function updateLandingTexts(line1Text, line2Text = '', showLine2 = true) {
   }
   
   if (texts.line2) {
-    texts.line2.textContent = line2Text;
+    texts.line2.textContent = '';
     texts.line2.style.display = (showLine2 && line2Text) ? 'block' : 'none';
   }
 }
