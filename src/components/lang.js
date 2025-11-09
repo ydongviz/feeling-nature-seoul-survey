@@ -41,7 +41,7 @@ export const LOCALE_TEXT = {
     //     'Korean': '1 | 서울에 1년 이상 거주하거나 머문 적이 있습니까?',
     // },
     'seoul-residency-question': {
-        'eng': '1 | Do you want to examine how your emotional perception of nature in Seoul compares to others?',
+        'eng': '1 | Do you want to learn how your emotional perception of nature in Seoul compares to others?',
         'Korean': '1 | 서울의 자연에 대한 당신의 감정적 인식이 다른 사람들과 어떻게 다른지 살펴보고 싶으신가요?',
     },
     // 'seoul-residency-description': {
