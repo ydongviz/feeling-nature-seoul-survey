@@ -23,12 +23,18 @@ function sfc32(a, b, c, d) {
         c >>>= 0;
         d >>>= 0;
         var t = (a + b) | 0;
-        a = b ^ b >>> 9;
-        b = c + (c << 3) | 0;
-        c = (c << 21 | c >>> 11);
-        d = d + 1 | 0;
-        t = t + d | 0;
-        c = c + t | 0;
+        //a = b ^ b >>> 9;
+        a = b ^ (b >>> 9);
+        //b = c + (c << 3) | 0;
+        b = (c + (c << 3)) | 0;
+        //c = (c << 21 | c >>> 11);
+        c = (c << 21) | (c >>> 11);
+        //d = d + 1 | 0;
+        //t = t + d | 0;
+        //c = c + t | 0;
+        d = (d + 1) | 0;
+        t = (t + d) | 0;
+        c = (c + t) | 0;
         return (t >>> 0) / 4294967296;
     }
 }
@@ -36,9 +42,12 @@ function sfc32(a, b, c, d) {
 function mulberry32(a) {
     return function () {
         var t = a += 0x6D2B79F5;
-        t = Math.imul(t ^ t >>> 15, t | 1);
-        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        //t = Math.imul(t ^ t >>> 15, t | 1);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        //t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        //return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        return (((t ^ (t >>> 14)) >>> 0)) / 4294967296;
     }
 }
 
