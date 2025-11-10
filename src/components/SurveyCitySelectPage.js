@@ -12,24 +12,7 @@ import {DEFAULT_LANG, locale_text} from "./lang";
 
 
 // Reusable Logo Component for all pages
-const PageLogo = () => {
-    return (
-        <div className="global-page-logo">
-            <a 
-                href="https://senseable.mit.edu/feeling-nature/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="global-page-logo-link"
-            >
-                <img 
-                    src="/fn-logo2.gif" 
-                    alt="Feeling Nature" 
-                    className="global-page-logo-image"
-                />
-            </a>
-        </div>
-    );
-};
+
 
 
 // Progress Bar Component
@@ -79,62 +62,7 @@ const RadioForm = ({lang}) => {
 
 
     // ENHANCED: Create options with iPad-specific touch handling
-    const createRadioOption = (value, labelKey) => {
-        const uniqueId = `seoulResidency-${value}`;
-        
-        // FIXED: iPad-specific touch handler
-        const handleTouchEnd = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const radioButton = document.getElementById(uniqueId);
-            if (radioButton && !radioButton.checked) {
-                // Force the radio button to be checked
-                radioButton.checked = true;
-                
-                // Create and dispatch proper events for react-hook-form
-                const changeEvent = new Event('change', { bubbles: true });
-                const inputEvent = new Event('input', { bubbles: true });
-                
-                radioButton.dispatchEvent(changeEvent);
-                radioButton.dispatchEvent(inputEvent);
-                
-                // Also trigger a focus event to ensure form validation
-                radioButton.focus();
-                radioButton.blur();
-            }
-        };
-
-        const handleClick = (e) => {
-            // For non-touch devices, let normal click work
-            if (!('ontouchstart' in window)) {
-                const radioButton = document.getElementById(uniqueId);
-                if (radioButton && !radioButton.checked) {
-                    radioButton.click();
-                }
-            }
-        };
-
-        return (
-            <div 
-                className="div-option-item"
-                key={value}
-                onClick={handleClick}
-                onTouchEnd={handleTouchEnd} // Add touch-specific handler
-                style={{ cursor: 'pointer' }}
-            >
-                <input
-                    type="radio"
-                    id={uniqueId}
-                    value={value}
-                    {...register('seoulResidency', { required: true })}
-                />
-                <label htmlFor={uniqueId}>
-                    {locale_text(lang, labelKey)}
-                </label>
-            </div>
-        );
-    };
+ 
 
     return (
         <form onSubmit={handleSubmit(onSubmit)}>
