@@ -220,12 +220,12 @@ export function HomePage({setGlobalLanguage}) {
                     {locale_text(lang, 'home-page-description')}
                 </p>
 
-            
+                <a href="/surveycity" onClick={onStart}>
                   <button className="homepage-button">
                     {locale_text(lang, 'home-page-button-start-survey')}
                   </button>
-                
-                
+                </a> 
+                          
             </div>
 
             {/* Footer with clickable logos */}

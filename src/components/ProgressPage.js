@@ -6,11 +6,9 @@ import {useEffect, useState} from "react";
 export const ProgressPage = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     const fetchData = () => {
         setLoading(true);
-        setError(null);
         
         // Send request to the endpoint /api/progress
         axios.get('/api/progress')
@@ -48,12 +46,8 @@ export const ProgressPage = () => {
                 setLoading(false);
             })
             .catch((error) => {
-                // Set error state
-                setError({
-                    message: error.message,
-                    status: error.response?.status,
-                    data: error.response?.data
-                });
+                // Log the error instead of storing it
+                console.error('Error fetching progress:', error.message);
                 
                 // Set empty data to prevent null access
                 const emptyProgressData = {
