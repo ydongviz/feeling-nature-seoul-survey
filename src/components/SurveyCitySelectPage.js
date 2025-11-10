@@ -4,7 +4,7 @@ import {useStateMachine} from "little-state-machine";
 //import {useNavigate} from 'react-router-dom';
 import {useForm} from 'react-hook-form';
 import {useNavigate} from 'react-router-dom';
-import {CITY_LIST, generateSurveyID} from '../core/generateSurvey';
+//import {CITY_LIST, generateSurveyID} from '../core/generateSurvey';
 import {generateSurveyID} from '../core/generateSurvey';
 import './theme.css';
 import './SurveyCitySelectPage.css';
