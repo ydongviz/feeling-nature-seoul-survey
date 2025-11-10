@@ -1,7 +1,7 @@
 import {React} from "react";
 import {useStateMachine} from "little-state-machine";
 //import {Link, useParams} from "react-router-dom";
-import {useNavigate} from 'react-router-dom';
+//import {useNavigate} from 'react-router-dom';
 import {useForm} from 'react-hook-form';
 import {useNavigate} from 'react-router-dom';
 import {CITY_LIST, generateSurveyID} from '../core/generateSurvey';
@@ -60,7 +60,7 @@ const RadioForm = ({lang}) => {
     const {
         register,
         handleSubmit,
-        watch,
+        //watch,
         formState: {isDirty, isValid}
     } = useForm();
 
