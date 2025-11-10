@@ -83,6 +83,7 @@ const Image = (opts) => {
             
             <img
                 {...imgProps}  // Only standard props (src, alt, etc.)
+                alt={imgProps.alt || "image"}  
                 className={className}
                 style={{display: (isLoading || hasError) ? 'none' : 'block'}}
                 onLoad={handleImageLoaded}
