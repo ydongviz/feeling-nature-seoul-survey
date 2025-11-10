@@ -152,7 +152,8 @@ const ButtonImgPicker = ({ isSelected, position, lang, onClick, ...props }) => {
 
 export function SurveyImgChoicePage() {
     const {surveyid} = useParams();
-    const {city, surveyHash, imageSet} = decodeSurveyID(surveyid);
+    //const {city, surveyHash, imageSet} = decodeSurveyID(surveyid);
+    const {city, imageSet} = decodeSurveyID(surveyid);
 
     const navigate = useNavigate();
     const {actions, state} = useStateMachine({
@@ -234,7 +235,7 @@ export function SurveyImgChoicePage() {
                 <div className="grid-item-image-picker">
                     <Image
                         src={leftImagePath}
-                        alt="left"
+                        alt="comparison image left"
                         lang={lang}
                         didImageLoaded={didLeftImageLoaded}
                         shouldImageDisplayed={shouldImageDisplayed}
@@ -248,7 +249,7 @@ export function SurveyImgChoicePage() {
                 <div className="grid-item-image-picker">
                     <Image
                         src={rightImagePath}
-                        alt="right"
+                        alt="comparison image right"
                         lang={lang}
                         didImageLoaded={didRightImageLoaded}
                         shouldImageDisplayed={shouldImageDisplayed}

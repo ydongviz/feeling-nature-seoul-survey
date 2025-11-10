@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {useStateMachine} from "little-state-machine";
-import {Link, useParams} from "react-router-dom";
+//import {Link, useParams} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import './theme.css';
 import './ThankYouPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";

@@ -1,9 +1,11 @@
 import {React} from "react";
 import {useStateMachine} from "little-state-machine";
-import {Link, useParams} from "react-router-dom";
+//import {Link, useParams} from "react-router-dom";
+import {useNavigate} from 'react-router-dom';
 import {useForm} from 'react-hook-form';
 import {useNavigate} from 'react-router-dom';
 import {CITY_LIST, generateSurveyID} from '../core/generateSurvey';
+import {generateSurveyID} from '../core/generateSurvey';
 import './theme.css';
 import './SurveyCitySelectPage.css';
 import {DEFAULT_LANG, locale_text} from "./lang";

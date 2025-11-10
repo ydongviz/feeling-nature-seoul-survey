@@ -149,7 +149,8 @@ function HomepageResetHandler() {
 }
 
 export function App() {
-    const {actions, state} = useStateMachine({});
+    //const {actions, state} = useStateMachine({});
+    const {state} = useStateMachine({});
     const [globalLanguage, setGlobalLanguage] = useState(state['language'] || 'Korean');
     const textDirection = (globalLanguage === 'arb') ? "rtl" : "ltr";
     

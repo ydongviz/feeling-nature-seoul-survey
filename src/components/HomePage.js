@@ -1,11 +1,12 @@
 //import {React, useState, useEffect, useRef} from "react";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {useStateMachine} from "little-state-machine";
 //import {Link} from "react-router-dom";
 import './theme.css';
 import './HomePage.css';
 import {languages, locale_text} from "./lang";
-import { tvState, getSessionId } from '../stateApi';
+//import { tvState, getSessionId } from '../stateApi';
+import { tvState } from '../stateApi';
 
 export function HomePage({setGlobalLanguage}) {
     const {actions, state} = useStateMachine({
@@ -55,7 +56,7 @@ export function HomePage({setGlobalLanguage}) {
             '#98FB98', '#ADFF2F', '#7CFC00', '#00FF7F', '#00FA9A'
         ];
 
-        const sizes = ['tiny', 'small', 'medium', 'large', 'extra-large'];
+        //const sizes = ['tiny', 'small', 'medium', 'large', 'extra-large'];
 
         const createDot = () => {
             if (activeDots >= MAX_DOTS) return;
@@ -224,6 +225,7 @@ export function HomePage({setGlobalLanguage}) {
                     {locale_text(lang, 'home-page-button-start-survey')}
                   </button>
                 </a>
+                
             </div>
 
             {/* Footer with clickable logos */}
