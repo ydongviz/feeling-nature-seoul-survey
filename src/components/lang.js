@@ -67,8 +67,8 @@ export const LOCALE_TEXT = {
         'Korean': '관심을 가져주셔서 감사합니다!',
     },
     'thank-you-not-eligible-description': {
-        'eng': 'This survey is intended for people who have lived or spent significant time in Seoul for at least 1 year. If this doesn’t apply to you, you may close the page or use the button below to restart. Thank you for your understanding.',
-        'Korean': '이 설문은 서울에 1년 이상 거주했거나 자주 방문하며 서울에 익숙하신 분들을 대상으로 제작되었습니다. 이에 해당하지 않을 경우, 페이지를 닫거나 아래 버튼을 눌러 다시 시작해 주세요. 양해해 주셔서 감사합니다.',
+        'eng': 'This survey is intended for people who are interested in biophilia research. If this doesn’t apply to you, you may close the page or use the button below to restart. Thank you for your understanding.',
+        'Korean': '이 설문은 Biophilia 연구에 관심이 있는 분들을 대상으로 제작되었습니다. 이에 해당하지 않을 경우, 페이지를 닫거나 아래 버튼을 눌러 다시 시작해 주세요. 양해해 주셔서 감사합니다.',
     },
 
     // SurveyImgChoicePage
