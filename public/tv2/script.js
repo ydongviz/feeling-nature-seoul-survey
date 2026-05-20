@@ -167,8 +167,7 @@ function initScene() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  //renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setPixelRatio(1); // Instead of Math.min(devicePixelRatio, 2)
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   const bc = new THREE.Color(0x11130E);
   renderer.setClearColor(bc);
 
