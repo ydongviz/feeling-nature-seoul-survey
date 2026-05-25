@@ -1,6 +1,4 @@
-# Survey Project
-
-- [ ] Counter for each city through a page
+# The Feeling Nature Seoul Exhibition Project
 
 
 # Quick Start
